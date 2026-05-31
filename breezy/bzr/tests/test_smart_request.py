@@ -18,10 +18,11 @@
 
 import threading
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
+from dromedary.errors import NoSuchFile
 
 from breezy import errors, transport
 from breezy.bzr.smart import request
+from breezy.errors import GhostRevisionsHaveNoRevno
 from breezy.tests import TestCase, TestCaseWithMemoryTransport
 
 from ..bzrdir import BzrDir
@@ -38,7 +39,7 @@ class DoErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do()."""
 
     def do(self):
-        raise transport.NoSuchFile("xyzzy")
+        raise NoSuchFile("xyzzy")
 
 
 class DoUnexpectedErrorRequest(request.SmartServerRequest):
@@ -56,7 +57,7 @@ class ChunkErrorRequest(request.SmartServerRequest):
         pass
 
     def do_chunk(self, bytes):
-        raise transport.NoSuchFile("xyzzy")
+        raise NoSuchFile("xyzzy")
 
 
 class EndErrorRequest(request.SmartServerRequest):
@@ -71,7 +72,7 @@ class EndErrorRequest(request.SmartServerRequest):
         pass
 
     def do_end(self):
-        raise transport.NoSuchFile("xyzzy")
+        raise NoSuchFile("xyzzy")
 
 
 class CheckJailRequest(request.SmartServerRequest):
@@ -192,9 +193,7 @@ class TestRequestHanderErrorTranslation(TestCase):
         self.assertEqual(expected_tuple, request._translate_error(error))
 
     def test_NoSuchFile(self):
-        self.assertTranslationEqual(
-            (b"NoSuchFile", b"path"), transport.NoSuchFile("path")
-        )
+        self.assertTranslationEqual((b"NoSuchFile", b"path"), NoSuchFile("path"))
 
     def test_LockContention(self):
         # For now, LockContentions are always transmitted with no details.

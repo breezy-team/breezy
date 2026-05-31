@@ -34,6 +34,8 @@ class TestCaseWithState(TestCaseWithWorkingTree):
         try:
             dirstate = tree.current_dirstate()
             dirstate_path = dirstate._filename
+            if isinstance(dirstate_path, bytes):
+                dirstate_path = dirstate_path.decode("utf-8")
             self.assertPathExists(dirstate_path)
         finally:
             tree.unlock()
@@ -54,8 +56,10 @@ class TestCheckState(TestCaseWithState):
         tree.check_state()
 
     def test_check_broken_dirstate(self):
+        from bzrformats.errors import BzrFormatsError
+
         tree = self.make_tree_with_broken_dirstate("tree")
-        self.assertRaises(errors.BzrError, tree.check_state)
+        self.assertRaises((errors.BzrError, BzrFormatsError), tree.check_state)
 
 
 class TestResetState(TestCaseWithState):

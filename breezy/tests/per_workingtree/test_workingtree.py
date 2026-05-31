@@ -21,13 +21,15 @@ import errno
 import os
 from io import StringIO
 
+from bzrformats.inventory import Inventory
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+
 from ... import branch as _mod_branch
 from ... import config, controldir, errors, merge, osutils, tests, trace, urlutils
 from ... import revision as _mod_revision
-from ... import transport as _mod_transport
 from ...bzr import bzrdir
 from ...bzr.conflicts import ConflictList, ContentsConflict, TextConflict
-from ...bzr.inventory import Inventory
 from ...bzr.workingtree import InventoryWorkingTree
 from ...errors import PathsNotVersionedError, UnsupportedOperation
 from ...mutabletree import MutableTree
@@ -47,7 +49,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             raise TestNotApplicable(
                 "only on trees that can be separate from their branch."
             )
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
             pass
 
     def test_branch_builder(self):
@@ -323,7 +325,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         "bzr add" adds the parent as necessary, but simple working tree add
         doesn't do that.
         """
-        from ...errors import NotVersionedError
+        from bzrformats.errors import NotVersionedError
 
         wt = self.make_branch_and_tree(".")
         self.build_tree(["foo/", "foo/hello"])
@@ -335,7 +337,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_add_missing(self):
         # adding a msising file -> NoSuchFile
         wt = self.make_branch_and_tree(".")
-        self.assertRaises(_mod_transport.NoSuchFile, wt.add, "fpp")
+        self.assertRaises(NoSuchFile, wt.add, "fpp")
 
     def test_remove_verbose(self):
         # FIXME the remove api should not print or otherwise depend on the
@@ -869,36 +871,34 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
-        try:
-            self.build_tree(["a\u030a"])
-        except UnicodeError as err:
-            raise TestSkipped("Filesystem does not support unicode filenames") from err
-        tree = self.make_branch_and_tree(".")
-        orig = osutils.normalized_filename
         if not osutils.normalizes_filenames():
             raise TestSkipped("Filesystem does not normalize filenames")
         try:
-            tree.add(["a\u030a"])
-            with tree.lock_read():
-                self.assertEqual(
-                    [("", "directory"), ("\xe5", "file")],
-                    [(path, ie.kind) for path, ie in tree.iter_entries_by_dir()],
-                )
-        finally:
-            osutils.normalized_filename = orig
+            self.build_tree(["a\u030a"])
+        except UnicodeError as err:
+            raise TestSkipped("Filesystem does not support unicode filenames") from err
+        tree = self.make_branch_and_tree(".")
+        tree.add(["a\u030a"])
+        with tree.lock_read():
+            self.assertEqual(
+                [("", "directory"), ("\xe5", "file")],
+                [(path, ie.kind) for path, ie in tree.iter_entries_by_dir()],
+            )
 
     def test_non_normalized_add_inaccessible(self):
+        if osutils.normalizes_filenames():
+            raise TestSkipped(
+                "Filesystem normalizes filenames, so unnormalized paths are "
+                "always accessible"
+            )
         try:
             self.build_tree(["a\u030a"])
         except UnicodeError as err:
             raise TestSkipped("Filesystem does not support unicode filenames") from err
         tree = self.make_branch_and_tree(".")
-        orig = osutils.normalized_filename
-        osutils.normalized_filename = osutils._inaccessible_normalized_filename
-        try:
-            self.assertRaises(errors.InvalidNormalization, tree.add, ["a\u030a"])
-        finally:
-            osutils.normalized_filename = orig
+        self.addCleanup(osutils.set_normalization_mode, "auto")
+        osutils.set_normalization_mode("inaccessible")
+        self.assertRaises(errors.InvalidNormalization, tree.add, ["a\u030a"])
 
     def test__write_inventory(self):
         # The private interface _write_inventory is currently used by
@@ -1016,11 +1016,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_stored_kind_nonexistent(self):
         tree = self.make_branch_and_tree("tree")
         tree.lock_write()
-        self.assertRaises(_mod_transport.NoSuchFile, tree.stored_kind, "a")
+        self.assertRaises(NoSuchFile, tree.stored_kind, "a")
         self.addCleanup(tree.unlock)
         self.build_tree(["tree/a"])
-        self.assertRaises(_mod_transport.NoSuchFile, tree.stored_kind, "a")
+        self.assertRaises(NoSuchFile, tree.stored_kind, "a")
         tree.add(["a"])
+        # bzrformats inventory entries return a fresh `str` each access,
+        # so identity comparison no longer holds — use equality.
         self.assertEqual("file", tree.stored_kind("a"))
 
     def test_missing_file_sha1(self):
@@ -1039,12 +1041,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        self.assertRaises(_mod_transport.NoSuchFile, tree.get_file_sha1, "nonexistant")
+        self.assertRaises(NoSuchFile, tree.get_file_sha1, "nonexistant")
         self.build_tree(["file"])
         tree.add("file")
         tree.commit("foo")
         tree.remove("file")
-        self.assertRaises(_mod_transport.NoSuchFile, tree.get_file_sha1, "file")
+        self.assertRaises(NoSuchFile, tree.get_file_sha1, "file")
 
     def test_case_sensitive(self):
         """If filesystem is case-sensitive, tree should report this.
@@ -1053,13 +1055,23 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         then testing whether it exists with an uppercase name.
         """
         self.build_tree(["filename"])
-        case_sensitive = not features.CaseInsensitiveFilesystemFeature.available()
+        # CaseInsensitiveFilesystemFeature only fires for the unusual
+        # case-insensitive-but-not-preserving setup, so it returns False
+        # on regular Windows/macOS too. Check both insensitive feature
+        # forms to determine real case sensitivity.
+        case_sensitive = not (
+            features.CaseInsensitiveFilesystemFeature.available()
+            or features.CaseInsCasePresFilenameFeature.available()
+        )
         tree = self.make_branch_and_tree("test")
-        self.assertEqual(case_sensitive, tree.case_sensitive)
         if not isinstance(tree, InventoryWorkingTree):
+            # Git working trees always report case_sensitive=True
+            # regardless of the underlying filesystem; the rest of
+            # this test cheats with a bzr-specific format string.
             raise TestNotApplicable(
                 "get_format_string is only available on bzr working trees"
             )
+        self.assertEqual(case_sensitive, tree.case_sensitive)
         # now we cheat, and make a file that matches the case-sensitive name
         t = tree.controldir.get_workingtree_transport(None)
         try:

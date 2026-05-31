@@ -389,8 +389,7 @@ Making the source tarball
 
    Remember that this branch has already been tested on
    https://ci.breezy-vcs.org, this step is particularly testing that the
-   cython extensions, which are updated by your local cython version when
-   you run make dist, are in good shape.
+   Rust extensions are in good shape.
 
 
 Publishing the source tarball

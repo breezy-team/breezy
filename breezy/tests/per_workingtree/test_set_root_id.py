@@ -18,7 +18,8 @@
 
 import sys
 
-from breezy import errors
+from bzrformats.inventory import NoSuchId
+
 from breezy.tests import TestSkipped
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -62,10 +63,10 @@ class TestSetRootId(TestCaseWithWorkingTree):
         orig_root_id = tree.path2id("")
         self.assertNotEqual(b"custom-root-id", orig_root_id)
         self.assertEqual("", tree.id2path(orig_root_id))
-        self.assertRaises(errors.NoSuchId, tree.id2path, b"custom-root-id")
+        self.assertRaises(NoSuchId, tree.id2path, b"custom-root-id")
         tree.set_root_id(b"custom-root-id")
         self.assertEqual(b"custom-root-id", tree.path2id(""))
         self.assertEqual(b"custom-root-id", tree.path2id(""))
         self.assertEqual("", tree.id2path(b"custom-root-id"))
-        self.assertRaises(errors.NoSuchId, tree.id2path, orig_root_id)
+        self.assertRaises(NoSuchId, tree.id2path, orig_root_id)
         tree._validate()

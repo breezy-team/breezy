@@ -16,7 +16,10 @@
 
 """Tests for OS Locks."""
 
-from .. import _transport_rs, errors, lock, tests
+from dromedary import _transport_rs
+from dromedary import errors as transport_errors
+
+from .. import lock, tests
 
 
 class TestOSLock(tests.TestCaseInTempDir):
@@ -46,7 +49,9 @@ class TestOSLock(tests.TestCaseInTempDir):
     def test_write_locks_are_exclusive(self):
         w_lock = self.write_lock("a-lock-file")
         try:
-            self.assertRaises(errors.LockContention, self.write_lock, "a-lock-file")
+            self.assertRaises(
+                transport_errors.LockContention, self.write_lock, "a-lock-file"
+            )
         finally:
             w_lock.unlock()
 
@@ -56,12 +61,15 @@ class TestOSLock(tests.TestCaseInTempDir):
             if lock.have_fcntl:
                 # With -Dlock, fcntl locks are properly exclusive
                 self.assertRaises(
-                    errors.LockContention, self.write_lock, "a-lock-file", True
+                    transport_errors.LockContention,
+                    self.write_lock,
+                    "a-lock-file",
+                    True,
                 )
                 # But not without it
                 try:
                     w_lock = self.write_lock("a-lock-file", False)
-                except errors.LockContention:
+                except transport_errors.LockContention:
                     self.fail(
                         "Unexpected success. fcntl read locks"
                         " do not usually block write locks"
@@ -85,12 +93,12 @@ class TestOSLock(tests.TestCaseInTempDir):
             if lock.have_fcntl:
                 # With -Dlock, fcntl locks are properly exclusive
                 self.assertRaises(
-                    errors.LockContention, self.read_lock, "a-lock-file", True
+                    transport_errors.LockContention, self.read_lock, "a-lock-file", True
                 )
                 # But not without it
                 try:
                     r_lock = self.read_lock("a-lock-file", False)
-                except errors.LockContention:
+                except transport_errors.LockContention:
                     self.fail(
                         "Unexpected success. fcntl write locks"
                         " do not usually block read locks"
@@ -115,7 +123,9 @@ class TestOSLock(tests.TestCaseInTempDir):
             self.assertTrue(status)
             # This should block another write lock
             try:
-                self.assertRaises(errors.LockContention, self.write_lock, "a-lock-file")
+                self.assertRaises(
+                    transport_errors.LockContention, self.write_lock, "a-lock-file"
+                )
             finally:
                 r_lock = w_lock.restore_read_lock()
             # We should be able to take a read lock now

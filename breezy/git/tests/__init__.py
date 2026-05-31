@@ -20,8 +20,7 @@
 import time
 from io import BytesIO
 
-from ... import errors as bzr_errors
-from ... import tests
+from ... import errors, tests
 from ...tests.features import Feature, ModuleAvailableFeature
 from .. import import_dulwich
 
@@ -35,7 +34,7 @@ class _DulwichFeature(Feature):
     def _probe(self):
         try:
             import_dulwich()
-        except bzr_errors.DependencyNotPresent:
+        except errors.DependencyNotPresent:
             return False
         return True
 
@@ -216,6 +215,7 @@ def load_tests(loader, basic_tests, pattern):
         "test_git_remote_helper",
         "test_mapping",
         "test_memorytree",
+        "test_merge",
         "test_object_store",
         "test_pristine_tar",
         "test_push",

@@ -19,6 +19,8 @@
 import os
 from io import BytesIO
 
+from dromedary import errors as transport_errors
+
 from ... import (
     branch,
     builtins,
@@ -152,7 +154,7 @@ class TestPush(per_branch.TestCaseWithBranch):
             return
         try:
             tree = a_branch.controldir.create_workingtree()
-        except errors.NotLocalUrl:
+        except transport_errors.NotLocalUrl:
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.

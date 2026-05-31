@@ -18,10 +18,29 @@
 
 import contextlib
 
+from bzrformats import inventory, versionedfile
+from bzrformats.errors import ObjectNotLocked, RevisionNotPresent
+from bzrformats.inventory import CHKInventory, InventoryDirectory
+
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
+
+
 from breezy import errors, gpg, tests
 from breezy import repository as _mod_repository
 from breezy import revision as _mod_revision
-from breezy.bzr import inventory, versionedfile, vf_repository
+from breezy.bzr import vf_repository
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
@@ -116,16 +135,12 @@ class TestRepository(TestCaseWithRepository):
         revisions = repo.revisions
         inventories = repo.inventories
         repo.unlock()
-        self.assertRaises(errors.ObjectNotLocked, signatures.keys)
-        self.assertRaises(errors.ObjectNotLocked, revisions.keys)
-        self.assertRaises(errors.ObjectNotLocked, inventories.keys)
-        self.assertRaises(
-            errors.ObjectNotLocked, signatures.add_lines, ("foo",), [], []
-        )
-        self.assertRaises(errors.ObjectNotLocked, revisions.add_lines, ("foo",), [], [])
-        self.assertRaises(
-            errors.ObjectNotLocked, inventories.add_lines, ("foo",), [], []
-        )
+        self.assertRaises(ObjectNotLocked, signatures.keys)
+        self.assertRaises(ObjectNotLocked, revisions.keys)
+        self.assertRaises(ObjectNotLocked, inventories.keys)
+        self.assertRaises(ObjectNotLocked, signatures.add_lines, ("foo",), [], [])
+        self.assertRaises(ObjectNotLocked, revisions.add_lines, ("foo",), [], [])
+        self.assertRaises(ObjectNotLocked, inventories.add_lines, ("foo",), [], [])
 
     def test__get_sink(self):
         repo = self.make_repository("repo")
@@ -139,8 +154,8 @@ class TestRepository(TestCaseWithRepository):
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id=b"A")
-        root = inventory.InventoryDirectory(b"fixed-root", "", None, b"A")
-        inv.add(root)
+        inv.change_root_id(b"fixed-root")
+        _set_root_revision(inv, b"A")
         # Insert the inventory on its own to an identical repository, to get
         # its sha1.
         reference_repo = self.make_repository("reference_repo")
@@ -213,6 +228,7 @@ class TestRepository(TestCaseWithRepository):
         invs = tree.branch.repository.iter_inventories(revs)
         for rev_id, inv in zip(revs, invs, strict=False):
             self.assertEqual(rev_id, inv.revision_id)
+            self.assertIsInstance(inv, (inventory.Inventory, CHKInventory))
 
     def test_item_keys_introduced_by(self):
         # Make a repo with one revision and one versioned file.
@@ -335,7 +351,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         tree_a.add_parent_tree_id(b"ghost1")
         try:
             tree_a.commit("rev3", rev_id=b"rev3", allow_pointless=True)
-        except errors.RevisionNotPresent as e:
+        except RevisionNotPresent as e:
             raise tests.TestNotApplicable(
                 "Cannot test with ghosts for this format."
             ) from e
@@ -400,9 +416,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo = self.make_repository("inventory_with_unnecessary_ghost")
         repo.lock_write()
         repo.start_write_group()
-        inv = inventory.Inventory(revision_id=b"ghost", root_id=None)
-        root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, b"ghost")
-        inv.add(root)
+        inv = inventory.Inventory(revision_id=b"ghost")
+        _set_root_revision(inv, b"ghost")
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b"ghost"), [], [])
@@ -419,14 +434,13 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         )
         try:
             repo.add_revision(b"ghost", rev)
-        except (errors.NoSuchRevision, errors.RevisionNotPresent) as e:
+        except (errors.NoSuchRevision, RevisionNotPresent) as e:
             raise tests.TestNotApplicable(
                 "Cannot test with ghosts for this format."
             ) from e
 
-        inv = inventory.Inventory(revision_id=b"the_ghost", root_id=None)
-        root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, b"the_ghost")
-        inv.add(root)
+        inv = inventory.Inventory(revision_id=b"the_ghost")
+        _set_root_revision(inv, b"the_ghost")
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b"the_ghost"), [], [])

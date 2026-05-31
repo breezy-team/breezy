@@ -21,6 +21,9 @@ __docformat__ = "google"
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Optional, cast
 
+from bzrformats.inventory import NoSuchId
+from dromedary import errors as transport_errors
+
 from . import errors, lock, osutils, trace
 from . import revision as _mod_revision
 from .inter import InterObject
@@ -1145,6 +1148,9 @@ def get_canonical_path(tree, path, normalize):
       normalize: Function to normalize a filename for comparison
     Returns: The canonical path
     """
+    # Strip surrounding slashes so "foo/" and "foo" canonicalise the same;
+    # the case-sensitive fast path in get_canonical_paths already did this.
+    path = path.strip("/")
     # go walkin...
     cur_path = ""
     bit_iter = iter(path.split("/"))
@@ -1165,10 +1171,10 @@ def get_canonical_path(tree, path, normalize):
                         break
                     elif normalize(child.name) == lelt:
                         new_path = osutils.pathjoin(cur_path, child.name)
-                except errors.NoSuchId:
+                except NoSuchId:
                     # before a change is committed we can see this error...
                     continue
-        except errors.NotADirectory:
+        except transport_errors.NotADirectory:
             pass
         if new_path:
             cur_path = new_path

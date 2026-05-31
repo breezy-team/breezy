@@ -16,8 +16,9 @@
 
 """Tests for Repository.add_inventory_by_delta."""
 
+from bzrformats.inventory_delta import InventoryDelta
+
 from breezy import errors, revision
-from breezy.bzr.inventory_delta import InventoryDelta
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
@@ -67,16 +68,8 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
-        by_id = getattr(old, "_byid", None)
-        if by_id is None:
-            old_ids = {entry.file_id for (_n, entry) in old.iter_entries()}
-        else:
-            old_ids = set(by_id)
-        by_id = getattr(new, "_byid", None)
-        if by_id is None:
-            new_ids = {entry.file_id for (_n, entry) in new.iter_entries()}
-        else:
-            new_ids = set(by_id)
+        old_ids = set(old.iter_all_ids())
+        new_ids = set(new.iter_all_ids())
 
         adds = new_ids - old_ids
         deletes = old_ids - new_ids

@@ -19,6 +19,8 @@
 That is, tests for reconcile and check.
 """
 
+from bzrformats.inventory import Inventory, InventoryDirectory, InventoryFile
+
 from breezy import osutils
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
@@ -29,9 +31,22 @@ from breezy.tests import TestNotApplicable, multiply_scenarios
 from ....repository import WriteGroup
 from ....revision import NULL_REVISION, Revision, RevisionID
 from ....tests.scenarios import load_tests_apply_scenarios
-from ...inventory import Inventory, InventoryFile
 
 load_tests = load_tests_apply_scenarios
+
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
 
 
 class BrokenRepoScenario:
@@ -945,7 +960,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         :param parent_ids: the parents for the new revision.
         """
         inv.revision_id = revision_id
-        self.assertEqual(inv.root.revision, revision_id)
+        _set_root_revision(inv, revision_id)
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, revision_id), [], [])
@@ -988,20 +1003,20 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             Otherwise a unique default (based on revision ID) will be
             generated.
         """
-        inv = Inventory(revision_id=revision, root_revision=root_revision)
-        self.assertEqual(inv.root.revision, root_revision)
+        inv = Inventory(revision_id=revision)
+        if root_revision is not None:
+            _set_root_revision(inv, root_revision)
         file_id = b"a-file-id"
-        entry_revision = inv_revision if inv_revision is not None else revision
+        ie_revision = inv_revision if inv_revision is not None else revision
         if file_contents is None:
-            file_contents = b"%sline\n" % entry_revision
-        text_sha1 = osutils.sha_string(file_contents)
+            file_contents = b"%sline\n" % ie_revision
         entry = InventoryFile(
-            file_id,
-            "a file name",
-            inv.root.file_id,
-            revision=entry_revision,
+            file_id=file_id,
+            name="a file name",
+            parent_id=b"TREE_ROOT",
+            revision=ie_revision,
             text_size=0,
-            text_sha1=text_sha1,
+            text_sha1=osutils.sha_string(file_contents),
         )
         inv.add(entry)
         if make_file_version:

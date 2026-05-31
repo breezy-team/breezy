@@ -22,9 +22,10 @@ Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/per_workingtree/*.py.
 """
 
+from dromedary import memory
+
 from breezy import branchbuilder, tests, transport, workingtree
 from breezy.tests import per_controldir, test_server
-from breezy.transport import memory
 
 
 def make_scenarios(

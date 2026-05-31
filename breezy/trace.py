@@ -198,6 +198,29 @@ def enable_default_logging():
     return memento
 
 
+class _MutterRelayHandler(logging.Handler):
+    """Logging handler that relays records through breezy.trace.mutter.
+
+    Used to capture dromedary's logger.* calls into breezy's trace stream so
+    that test fixtures monkey-patching breezy.trace.mutter (e.g. to inspect
+    log output) see them just as if they had been muttered directly.
+    """
+
+    def emit(self, record):
+        # Look up mutter at call time so monkey-patches in tests are seen.
+        from breezy import trace as _trace_module
+
+        try:
+            msg = record.getMessage()
+        except Exception:
+            self.handleError(record)
+            return
+        try:
+            _trace_module.mutter("%s", msg)
+        except Exception:
+            self.handleError(record)
+
+
 def push_log_file(to_file, short=True):
     """Intercept log and trace messages and send them to a file.
 
@@ -210,19 +233,30 @@ def push_log_file(to_file, short=True):
     # make a new handler
     old_trace_handler = _trace_handler
     _trace_handler = new_handler = _cmd_rs.BreezyTraceHandler(to_file, short=short)
-    # save and remove any existing log handlers
+    # save and remove any existing log handlers on brz and dromedary loggers
     brz_logger = logging.getLogger("brz")
+    dromedary_logger = logging.getLogger("dromedary")
     old_handlers = brz_logger.handlers[:]
+    old_dromedary_handlers = dromedary_logger.handlers[:]
     del brz_logger.handlers[:]
+    del dromedary_logger.handlers[:]
     # set that as the default logger
     brz_logger.addHandler(new_handler)
     brz_logger.setLevel(logging.DEBUG)
-    # TODO: check if any changes are needed to the root logger
-    #
-    # TODO: also probably need to save and restore the level on brz_logger.
-    # but maybe we can avoid setting the logger level altogether, and just set
-    # the level on the handler?
-    return ("log_memento", old_handlers, new_handler, old_trace_handler)
+    # Relay dromedary's logger output through breezy.trace.mutter so that the
+    # trace stream sees it AND tests that monkey-patch mutter still observe
+    # those records.
+    dromedary_relay = _MutterRelayHandler()
+    dromedary_logger.addHandler(dromedary_relay)
+    dromedary_logger.setLevel(logging.DEBUG)
+    return (
+        "log_memento",
+        old_handlers,
+        new_handler,
+        old_trace_handler,
+        old_dromedary_handlers,
+        dromedary_relay,
+    )
 
 
 def pop_log_file(entry):
@@ -233,15 +267,25 @@ def pop_log_file(entry):
 
     Takes the memento returned from _push_log_file.
     """
-    (_magic, old_handlers, new_handler, old_trace_handler) = entry
+    (
+        _magic,
+        old_handlers,
+        new_handler,
+        old_trace_handler,
+        old_dromedary_handlers,
+        dromedary_relay,
+    ) = entry
     global _trace_handler
     _trace_handler = old_trace_handler
     brz_logger = logging.getLogger("brz")
+    dromedary_logger = logging.getLogger("dromedary")
     brz_logger.removeHandler(new_handler)
+    dromedary_logger.removeHandler(dromedary_relay)
     # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
     brz_logger.handlers = old_handlers
+    dromedary_logger.handlers = old_dromedary_handlers
 
 
 def log_exception_quietly():

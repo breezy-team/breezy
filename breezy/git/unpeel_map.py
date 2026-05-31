@@ -20,8 +20,9 @@ import contextlib
 from collections import defaultdict
 from io import BytesIO
 
+from dromedary.errors import NoSuchFile
+
 from .. import trace
-from .. import transport as _mod_transport
 
 
 class UnpeelMap:
@@ -106,6 +107,6 @@ class UnpeelMap:
     def from_repository(cls, repository):
         """Load the unpeel map for a repository."""
         m = UnpeelMap()
-        with contextlib.suppress(_mod_transport.NoSuchFile):
+        with contextlib.suppress(NoSuchFile):
             m.load(repository.control_transport.get("git-unpeel-map"))
         return m

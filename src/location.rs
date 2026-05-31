@@ -6,6 +6,7 @@ use regex::Regex;
 
 /// An error that can occur when parsing or converting locations.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Error(String);
 
 /// Parses an RCP-style location string into its components.

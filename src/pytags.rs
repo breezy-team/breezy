@@ -17,7 +17,7 @@ impl Tags for PyTags {
     fn get_tag_dict(&self) -> std::collections::HashMap<String, RevisionId> {
         Python::attach(|py| {
             let dict = self.0.call_method0(py, "get_tag_dict").unwrap();
-            let dict = dict.downcast_bound::<PyDict>(py).unwrap();
+            let dict = dict.cast_bound::<PyDict>(py).unwrap();
             let mut map = std::collections::HashMap::new();
             for (key, value) in dict.iter() {
                 let key = key.extract::<String>().unwrap();

@@ -16,12 +16,13 @@
 
 """Bazaar command-line subcommands."""
 
+from dromedary.errors import NoSuchFile
+
 from ...commands import Command, display_command
 from ...errors import CommandError, ConflictsInTree, NoWorkingTree, UncommittedChanges
 from ...i18n import gettext
 from ...option import Option
 from ...trace import note
-from ...transport import NoSuchFile
 
 
 def finish_rebase(state, wt, replace_map, replayer):

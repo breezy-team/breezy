@@ -39,6 +39,10 @@ import stat
 import sys
 from collections import defaultdict
 
+from bzrformats.inventory import NoSuchId
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+from dromedary.local import file_kind
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import FileLocked, GitFile
 from dulwich.ignore import IgnoreFilterManager
@@ -65,7 +69,6 @@ from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
-from ..transport.local import file_kind
 from .dir import BareLocalGitControlDirFormat, LocalGitDir
 from .mapping import decode_git_path, encode_git_path, mode_kind
 from .tree import MutableGitIndexTree
@@ -137,7 +140,7 @@ class TextConflict(_mod_conflicts.Conflict):
         #                can't be auto resolved does not seem ideal.
         try:
             kind = tree.kind(self.path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return
         if kind != "file":
             raise NotImplementedError("Conflict is not a file")
@@ -312,14 +315,14 @@ class ContentsConflict(_mod_conflicts.Conflict):
             tt.delete_contents(
                 tt.trans_id_tree_path(self.path + "." + suffix_to_remove)
             )
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             # There are valid cases where 'item.suffix_to_remove' either
             # never existed or was already deleted (including the case
             # where the user deleted it)
             pass
         try:
             this_path = tt._tree.id2path(self.file_id)
-        except errors.NoSuchId:
+        except NoSuchId:
             # The file is not present anymore. This may happen if the user
             # deleted the file either manually or when resolving a conflict on
             # the parent.  We may raise some exception to indicate that the
@@ -407,6 +410,103 @@ class ContentsConflict(_mod_conflicts.Conflict):
         return ConflictedIndexEntry(this=this, other=other, ancestor=base)
 
 
+class _BreezyContentFilterNormalizer:
+    """Adapter that exposes a tree's content filter stack as a dulwich BlobNormalizer.
+
+    Dulwich's checkout/checkin paths call ``checkout_normalize`` /
+    ``checkin_normalize`` on a blob normalizer. This adapter routes those
+    calls through the working tree's ``_content_filter_stack`` so that filters
+    installed via the rules system (or monkey-patched in tests) take effect
+    during dulwich-driven checkouts.
+    """
+
+    def __init__(self, tree):
+        self._tree = tree
+
+    def _stack_for(self, path):
+        return self._tree._content_filter_stack(decode_git_path(path))
+
+    def checkout_normalize(self, blob, path):
+        from dulwich.objects import Blob
+
+        from breezy.filters import filtered_output_bytes
+
+        filters = self._stack_for(path)
+        if not filters:
+            return blob
+        chunks = list(filtered_output_bytes([blob.data], filters))
+        data = b"".join(chunks)
+        if data == blob.data:
+            return blob
+        new_blob = Blob()
+        new_blob.data = data
+        return new_blob
+
+    def checkin_normalize(self, blob, path):
+        from io import BytesIO
+
+        from dulwich.objects import Blob
+
+        from breezy.filters import filtered_input_file
+
+        filters = self._stack_for(path)
+        if not filters:
+            return blob
+        f, _size = filtered_input_file(BytesIO(blob.data), filters)
+        data = f.read()
+        if data == blob.data:
+            return blob
+        new_blob = Blob()
+        new_blob.data = data
+        return new_blob
+
+
+class _GitAttributesRulesSearcher:
+    """Rules searcher that translates gitattributes into Breezy preferences.
+
+    Currently only the text/eol attributes are mapped; they become an
+    ``eol`` preference that the existing ``eol`` filter stack consumes.
+    Custom filter drivers (``filter=<name>``) are not exposed here because
+    materializing them needs the per-tree dulwich filter context, which the
+    global filter registry has no way to receive.
+    """
+
+    def __init__(self, tree):
+        self._tree = tree
+
+    def _eol_value_for(self, path):
+        if path is None:
+            return None
+        gitattributes = self._tree._get_gitattributes()
+        attrs = gitattributes.match_path(encode_git_path(path))
+        eol_attr = attrs.get(b"eol")
+        if eol_attr == b"lf":
+            return "lf"
+        if eol_attr == b"crlf":
+            return "crlf"
+        if attrs.get(b"text") in (b"auto", b"true", True):
+            return "lf"
+        return None
+
+    def get_items(self, path):
+        value = self._eol_value_for(path)
+        if value is None:
+            return ()
+        return (("eol", value),)
+
+    def get_selected_items(self, path, names):
+        items = self.get_items(path)
+        if not items:
+            return ()
+        as_dict = dict(items)
+        return tuple((name, as_dict.get(name)) for name in names)
+
+    def get_single_value(self, path, preference_name):
+        for _key, value in self.get_selected_items(path, [preference_name]):
+            return value
+        return None
+
+
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""
 
@@ -434,6 +534,118 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._rules_searcher = None
         self._detect_case_handling()
         self._reset_data()
+
+    def _get_rules_searcher(self, default_searcher):
+        """Stack the gitattributes-derived rules on top of any inherited searcher.
+
+        ``super()._get_rules_searcher`` is called explicitly so subclasses or
+        tests that override the base method (for example to install an
+        ``eol``-only rules source) still take effect.
+        """
+        from ..rules import _StackedRulesSearcher
+
+        base_searcher = super()._get_rules_searcher(default_searcher)
+        gitattr_searcher = _GitAttributesRulesSearcher(self)
+        if base_searcher is None:
+            return gitattr_searcher
+        return _StackedRulesSearcher([gitattr_searcher, base_searcher])
+
+    def _content_filter_stack(self, path=None):
+        """Get the content filter stack for ``path``.
+
+        The base implementation consults the registered filter rules (which on
+        a Git working tree pick up text/eol rules from gitattributes via
+        :class:`_GitAttributesRulesSearcher`). Custom git filter drivers
+        configured via ``filter=<name>`` in gitattributes are appended on top
+        since they need access to the per-tree dulwich filter context that
+        cannot be expressed through the global filter registry.
+        """
+        stack = super()._content_filter_stack(path)
+        if path is not None:
+            stack = list(stack) + self._git_custom_filter_stack(path)
+        return stack
+
+    def _git_custom_filter_stack(self, path):
+        """Return filters configured via ``filter=<driver>`` in gitattributes.
+
+        Text/EOL normalization is handled separately through the rules-driven
+        ``eol`` filter; this method only materializes external clean/smudge
+        drivers registered in git config (``filter=<name>``).
+        """
+        from breezy.filters import ContentFilter
+
+        gitattributes = self._get_gitattributes()
+        encoded_path = encode_git_path(path)
+        attrs = gitattributes.match_path(encoded_path)
+        filter_name = attrs.get(b"filter")
+        if not isinstance(filter_name, bytes):
+            return []
+        filter_context = self._get_filter_context()
+        if filter_context is None:
+            return []
+        try:
+            filter_driver = filter_context.get_driver(filter_name.decode("utf-8"))
+        except KeyError:
+            return []
+        if filter_driver is None:
+            return []
+
+        def read_converter(chunks):
+            yield filter_driver.clean(b"".join(chunks))
+
+        def write_converter(chunks, context=None):
+            yield filter_driver.smudge(b"".join(chunks))
+
+        return [ContentFilter(read_converter, write_converter)]
+
+    def _get_filter_context(self):
+        """Get or create the dulwich filter context."""
+        if not hasattr(self, "_filter_context"):
+            from dulwich.filters import FilterContext, FilterRegistry
+
+            git_repo = self.repository._git
+            config_stack = git_repo.get_config_stack()
+            filter_registry = FilterRegistry(config_stack, repo=git_repo)
+            self._filter_context = FilterContext(filter_registry)
+        return self._filter_context
+
+    def _get_gitattributes(self):
+        """Get GitAttributes object with patterns from all sources."""
+        from dulwich.attrs import GitAttributes, Pattern, parse_git_attributes
+
+        if not hasattr(self, "_gitattributes"):
+            git_repo = self.repository._git
+            config_stack = git_repo.get_config_stack()
+            patterns = []
+
+            # Read global gitattributes file if configured
+            try:
+                global_attrs_file = config_stack.get(b"core", b"attributesFile")
+            except KeyError:
+                global_attrs_file = None
+            if global_attrs_file:
+                global_attrs_path = os.path.expanduser(global_attrs_file.decode())
+                if os.path.exists(global_attrs_path):
+                    with open(global_attrs_path, "rb") as f:
+                        for pattern_bytes, attrs in parse_git_attributes(f):
+                            patterns.append((Pattern(pattern_bytes), attrs))
+
+            # Read .git/info/attributes
+            info_attrs_path = os.path.join(git_repo.controldir(), "info", "attributes")
+            if os.path.exists(info_attrs_path):
+                with open(info_attrs_path, "rb") as f:
+                    for pattern_bytes, attrs in parse_git_attributes(f):
+                        patterns.append((Pattern(pattern_bytes), attrs))
+
+            # Read .gitattributes from the working tree (highest priority)
+            gitattributes_path = self.abspath(".gitattributes")
+            if os.path.exists(gitattributes_path):
+                with open(gitattributes_path, "rb") as f:
+                    for pattern_bytes, attrs in parse_git_attributes(f):
+                        patterns.append((Pattern(pattern_bytes), attrs))
+
+            self._gitattributes = GitAttributes(patterns)
+        return self._gitattributes
 
     def supports_tree_reference(self):
         """Return True if this tree supports tree references (submodules).
@@ -587,7 +799,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
         This removes index.lock if it exists and breaks the branch lock.
         """
-        with contextlib.suppress(_mod_transport.NoSuchFile):
+        with contextlib.suppress(NoSuchFile):
             self.control_transport.delete("index.lock")
         self.branch.break_lock()
 
@@ -634,11 +846,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """Detect whether the filesystem is case-sensitive.
 
         Sets self.case_sensitive based on whether we can stat a file
-        with different casing than the actual file.
+        with different casing than the actual file. ``self._transport``
+        is rooted at ``.git/`` already, so probe ``cOnFiG`` directly
+        rather than ``.git/cOnFiG`` (which would resolve to
+        ``.git/.git/cOnFiG`` and never exist).
         """
         try:
-            self._transport.stat(".git/cOnFiG")
-        except _mod_transport.NoSuchFile:
+            self._transport.stat("cOnFiG")
+        except NoSuchFile:
             self.case_sensitive = True
         else:
             self.case_sensitive = False
@@ -683,7 +898,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 "MERGE_HEAD", b"\n".join(merges), mode=self.controldir._get_file_mode()
             )
         else:
-            with contextlib.suppress(_mod_transport.NoSuchFile):
+            with contextlib.suppress(NoSuchFile):
                 self.control_transport.delete("MERGE_HEAD")
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -724,7 +939,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         parents = [] if last_rev == _mod_revision.NULL_REVISION else [last_rev]
         try:
             merges_bytes = self.control_transport.get_bytes("MERGE_HEAD")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
@@ -830,7 +1045,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
                 try:
                     kind = self.kind(f)
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     kind = None
 
                 abs_path = self.abspath(f)
@@ -1038,7 +1253,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     try:
                         kind = file_kind(fullpath)
                     except FileNotFoundError as err:
-                        raise _mod_transport.NoSuchFile(fullpath) from err
+                        raise NoSuchFile(fullpath) from err
                     if f != "" and self._directory_is_tree_reference(f):
                         kind = "tree-reference"
                     kinds[pos] = kind
@@ -1078,7 +1293,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             return self._lstat(path).st_mtime
         except FileNotFoundError as err:
-            raise _mod_transport.NoSuchFile(path) from err
+            raise NoSuchFile(path) from err
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -1100,7 +1315,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             if self.kind(filename) == "directory":
                 filename += "/"
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             pass
         filename = filename.lstrip("/")
         ignore_manager = self._get_ignore_manager()
@@ -1177,7 +1392,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             except KeyError as err:
                 if self._has_dir(path):
                     return ("GIT", None)
-                raise _mod_transport.NoSuchFile(path) from err
+                raise NoSuchFile(path) from err
 
     def get_file_sha1(self, path, stat_value=None):
         """Get the SHA-1 hash of a file's current contents.
@@ -1194,7 +1409,20 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """
         with self.lock_read():
             if not self.is_versioned(path):
-                raise _mod_transport.NoSuchFile(path)
+                raise NoSuchFile(path)
+            # If filtering is active, callers comparing trees expect the
+            # canonical (filtered) sha1 — otherwise a working-tree merged in
+            # by content filters would always look modified relative to its
+            # basis.
+            if self.supports_content_filtering() and self._content_filter_stack(path):
+                try:
+                    f, _ = self.get_file_with_stat(path, filtered=True)
+                except FileNotFoundError:
+                    return None
+                try:
+                    return osutils.sha_file(f)
+                finally:
+                    f.close()
             abspath = self.abspath(path)
             try:
                 return osutils.sha_file_by_name(abspath)
@@ -1264,7 +1492,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 # Maybe it's a directory?
                 if self._has_dir(encoded_path):
                     return "directory"
-                raise _mod_transport.NoSuchFile(path) from err
+                raise NoSuchFile(path) from err
             entry = getattr(entry, "this", entry)
             return mode_kind(entry.mode)
 
@@ -1289,7 +1517,52 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             An IndexEntry representing the current file state.
         """
         encoded_path = os.fsencode(self.abspath(decode_git_path(path)))
-        return index_entry_from_path(encoded_path)
+        entry = index_entry_from_path(encoded_path)
+
+        # If content filtering is enabled, we need to calculate the SHA
+        # of the filtered content, not the raw file content
+        if (
+            entry is not None
+            and stat.S_ISREG(entry.mode)
+            and self.supports_content_filtering()
+        ):
+            decoded_path = decode_git_path(path)
+            filters = self._content_filter_stack(decoded_path)
+            if filters:
+                from dulwich.object_store import Blob
+
+                # Read the file and apply filters
+                with open(encoded_path, "rb") as f:
+                    chunks = [f.read()]
+
+                # Apply the read converters (clean filters)
+                for filter in filters:
+                    if filter.reader is not None:
+                        chunks = filter.reader(chunks)
+
+                filtered_data = b"".join(chunks)
+
+                # Calculate SHA of the filtered content
+                blob = Blob()
+                blob.data = filtered_data
+
+                # Update the entry with the filtered SHA
+                from dulwich.index import IndexEntry
+
+                entry = IndexEntry(
+                    entry.ctime,
+                    entry.mtime,
+                    entry.dev,
+                    entry.ino,
+                    entry.mode,
+                    entry.uid,
+                    entry.gid,
+                    entry.size,
+                    blob.id,
+                    entry.flags,
+                )
+
+        return entry
 
     def is_executable(self, path):
         """Check if a file is executable.
@@ -1316,6 +1589,79 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
         else:
             return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
+
+    def get_canonical_paths(self, paths):
+        """Look up canonical paths for multiple items on case-insensitive FS."""
+        with self.lock_read():
+            if not self.case_sensitive:
+
+                def normalize(x):
+                    return x.lower()
+            elif sys.platform == "darwin":
+                import unicodedata
+
+                def normalize(x):
+                    return unicodedata.normalize("NFC", x)
+            else:
+                normalize = None
+            for path in paths:
+                stripped = path.strip("/")
+                if normalize is None:
+                    yield stripped
+                else:
+                    yield self._canonicalize_path_via_index(stripped, normalize)
+
+    def _canonicalize_path_via_index(self, path, normalize):
+        """Map ``path`` to its canonical form by walking the Git index.
+
+        Generic ``tree.get_canonical_path`` relies on ``iter_child_entries``,
+        which mixes filesystem and index state in ways that are unreliable
+        on case-insensitive Windows filesystems. Walk the index entries
+        directly instead so the comparison is purely byte-level.
+        """
+        if path == "":
+            return ""
+        encoded = encode_git_path(path)
+        if encoded in self.index:
+            return path
+        if self._versioned_dirs is None:
+            self._load_dirs()
+        if encoded in self._versioned_dirs:
+            return path
+
+        index_paths = [decode_git_path(p) for p, _ in self._recurse_index_entries()]
+        components = path.split("/")
+        canonical = ""
+        for idx, elt in enumerate(components):
+            if not elt:
+                continue
+            wanted = normalize(elt)
+            prefix = canonical + "/" if canonical else ""
+            best = None
+            seen_dirs: set[str] = set()
+            for ip in index_paths:
+                if not ip.startswith(prefix):
+                    continue
+                rest = ip[len(prefix) :]
+                if "/" in rest:
+                    head = rest.split("/", 1)[0]
+                    if head in seen_dirs:
+                        continue
+                    seen_dirs.add(head)
+                    candidate = head
+                else:
+                    candidate = rest
+                if candidate == elt:
+                    best = candidate
+                    break
+                if normalize(candidate) == wanted and best is None:
+                    best = candidate
+            if best is None:
+                # No match for this component; keep the remainder as-is.
+                tail = components[idx:]
+                return canonical + ("/" if canonical else "") + "/".join(tail)
+            canonical = canonical + "/" + best if canonical else best
+        return canonical
 
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False
@@ -1459,7 +1805,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     )
                 yield file_ie
             if not found_any and path != "":
-                raise _mod_transport.NoSuchFile(path)
+                raise NoSuchFile(path)
 
     def conflicts(self):
         """Return the current conflicts in the working tree.
@@ -1780,7 +2126,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     parent_path = path
                     try:
                         kind = parent_tree.kind(parent_path)
-                    except _mod_transport.NoSuchFile:
+                    except NoSuchFile:
                         continue
                     if kind != "file":
                         # Note: this is slightly unnecessary, because symlinks
@@ -1835,12 +2181,18 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         This creates an index file that reflects the state of the tree
         at the branch head, used for initializing working trees.
         """
+        blob_normalizer = (
+            _BreezyContentFilterNormalizer(self)
+            if self.supports_content_filtering()
+            else None
+        )
         build_index_from_tree(
             self.user_transport.local_abspath("."),
             self.control_transport.local_abspath("index"),
             self.store,
             None if self.branch.head is None else self.store[self.branch.head].tree,
             honor_filemode=self._supports_executable(),
+            blob_normalizer=blob_normalizer,
         )
 
     def reset_state(self, revision_ids=None):
@@ -1959,7 +2311,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         with self.lock_tree_write():
             try:
                 sub_tree_path = self.relpath(sub_tree.basedir)
-            except errors.PathNotChild as err:
+            except transport_errors.PathNotChild as err:
                 raise BadReferenceTarget(
                     self, sub_tree, "Target not inside tree."
                 ) from err
@@ -1993,7 +2345,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         if hexsha is None:
             (index, subpath) = self._lookup_index(encode_git_path(path))
             if subpath is None:
-                raise _mod_transport.NoSuchFile(path)
+                raise NoSuchFile(path)
             hexsha = index[subpath].sha
         return self.branch.lookup_foreign_revision_id(hexsha)
 
@@ -2181,7 +2533,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         with self.lock_tree_write(), other_tree.lock_tree_write():
             try:
                 other_tree_path = self.relpath(other_tree.basedir)
-            except errors.PathNotChild as err:
+            except transport_errors.PathNotChild as err:
                 raise errors.BadSubsumeSource(
                     self, other_tree, "Tree is not contained by the other"
                 ) from err
@@ -2367,6 +2719,10 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
     supports_merge_modified = False
 
     ignore_filename = ".gitignore"
+
+    def supports_content_filtering(self):
+        """Git working trees support content filtering via gitattributes."""
+        return True
 
     @property
     def _matchingcontroldir(self):

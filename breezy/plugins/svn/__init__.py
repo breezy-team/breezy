@@ -19,6 +19,9 @@
 Currently only tells the user that Subversion is not supported.
 """
 
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+
 from ... import (
     controldir,
     errors,
@@ -164,7 +167,7 @@ class SvnWorkingTreeProber(controldir.Prober):
         """
         try:
             transport.local_abspath(".")
-        except errors.NotLocalUrl as err:
+        except transport_errors.NotLocalUrl as err:
             raise errors.NotBranchError(path=transport.base) from err
         else:
             if transport.has(".svn"):
@@ -312,7 +315,7 @@ class SvnRepositoryProber(controldir.Prober):
         """
         try:
             url = transport.external_url()
-        except errors.InProcessTransport as err:
+        except transport_errors.InProcessTransport as err:
             raise errors.NotBranchError(path=transport.base) from err
 
         scheme = url.split(":")[0]
@@ -347,9 +350,9 @@ class SvnRepositoryProber(controldir.Prober):
             try:
                 headers = priv_transport._options(".")
             except (
-                errors.InProcessTransport,
-                _mod_transport.NoSuchFile,
-                errors.InvalidHttpResponse,
+                transport_errors.InProcessTransport,
+                NoSuchFile,
+                transport_errors.InvalidHttpResponse,
             ) as err:
                 raise errors.NotBranchError(path=transport.base) from err
             else:

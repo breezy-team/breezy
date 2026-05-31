@@ -14,7 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import errors, tests
+from bzrformats.inventory import NoSuchId
+
+from breezy import tests
 from breezy.tests.per_tree import TestCaseWithTree
 
 
@@ -47,7 +49,7 @@ class Path2IdTests(TestCaseWithTree):
         self.assertEqual("bla", self.tree_a.id2path(b"bla-id"))
         self.assertEqual("dir", self.tree_a.id2path(b"dir-id"))
         self.assertEqual("dir/file", self.tree_a.id2path(b"file-id"))
-        self.assertRaises(errors.NoSuchId, self.tree_a.id2path, b"nonexistant")
+        self.assertRaises(NoSuchId, self.tree_a.id2path, b"nonexistant")
 
     def skip_if_no_reference(self, tree):
         if not getattr(tree, "supports_tree_reference", lambda: False)():
@@ -76,7 +78,7 @@ class Path2IdTests(TestCaseWithTree):
             "subtree/a", tree.id2path(tree.path2id("subtree/a"), recurse="down")
         )
         self.assertRaises(
-            errors.NoSuchId, tree.id2path, tree.path2id("subtree/a"), recurse="none"
+            NoSuchId, tree.id2path, tree.path2id("subtree/a"), recurse="none"
         )
 
 

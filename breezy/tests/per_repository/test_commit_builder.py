@@ -18,11 +18,12 @@
 
 import os
 
+from dromedary.local import file_kind
+
 from breezy import errors, osutils, repository, tests
 from breezy import revision as _mod_revision
 from breezy.bzr import inventorytree
 from breezy.tests import features, per_repository
-from breezy.transport.local import file_kind
 
 from ...bzr.inventorytree import InventoryTreeChange
 from ..test_bedding import override_whoami

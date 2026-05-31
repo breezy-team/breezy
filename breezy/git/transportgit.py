@@ -21,6 +21,13 @@ import os
 import posixpath
 import sys
 
+from dromedary.errors import (
+    FileExists,
+    NoSuchFile,
+    NotLocalUrl,
+    ReadError,
+    TransportNotPossible,
+)
 from dulwich.errors import NoIndexPresent
 from dulwich.file import FileLocked, _GitFile
 from dulwich.object_store import (
@@ -57,19 +64,16 @@ from dulwich.repo import (
     write_packed_refs,
 )
 
+from breezy.errors import LockContention
+
 from .. import osutils, urlutils
 from .. import transport as _mod_transport
 from ..errors import (
     AlreadyControlDirError,
     LockBroken,
-    LockContention,
-    NotLocalUrl,
-    ReadError,
-    TransportNotPossible,
 )
 from ..lock import LogicalLockResult
 from ..trace import warning
-from ..transport import FileExists, NoSuchFile
 
 
 class _RemoteGitFile:

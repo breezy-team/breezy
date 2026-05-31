@@ -22,6 +22,7 @@ path manipulation, and platform-specific functionality.
 
 __all__ = [
     "MIN_ABS_PATHLENGTH",
+    "DirectoryNotEmpty",
     "IterableFile",
     "UnsupportedTimezoneFormat",
     "_accessible_normalized_filename",
@@ -90,6 +91,7 @@ __all__ = [
     "readlink",
     "realpath",
     "relpath",
+    "set_normalization_mode",
     "set_or_unset_env",
     "sha_file",
     "sha_file_by_name",
@@ -174,6 +176,7 @@ from ._osutils_rs import (
     readlink,
     realpath,
     relpath,
+    set_normalization_mode,
     set_or_unset_env,
     sha_file,
     sha_file_by_name,
@@ -218,6 +221,17 @@ from ._osutils_rs.win32 import (
 from ._osutils_rs.win32 import (
     normpath as _win32_normpath,
 )
+
+
+class DirectoryNotEmpty(OSError):
+    """Raised when a directory is expected to be empty but is not."""
+
+    def __init__(self, path: str):
+        """Record the non-empty directory path."""
+        self.path = path
+        super().__init__(f'Directory not empty: "{path}"')
+
+
 from .lazy_import import lazy_import
 
 lazy_import(
@@ -256,7 +270,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     :param unlink_func: A way to delete the target file if the full rename
         succeeds
     """
-    from .transport import NoSuchFile
+    from dromedary.errors import NoSuchFile
 
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)
@@ -458,7 +472,7 @@ def get_terminal_encoding(trace=False):
     return output_encoding
 
 
-_extension_load_failures = []
+_extension_load_failures: list[str] = []
 
 
 def failed_to_load_extension(exception):
@@ -469,7 +483,7 @@ def failed_to_load_extension(exception):
     implementation should be loaded instead::
 
     >>> try:
-    >>>     import breezy._fictional_extension_pyx
+    >>>     import breezy._fictional_extension_rs
     >>> except ModuleNotFoundError as e:
     >>>     breezy.osutils.failed_to_load_extension(e)
     >>>     import breezy._fictional_extension_py
@@ -796,124 +810,6 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
 
         # push the user specified dirs from dirblock
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
-
-
-class DirReader:
-    """An interface for reading directories."""
-
-    def top_prefix_to_starting_dir(self, top, prefix=""):
-        """Converts top and prefix to a starting dir entry.
-
-        :param top: A utf8 path
-        :param prefix: An optional utf8 path to prefix output relative paths
-            with.
-        :return: A tuple starting with prefix, and ending with the native
-            encoding of top.
-        """
-        raise NotImplementedError(self.top_prefix_to_starting_dir)
-
-    def read_dir(self, prefix, top):
-        """Read a specific dir.
-
-        :param prefix: A utf8 prefix to be preprended to the path basenames.
-        :param top: A natively encoded path to read.
-        :return: A list of the directories contents. Each item contains:
-            (utf8_relpath, utf8_name, kind, lstatvalue, native_abspath)
-        """
-        raise NotImplementedError(self.read_dir)
-
-
-_selected_dir_reader = None
-
-
-def _walkdirs_utf8(top, prefix="", fs_enc=None):
-    """Yield data about all the directories in a tree.
-
-    This yields the same information as walkdirs() only each entry is yielded
-    in utf-8. On platforms which have a filesystem encoding of utf8 the paths
-    are returned as exact byte-strings.
-
-    :return: yields a tuple of (dir_info, [file_info])
-        dir_info is (utf8_relpath, path-from-top)
-        file_info is (utf8_relpath, utf8_name, kind, lstat, path-from-top)
-        if top is an absolute path, path-from-top is also an absolute path.
-        path-from-top might be unicode or utf8, but it is the correct path to
-        pass to os functions to affect the file in question. (such as os.lstat)
-    """
-    global _selected_dir_reader
-    if _selected_dir_reader is None:
-        if fs_enc is None:
-            fs_enc = sys.getfilesystemencoding()
-        if fs_enc in ("utf-8", "ascii"):
-            try:
-                from ._readdir_pyx import UTF8DirReader
-
-                _selected_dir_reader = UTF8DirReader()
-            except ModuleNotFoundError as e:
-                failed_to_load_extension(e)
-                pass
-
-    if _selected_dir_reader is None:
-        # Fallback to the python version
-        _selected_dir_reader = UnicodeDirReader()
-
-    # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
-    # But we don't actually uses 1-3 in pending, so set them to None
-    pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
-    read_dir = _selected_dir_reader.read_dir
-    _directory = "directory"
-    while pending:
-        relroot, _, _, _, top = pending[-1].pop()
-        if not pending[-1]:
-            pending.pop()
-        dirblock = sorted(read_dir(relroot, top))
-        yield (relroot, top), dirblock
-        # push the user specified dirs from dirblock
-        next = [d for d in reversed(dirblock) if d[2] == _directory]
-        if next:
-            pending.append(next)
-
-
-class UnicodeDirReader(DirReader):
-    """A dir reader for non-utf8 file systems, which transcodes."""
-
-    __slots__ = ["_utf8_encode"]
-
-    def __init__(self):
-        self._utf8_encode = codecs.getencoder("utf8")
-
-    def top_prefix_to_starting_dir(self, top, prefix=""):
-        """See DirReader.top_prefix_to_starting_dir."""
-        return (safe_utf8(prefix), None, None, None, safe_unicode(top))
-
-    def read_dir(self, prefix, top):
-        """Read a single directory from a non-utf8 file system.
-
-        top, and the abspath element in the output are unicode, all other paths
-        are utf8. Local disk IO is done via unicode calls to listdir etc.
-
-        This is currently the fallback code path when the filesystem encoding is
-        not UTF-8. It may be better to implement an alternative so that we can
-        safely handle paths that are not properly decodable in the current
-        encoding.
-
-        See DirReader.read_dir for details.
-        """
-        _utf8_encode = self._utf8_encode
-
-        relprefix = prefix + b"/" if prefix else b""
-        top_slash = top + "/"
-
-        dirblock = []
-        append = dirblock.append
-        for entry in os.scandir(safe_utf8(top)):
-            name = os.fsdecode(entry.name)
-            abspath = top_slash + name
-            name_utf8 = _utf8_encode(name, "surrogateescape")[0]
-            statvalue = entry.stat(follow_symlinks=False)
-            kind = file_kind_from_stat_mode(statvalue.st_mode)
-            append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        return sorted(dirblock)
 
 
 def get_diff_header_encoding():

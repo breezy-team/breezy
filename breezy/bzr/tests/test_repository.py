@@ -25,6 +25,11 @@ also see this file.
 import hashlib
 from stat import S_ISDIR
 
+from bzrformats import btree_index, inventory, versionedfile
+from bzrformats.errors import BzrCheckError, ObjectNotLocked, RevisionNotPresent
+from bzrformats.inventory import InventoryDirectory, InventoryFile
+from dromedary.errors import NoSuchFile
+
 import breezy
 from breezy import (
     controldir,
@@ -32,30 +37,42 @@ from breezy import (
     osutils,
     repository,
     tests,
-    transport,
     upgrade,
     workingtree,
 )
 from breezy import revision as _mod_revision
 from breezy.bzr import (
-    btree_index,
     bzrdir,
     groupcompress_repo,
-    inventory,
     knitpack_repo,
     knitrepo,
     pack_repo,
-    versionedfile,
     vf_repository,
     vf_search,
 )
-from breezy.bzr import repository as bzrrepository
-from breezy.tests import TestCase, TestCaseWithTransport
 
-from ...errors import UnknownFormatError
-from ...repository import RepositoryFormat
-from ..btree_index import BTreeBuilder, BTreeGraphIndex
-from ..index import GraphIndex
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
+
+
+from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
+from bzrformats.index import GraphIndex
+
+from breezy.bzr import repository as bzrrepository
+from breezy.errors import UnknownFormatError
+from breezy.repository import RepositoryFormat
+from breezy.tests import TestCase, TestCaseWithTransport
 
 
 class TestDefaultFormat(TestCase):
@@ -359,8 +376,8 @@ class DummyRepository:
     """A dummy repository for testing."""
 
     _format = None
-    _revision_serializer = None
     _inventory_serializer = None
+    _revision_serializer = None
 
     def supports_rich_root(self):
         if self._format is not None:
@@ -431,15 +448,15 @@ class TestInterRepository(TestCaseWithTransport):
         dummy_b._format = RepositoryFormat()
         repo = self.make_repository(".")
         # hack dummies to look like repo somewhat.
-        dummy_a._revision_serializer = repo._revision_serializer
         dummy_a._inventory_serializer = repo._inventory_serializer
+        dummy_a._revision_serializer = repo._revision_serializer
         dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_a._format.rich_root_data = repo._format.rich_root_data
         dummy_a._format.supports_full_versioned_files = (
             repo._format.supports_full_versioned_files
         )
-        dummy_b._revision_serializer = repo._revision_serializer
         dummy_b._inventory_serializer = repo._inventory_serializer
+        dummy_b._revision_serializer = repo._revision_serializer
         dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_b._format.rich_root_data = repo._format.rich_root_data
         dummy_b._format.supports_full_versioned_files = (
@@ -517,7 +534,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         tree.commit("Dull commit", rev_id=b"dull")
         revision_tree = tree.branch.repository.revision_tree(b"dull")
         with revision_tree.lock_read():
-            self.assertRaises(transport.NoSuchFile, revision_tree.get_file_lines, "")
+            self.assertRaises(NoSuchFile, revision_tree.get_file_lines, "")
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         upgrade.Convert(".", format)
@@ -543,7 +560,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         mt = self.make_branch_and_memory_tree("test", format="2a")
         mt.lock_write()
         self.addCleanup(mt.unlock)
-        mt.add([""], ids=[b"root-id"])
+        mt.add([""], ["directory"], [b"root-id"])
         mt.commit("first")
         index = mt.branch.repository.chk_bytes._index._graph_index._indices[0]
         self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
@@ -880,7 +897,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             repo.start_write_group()
             cleanups.append(repo.commit_write_group)
             # make rev1a: A well-formed revision, containing 'file1'
-            inv = inventory.Inventory(revision_id=b"rev1a", root_revision=b"rev1a")
+            inv = inventory.Inventory(revision_id=b"rev1a")
+            _set_root_revision(inv, b"rev1a")
             self.add_file(repo, inv, "file1", b"rev1a", [])
             repo.texts.add_lines((inv.root.file_id, b"rev1a"), [], [])
             repo.add_inventory(b"rev1a", inv, [])
@@ -898,7 +916,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
-            inv = inventory.Inventory(revision_id=b"rev1b", root_revision=b"rev1b")
+            inv = inventory.Inventory(revision_id=b"rev1b")
+            _set_root_revision(inv, b"rev1b")
             self.add_file(repo, inv, "file1", b"rev1b", [])
             repo.add_inventory(b"rev1b", inv, [])
 
@@ -928,6 +947,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
+        _set_root_revision(inv, revision_id)
         repo.texts.add_lines((inv.root.file_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(
@@ -945,10 +965,10 @@ class TestWithBrokenRepo(TestCaseWithTransport):
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename.encode("utf-8") + b"-id"
         content = [b"line\n"]
-        entry = inventory.InventoryFile(
-            file_id,
-            filename,
-            b"TREE_ROOT",
+        entry = InventoryFile(
+            file_id=file_id,
+            name=filename,
+            parent_id=b"TREE_ROOT",
             revision=revision,
             text_sha1=osutils.sha_strings(content),
             text_size=0,
@@ -966,7 +986,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         empty_repo = self.make_repository("empty-repo")
         try:
             empty_repo.fetch(broken_repo)
-        except (errors.RevisionNotPresent, errors.BzrCheckError):
+        except (RevisionNotPresent, BzrCheckError):
             # Test successful: compression parent not being copied leads to
             # error.
             return
@@ -1120,7 +1140,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def test_ensure_loaded_unlocked(self):
         packs = self.get_packs()
-        self.assertRaises(errors.ObjectNotLocked, packs.ensure_loaded)
+        self.assertRaises(ObjectNotLocked, packs.ensure_loaded)
 
     def test_pack_distribution_one_to_nine(self):
         packs = self.get_packs()
@@ -1481,8 +1501,8 @@ class TestNewPack(TestCaseWithTransport):
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(hashlib.md5()))  # noqa: S324
-        self.assertIs(pack.upload_transport, upload_transport)
-        self.assertIs(pack.index_transport, index_transport)
+        self.assertIs(pack.upload_transport._transport, upload_transport)
+        self.assertIs(pack.index_transport._transport, index_transport)
         self.assertIs(pack.pack_transport, pack_transport)
         self.assertEqual(None, pack.index_sizes)
         self.assertEqual(20, len(pack.random_name))

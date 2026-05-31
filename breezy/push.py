@@ -16,6 +16,9 @@
 
 """UI helper for the push command."""
 
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
+
 from . import branch as _mod_branch
 from . import controldir, errors, transport
 from . import revision as _mod_revision
@@ -115,7 +118,7 @@ def _show_push_branch(
                 )
                 % (location,)
             ) from err
-        except transport.FileExists as err:
+        except FileExists as err:
             if not use_existing_dir:
                 raise errors.CommandError(
                     gettext(
@@ -129,7 +132,7 @@ def _show_push_branch(
             # This shouldn't occur, but if it does the FileExists error will be
             # more informative than an UnboundLocalError for br_to.
             raise
-        except transport.NoSuchFile as err:
+        except NoSuchFile as err:
             if not create_prefix:
                 raise errors.CommandError(
                     gettext(
@@ -146,7 +149,7 @@ def _show_push_branch(
             # NoSuchFile error will be more informative than an
             # UnboundLocalError for br_to.
             raise
-        except errors.TooManyRedirections as err:
+        except transport_errors.TooManyRedirections as err:
             raise errors.CommandError(
                 gettext("Too many redirections trying to make %s.") % location
             ) from err

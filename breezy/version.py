@@ -20,8 +20,6 @@ import os
 import platform
 import sys
 
-import vcsgraph.errors
-
 import breezy
 
 from . import bedding, controldir, errors, osutils, trace
@@ -52,7 +50,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         to_file.write(f"  from brz checkout {src_tree.basedir}\n")
         try:
             revno = src_tree.branch.revision_id_to_revno(src_revision_id)
-        except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+        except errors.GhostRevisionsHaveNoRevno:
             pass
         else:
             to_file.write(f"    revision: {revno}\n")

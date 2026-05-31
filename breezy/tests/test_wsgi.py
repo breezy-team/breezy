@@ -18,10 +18,12 @@
 
 from io import BytesIO
 
+from dromedary import chroot, memory
+
+from breezy.transport.http import wsgi
+
 from .. import tests
 from ..bzr.smart import medium, protocol
-from ..transport import chroot, memory
-from ..transport.http import wsgi
 
 
 class WSGITestMixin:

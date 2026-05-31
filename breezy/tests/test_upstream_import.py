@@ -21,11 +21,12 @@ import warnings
 from io import BytesIO
 from shutil import copy2, copytree, rmtree
 
+from dromedary.local import file_kind
+
 from .. import osutils, transform
 from .. import revision as _mod_revision
 from ..controldir import ControlDir
 from ..export import export
-from ..transport.local import file_kind
 from ..upstream_import import (
     NotArchiveType,
     ZipFileWrapper,

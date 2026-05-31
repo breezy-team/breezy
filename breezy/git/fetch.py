@@ -19,24 +19,24 @@
 import posixpath
 import stat
 
-from dulwich.object_store import tree_lookup_path
-from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
-from vcsgraph.tsort import topo_sort
-
-from .. import debug, osutils, trace
-from ..bzr.inventory import (
+from bzrformats.inventory import (
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
     TreeReference,
 )
-from ..bzr.inventory_delta import InventoryDelta
+from bzrformats.inventory_delta import InventoryDelta
+from bzrformats.versionedfile import ChunkedContentFactory
+from dromedary.errors import NoSuchFile
+from dulwich.object_store import tree_lookup_path
+from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
+from vcsgraph.tsort import topo_sort
+
+from .. import debug, osutils, trace
 from ..bzr.inventorytree import InventoryRevisionTree
 from ..bzr.testament import StrictTestament3
-from ..bzr.versionedfile import ChunkedContentFactory
 from ..errors import BzrError
 from ..revision import NULL_REVISION
-from ..transport import NoSuchFile
 from ..tree import InterTree
 from .mapping import (
     DEFAULT_FILE_MODE,
@@ -81,30 +81,34 @@ def import_git_blob(
         # If nothing has changed since the base revision, we're done
         return []
     file_id = lookup_file_id(decoded_path)
-    decoded_name = decode_git_path(name)
-    kind = "symlink" if stat.S_ISLNK(mode) else "file"
-    kwargs = {}
+    entry_name = decode_git_path(name)
+    is_symlink = stat.S_ISLNK(mode)
+    # Gather all the fields we need up front — bzrformats inventory
+    # entries are immutable, so we build one in a single constructor call.
+    symlink_target = None
+    text_size = None
+    text_sha1 = None
+    executable = None if is_symlink else mode_is_executable(mode)
+    entry_revision = None
+    blob = None
     if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
         base_exec = base_bzr_tree.is_executable(decoded_path)
-        if kind == "symlink":
-            kwargs["symlink_target"] = base_bzr_tree.get_symlink_target(decoded_path)
+        if is_symlink:
+            symlink_target = base_bzr_tree.get_symlink_target(decoded_path)
         else:
-            kwargs["text_size"] = base_bzr_tree.get_file_size(decoded_path)
-            kwargs["text_sha1"] = base_bzr_tree.get_file_sha1(decoded_path)
-            kwargs["executable"] = mode_is_executable(mode)
-        if kind == "symlink" or kwargs["executable"] == base_exec:
-            kwargs["revision"] = base_bzr_tree.get_file_revision(decoded_path)
+            text_size = base_bzr_tree.get_file_size(decoded_path)
+            text_sha1 = base_bzr_tree.get_file_sha1(decoded_path)
+        if is_symlink or executable == base_exec:
+            entry_revision = base_bzr_tree.get_file_revision(decoded_path)
         else:
             blob = lookup_object(hexsha)
     else:
         blob = lookup_object(hexsha)
-        if kind == "symlink":
-            kwargs["revision"] = None
-            kwargs["symlink_target"] = decode_git_path(blob.data)
+        if is_symlink:
+            symlink_target = decode_git_path(blob.data)
         else:
-            kwargs["executable"] = mode_is_executable(mode)
-            kwargs["text_size"] = sum(map(len, blob.chunked))
-            kwargs["text_sha1"] = osutils.sha_strings(blob.chunked)
+            text_size = sum(map(len, blob.chunked))
+            text_sha1 = osutils.sha_strings(blob.chunked)
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
@@ -116,38 +120,54 @@ def import_git_blob(
         if ppath is None:
             continue
         pkind = ptree.kind(ppath)
+        kind = "symlink" if is_symlink else "file"
         if pkind == kind and (
-            (
-                pkind == "symlink"
-                and ptree.get_symlink_target(ppath) == kwargs.get("symlink_target")
-            )
+            (pkind == "symlink" and ptree.get_symlink_target(ppath) == symlink_target)
             or (
                 pkind == "file"
-                and ptree.get_file_sha1(ppath) == kwargs.get("text_sha1")
-                and ptree.is_executable(ppath) == kwargs.get("executable")
+                and ptree.get_file_sha1(ppath) == text_sha1
+                and ptree.is_executable(ppath) == executable
             )
         ):
             # found a revision in one of the parents to use
-            kwargs["revision"] = ptree.get_file_revision(ppath)
+            entry_revision = ptree.get_file_revision(ppath)
             break
         parent_key = (file_id, ptree.get_file_revision(ppath))
         if parent_key not in parent_keys:
             parent_keys.append(parent_key)
-    if kwargs.get("revision") is None:
+    if entry_revision is None:
         # Need to store a new revision
-        kwargs["revision"] = revision_id
-        if kwargs["revision"] is None:
+        entry_revision = revision_id
+        if entry_revision is None:
             raise ValueError("no file revision set")
-        chunks = [] if kind == "symlink" else blob.chunked
+        if is_symlink:
+            chunks = []
+        else:
+            chunks = blob.chunked
         texts.insert_record_stream(
             [
                 ChunkedContentFactory(
-                    (file_id, kwargs["revision"]),
-                    tuple(parent_keys),
-                    kwargs.get("text_sha1"),
-                    chunks,
+                    (file_id, entry_revision), tuple(parent_keys), text_sha1, chunks
                 )
             ]
+        )
+    if is_symlink:
+        ie = InventoryLink(
+            file_id=file_id,
+            name=entry_name,
+            parent_id=parent_id,
+            revision=entry_revision,
+            symlink_target=symlink_target,
+        )
+    else:
+        ie = InventoryFile(
+            file_id=file_id,
+            name=entry_name,
+            parent_id=parent_id,
+            revision=entry_revision,
+            text_size=text_size,
+            text_sha1=text_sha1,
+            executable=executable,
         )
     invdelta = []
     if base_hexsha is not None:
@@ -165,10 +185,6 @@ def import_git_blob(
     else:
         old_path = None
 
-    if kind == "symlink":
-        ie = InventoryLink(file_id, decoded_name, parent_id, **kwargs)
-    else:
-        ie = InventoryFile(file_id, decoded_name, parent_id, **kwargs)
     invdelta.append((old_path, decoded_path, file_id, ie))
     if base_hexsha != hexsha:
         store_updater.add_object(blob, (ie.file_id, ie.revision), path)
@@ -209,10 +225,10 @@ def import_git_submodule(
     file_id = lookup_file_id(path)
     invdelta = []
     ie = TreeReference(
-        file_id,
-        decode_git_path(name),
-        parent_id,
-        revision_id,
+        file_id=file_id,
+        name=decode_git_path(name),
+        parent_id=parent_id,
+        revision=revision_id,
         reference_revision=mapping.revision_id_foreign_to_bzr(hexsha),
     )
     if base_hexsha is not None:
@@ -306,9 +322,6 @@ def import_git_tree(
         return [], {}
     invdelta = []
     file_id = lookup_file_id(osutils.safe_unicode(path))
-    ie = InventoryDirectory(
-        file_id, decode_git_path(name), parent_id, revision=revision_id
-    )
     tree = lookup_object(hexsha)
     if base_hexsha is None:
         base_tree = None
@@ -318,9 +331,21 @@ def import_git_tree(
         old_path = decode_git_path(path)  # Renames aren't supported yet
     new_path = decode_git_path(path)
     if base_tree is None or type(base_tree) is not Tree:
+        ie = InventoryDirectory(
+            file_id=file_id,
+            name=decode_git_path(name),
+            parent_id=parent_id,
+            revision=revision_id,
+        )
         invdelta.append((old_path, new_path, ie.file_id, ie))
         texts.insert_record_stream(
             [ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])]
+        )
+    else:
+        ie = InventoryDirectory(
+            file_id=file_id,
+            name=decode_git_path(name),
+            parent_id=parent_id,
         )
     # Remember for next time
     existing_children = set()

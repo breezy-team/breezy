@@ -19,11 +19,12 @@
 __doc__ = """Use ~/.netrc as a credential store for authentication.conf."""
 
 # Since we are a built-in plugin we share the breezy version
+from dromedary.errors import NoSuchFile
+
 from ... import (
     config,
     version_info,  # noqa: F401
 )
-from ... import transport as _mod_transport
 
 
 class NetrcCredentialStore(config.CredentialStore):
@@ -41,7 +42,7 @@ class NetrcCredentialStore(config.CredentialStore):
         try:
             self._netrc = netrc.netrc()
         except FileNotFoundError as e:
-            raise _mod_transport.NoSuchFile(e.filename) from e
+            raise NoSuchFile(e.filename) from e
 
     def decode_password(self, credentials):
         """Decode password from netrc for given credentials.

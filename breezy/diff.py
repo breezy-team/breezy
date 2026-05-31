@@ -46,8 +46,9 @@ from breezy.i18n import gettext
 """,
 )
 
+from dromedary.errors import NoSuchFile
+
 from . import errors, osutils
-from . import transport as _mod_transport
 from .registry import Registry
 from .trace import mutter, note, warning
 from .tree import FileTimestampUnavailable, Tree
@@ -895,7 +896,7 @@ class DiffText(DiffPath):
                 return []
             try:
                 return tree.get_file_lines(path)
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 return []
 
         try:

@@ -24,7 +24,9 @@ request/response patterns and streaming message processing.
 from collections import deque
 from io import BytesIO
 
-from ... import debug, errors
+from dromedary import errors as transport_errors
+
+from ... import debug
 from ...trace import mutter
 
 
@@ -166,11 +168,13 @@ class ConventionalRequestHandler(MessageHandler):
                 # Error.  Expect an error structure.
                 self.expecting = "error"
             else:
-                raise errors.SmartProtocolError(
+                raise transport_errors.SmartProtocolError(
                     f"Non-success status byte in request body: {byte!r}"
                 )
         else:
-            raise errors.SmartProtocolError(f"Unexpected message part: byte({byte!r})")
+            raise transport_errors.SmartProtocolError(
+                f"Unexpected message part: byte({byte!r})"
+            )
 
     def structure_part_received(self, structure):
         """Process a received structure part.
@@ -186,7 +190,7 @@ class ConventionalRequestHandler(MessageHandler):
         elif self.expecting == "error":
             self._error_received(structure)
         else:
-            raise errors.SmartProtocolError(
+            raise transport_errors.SmartProtocolError(
                 f"Unexpected message part: structure({structure!r})"
             )
 
@@ -225,7 +229,7 @@ class ConventionalRequestHandler(MessageHandler):
             self._should_finish_body = True
             self.request_handler.accept_body(bytes)
         else:
-            raise errors.SmartProtocolError(
+            raise transport_errors.SmartProtocolError(
                 f"Unexpected message part: bytes({bytes!r})"
             )
 
@@ -237,13 +241,13 @@ class ConventionalRequestHandler(MessageHandler):
                 or if the request handler hasn't finished reading.
         """
         if self.expecting not in ["body", "end"]:
-            raise errors.SmartProtocolError(
+            raise transport_errors.SmartProtocolError(
                 f"End of message received prematurely (while expecting {self.expecting})"
             )
         self.expecting = "nothing"
         self.request_handler.end_received()
         if not self.request_handler.finished_reading:
-            raise errors.SmartProtocolError(
+            raise transport_errors.SmartProtocolError(
                 "Complete conventional request was received, but request "
                 "handler has not finished reading."
             )
@@ -332,16 +336,18 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         if not isinstance(byte, bytes):
             raise TypeError(byte)
         if byte not in [b"E", b"S"]:
-            raise errors.SmartProtocolError(f"Unknown response status: {byte!r}")
+            raise transport_errors.SmartProtocolError(
+                f"Unknown response status: {byte!r}"
+            )
         if self._body_started:
             if self._body_stream_status is not None:
-                raise errors.SmartProtocolError(
+                raise transport_errors.SmartProtocolError(
                     f"Unexpected byte part received: {byte!r}"
                 )
             self._body_stream_status = byte
         else:
             if self.status is not None:
-                raise errors.SmartProtocolError(
+                raise transport_errors.SmartProtocolError(
                     f"Unexpected byte part received: {byte!r}"
                 )
             self.status = byte
@@ -365,18 +371,18 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             SmartProtocolError: If the structure is invalid or unexpected.
         """
         if not isinstance(structure, tuple):
-            raise errors.SmartProtocolError(
+            raise transport_errors.SmartProtocolError(
                 f"Args structure is not a sequence: {structure!r}"
             )
         if not self._body_started:
             if self.args is not None:
-                raise errors.SmartProtocolError(
+                raise transport_errors.SmartProtocolError(
                     f"Unexpected structure received: {structure!r} (already got {self.args!r})"
                 )
             self.args = structure
         else:
             if self._body_stream_status != b"E":
-                raise errors.SmartProtocolError(
+                raise transport_errors.SmartProtocolError(
                     f"Unexpected structure received after body: {structure!r}"
                 )
             self._body_error_args = structure
@@ -495,5 +501,5 @@ def _raise_smart_server_error(error_tuple):
     Specific error translation is handled by breezy.bzr.remote._translate_error
     """
     if error_tuple[0] == b"UnknownMethod":
-        raise errors.UnknownSmartMethod(error_tuple[1])
-    raise errors.ErrorFromSmartServer(error_tuple)
+        raise transport_errors.UnknownSmartMethod(error_tuple[1])
+    raise transport_errors.ErrorFromSmartServer(error_tuple)

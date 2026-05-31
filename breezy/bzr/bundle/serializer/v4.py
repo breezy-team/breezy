@@ -28,14 +28,14 @@ import re
 from io import BytesIO
 
 import fastbencode as bencode
+from bzrformats import multiparent, pack, serializer
+from bzrformats import versionedfile as _mod_versionedfile
+from bzrformats.inventory import _make_delta
 
 from .... import errors, lru_cache, osutils, trace, ui
 from .... import repository as _mod_repository
 from .... import revision as _mod_revision
 from ....i18n import ngettext
-from ... import multiparent, pack, serializer
-from ... import versionedfile as _mod_versionedfile
-from ...inventory import _make_delta
 from .. import bundle_data
 from .. import serializer as bundle_serializer
 
@@ -372,22 +372,31 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
         bundle = BundleInfoV4(file, self)
         return bundle
 
+    # The bundle info "serializer" field historically names the inventory
+    # serializer format. Map it back to the revision serializer format key
+    # because bzrformats now keeps those two registries separate.
+    _inv_to_rev_format = {
+        "5": "5",
+        "6": "5",
+        "7": "5",
+        "8": "8",
+        "9": "10",
+        "10": "10",
+    }
+
+    @classmethod
+    def get_source_serializer(cls, info):
+        """Retrieve the revision serializer for a given info object."""
+        inv_format = info[b"serializer"].decode("ascii")
+        rev_format = cls._inv_to_rev_format.get(inv_format, inv_format)
+        return serializer.revision_format_registry.get(rev_format)
+
     @staticmethod
-    def get_source_serializer(info):
-        """Retrieve the serializer for a given info object.
-
-        Args:
-            info: Dictionary containing serializer format information.
-
-        Returns:
-            Tuple[serializer, serializer]: Revision and inventory serializers.
-        """
-        format_name = info[b"serializer"].decode("ascii")
-        inventory_serializer = serializer.inventory_format_registry.get(format_name)
-        revision_serializer = serializer.revision_format_registry.get(
-            {"7": "5", "6": "5"}.get(format_name, format_name)
+    def get_source_inventory_serializer(info):
+        """Retrieve the inventory serializer for a given info object."""
+        return serializer.inventory_format_registry.get(
+            info[b"serializer"].decode("ascii")
         )
-        return (revision_serializer, inventory_serializer)
 
 
 class BundleWriteOperation:
@@ -690,10 +699,9 @@ class BundleInfoV4:
                 _file_id,
             ) in bundle_reader.iter_records():
                 if repo_kind == "info":
-                    (
-                        revision_serializer,
-                        _inventory_serializer,
-                    ) = self._serializer.get_source_serializer(metadata)
+                    revision_serializer = self._serializer.get_source_serializer(
+                        metadata
+                    )
                 if repo_kind == "revision":
                     rev = revision_serializer.read_revision_from_string(bytes)
                     self.__real_revisions.append(rev)
@@ -812,10 +820,10 @@ class RevisionInstaller:
             info: Dictionary containing bundle format information.
         """
         self._info = info
-        (
-            self._source_revision_serializer,
-            self._source_inventory_serializer,
-        ) = self._serializer.get_source_serializer(info)
+        self._source_serializer = self._serializer.get_source_serializer(info)
+        self._source_inventory_serializer = (
+            self._serializer.get_source_inventory_serializer(info)
+        )
         if info[b"supports_rich_root"] == 0 and self._repository.supports_rich_root():
             self.update_root = True
         else:
@@ -1012,7 +1020,7 @@ class RevisionInstaller:
         """
         if self._repository.has_revision(revision_id):
             return
-        revision = self._source_revision_serializer.read_revision_from_string(text)
+        revision = self._source_serializer.read_revision_from_string(text)
         self._repository.add_revision(revision.revision_id, revision)
 
     def _install_signature(self, revision_id, metadata, text):

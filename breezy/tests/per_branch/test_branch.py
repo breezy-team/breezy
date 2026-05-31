@@ -18,6 +18,10 @@
 
 import contextlib
 
+from dromedary import errors as transport_errors
+from dromedary import memory
+from dromedary.tests.http_server import HttpServer
+
 from breezy import branch as _mod_branch
 from breezy import (
     config,
@@ -35,9 +39,6 @@ from breezy import (
 from breezy import tree as _mod_tree
 from breezy.bzr import remote
 from breezy.tests import per_branch
-from breezy.transport import memory
-
-from ..http_server import HttpServer
 
 
 class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
@@ -465,7 +466,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises(
-            (errors.LockError, errors.TransportNotPossible), source_branch.lock_write
+            (errors.LockError, transport_errors.TransportNotPossible),
+            source_branch.lock_write,
         )
         checkout = source_branch.create_checkout("c", lightweight=True)
         self.assertEqual(rev_id, checkout.last_revision())
@@ -482,7 +484,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises(
-            (errors.LockError, errors.TransportNotPossible), source_branch.lock_write
+            (errors.LockError, transport_errors.TransportNotPossible),
+            source_branch.lock_write,
         )
         checkout = source_branch.create_checkout("c")
         self.assertEqual(rev_id, checkout.last_revision())
@@ -940,8 +943,8 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
         tree.add("file")
         with skip_if_storing_uncommitted_unsupported():
             tree.store_uncommitted()
-        unshelver = tree.branch.get_unshelver(tree)
-        self.assertIsNot(None, unshelver)
+        with tree.branch.get_unshelver(tree) as unshelver:
+            self.assertIsNot(None, unshelver)
 
     def test_get_unshelver_bound(self):
         tree = self.make_branch_and_tree("tree")
@@ -952,8 +955,8 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
             tree.store_uncommitted()
         branch = self.make_branch("branch")
         self.bind(branch, tree.branch)
-        unshelver = branch.get_unshelver(tree)
-        self.assertIsNot(None, unshelver)
+        with branch.get_unshelver(tree) as unshelver:
+            self.assertIsNot(None, unshelver)
 
 
 class TestFormatMetadata(per_branch.TestCaseWithBranch):

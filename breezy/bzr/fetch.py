@@ -26,6 +26,8 @@ __docformat__ = "google"
 
 import operator
 
+from bzrformats.inventory import NoSuchId
+
 from .. import errors, ui
 from ..i18n import gettext
 from ..revision import NULL_REVISION
@@ -121,6 +123,12 @@ class RepoFetcher:
         with ui.ui_factory.nested_progress_bar() as pb:
             pb.update("Get stream source")
             source = self.from_repository._get_source(self.to_repository._format)
+            # A stacked target cannot store a text delta whose basis lives
+            # only in a fallback (ResumedPack._check_references rejects it).
+            # Ask the source for self-contained texts so the stream never
+            # carries such deltas.
+            if self.to_repository._fallback_repositories:
+                source._stream_self_contained_texts = True
             stream = source.get_stream(search)
             from_format = self.from_repository._format
             pb.update("Inserting stream")
@@ -286,7 +294,7 @@ def _new_root_data_stream(
         root_keys_to_create.
       graph: a graph to use instead of repo.get_graph().
     """
-    from .versionedfile import ChunkedContentFactory
+    from bzrformats.versionedfile import ChunkedContentFactory
 
     for root_key in root_keys_to_create:
         root_id, rev_id = root_key
@@ -346,7 +354,7 @@ def _parent_keys_for_root_version(
                     parent_ids.append(
                         tree.get_file_revision(tree.id2path(root_id, recurse="none"))
                     )
-                except errors.NoSuchId:
+                except NoSuchId:
                     # not in the tree
                     pass
     # Drop non-head parents

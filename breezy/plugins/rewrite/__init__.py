@@ -21,7 +21,8 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from ... import transport as _mod_transport
+from dromedary.errors import NoSuchFile
+
 from ...bzr.bzrdir import BzrFormat
 from ...commands import plugin_cmds
 
@@ -67,7 +68,7 @@ def show_rebase_summary(params):
     state = RebaseState1(params.new_tree)
     try:
         replace_map = state.read_plan()[1]
-    except _mod_transport.NoSuchFile:
+    except NoSuchFile:
         return
     todo = list(rebase_todo(params.new_tree.branch.repository, replace_map))
     params.to_file.write(f"Rebase in progress. ({len(todo)} revisions left)\n")

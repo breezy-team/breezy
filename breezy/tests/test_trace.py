@@ -311,11 +311,9 @@ class TestTrace(TestCase):
             tmp2.close()
 
     def test__open_brz_log_uses_stderr_for_failures(self):
-        # If _open_brz_log cannot open the file, then we should write the
-        # warning to stderr. Since this is normally happening before logging is
-        # set up.
-        self.overrideAttr(sys, "stderr", StringIO())
-        # Set the log file to something that cannot exist
+        # If _open_brz_log cannot open the file, the failure is routed through
+        # the `brz` logger so the test fixture's in-memory log attachment
+        # captures it (rather than leaking to the real stderr).
         self.overrideEnv("BRZ_LOG", "/no-such-dir/brz.log")
         old_brz_log_filename = trace.get_brz_log_filename()
         self.addCleanup(trace.set_brz_log_filename, old_brz_log_filename)
@@ -323,21 +321,16 @@ class TestTrace(TestCase):
         if os.path.isdir("/no-such-dir"):
             raise TestSkipped("directory creation succeeded")
         self.assertIs(None, logf)
-
-        self.expectFailure(
-            "This test currently fails because brz's testsuite doesn't capture "
-            "error output from rust",
-            self.assertContainsRe,
-            sys.stderr.getvalue(),
-            "failed to open trace file: .* '/no-such-dir/brz.log'$",
+        self.assertContainsRe(
+            self.get_log(),
+            r"failed to open trace file: /no-such-dir/brz\.log: ",
         )
 
     def test__open_brz_log_ignores_cache_dir_error(self):
-        # If the cache directory can not be created and _open_brz_log can thus
-        # not open the file, then we should write the warning to stderr. Since
-        # this is normally happening before logging is set up.
-        self.overrideAttr(sys, "stderr", StringIO())
-        # Set the cache directory to something that cannot exist
+        # If the cache directory cannot be created and _open_brz_log thus
+        # cannot open the file, the failure is routed through the `brz`
+        # logger so the test fixture captures it as part of the test's
+        # attached log output.
         self.overrideEnv("BRZ_LOG", None)
         self.overrideEnv("BRZ_HOME", "/no-such-dir")
         self.overrideEnv("XDG_CACHE_HOME", "/no-such-dir")
@@ -347,12 +340,9 @@ class TestTrace(TestCase):
         if os.path.isdir("/no-such-dir"):
             raise TestSkipped("directory creation succeeded")
         self.assertIs(None, logf)
-        self.expectFailure(
-            "This test currently fails because brz's testsuite doesn't capture "
-            "error output from rust",
-            self.assertContainsRe,
-            sys.stderr.getvalue(),
-            "failed to open trace file: .* /no-such-dir.*$",
+        self.assertContainsRe(
+            self.get_log(),
+            r"failed to open trace file:.*/no-such-dir",
         )
 
 

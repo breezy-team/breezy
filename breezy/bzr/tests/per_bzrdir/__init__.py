@@ -26,6 +26,8 @@ rather than in tests/per_branch/*.py. Generic control directory tests not
 specific to BzrDir are in tests/per_controldir/*.py.
 """
 
+from dromedary import memory
+
 from breezy.tests import (
     TestCaseWithTransport,
     default_transport,
@@ -33,7 +35,6 @@ from breezy.tests import (
     test_server,
 )
 from breezy.tests.per_controldir import make_scenarios
-from breezy.transport import memory
 
 from ....controldir import ControlDirFormat
 from ...bzrdir import BzrDirFormat

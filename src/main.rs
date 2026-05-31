@@ -49,7 +49,7 @@ fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
 
     let path_obj = sys.getattr("path")?;
 
-    let current_path = path_obj.downcast::<PyList>()?;
+    let current_path = path_obj.cast::<PyList>()?;
 
     current_path.insert(0, el.to_str().expect("invalid local path"))?;
 

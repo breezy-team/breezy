@@ -21,6 +21,7 @@
 import doctest
 import os
 
+from dromedary.local import file_kind
 from testtools import matchers
 
 from breezy import (
@@ -34,7 +35,6 @@ from breezy import (
 )
 from breezy.bzr import conflicts
 from breezy.tests import scenarios, script
-from breezy.transport.local import file_kind
 
 load_tests = scenarios.load_tests_apply_scenarios
 

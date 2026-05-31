@@ -19,8 +19,9 @@
 import os
 import sys
 
+from dromedary.errors import NoSuchFile
+
 from .. import commit, config, msgeditor, osutils, trace
-from .. import transport as _mod_transport
 from ..msgeditor import (
     edit_commit_message_encoded,
     make_commit_message_template_encoded,
@@ -34,6 +35,7 @@ from . import (
     multiply_tests,
     probe_bad_non_ascii,
     probe_unicode_in_user_encoding,
+    python_executable,
     split_suite_by_re,
 )
 from .EncodingAdapter import encoding_scenarios
@@ -181,8 +183,9 @@ added:
         """
         if not isinstance(message, bytes):
             message = message.encode("utf-8")
+        python = python_executable()
         with open("fed.py", "w") as f:
-            f.write(f"#!{sys.executable}\n")
+            f.write(f"#!{python}\n")
             f.write(
                 f"""# coding=utf-8
 import sys
@@ -200,15 +203,15 @@ if len(sys.argv) == 2:
             with open("fed.bat", "w") as f:
                 f.write(
                     f"""@echo off
-"{sys.executable}" fed.py %1
+"{python}" fed.py %1
 """
                 )
             self.overrideEnv("BRZ_EDITOR", "fed.bat")
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
             os.chmod("fed.py", 0o755)  # noqa: S103
-            mutter("Setting BRZ_EDITOR to %r", f"{sys.executable} ./fed.py")
-            self.overrideEnv("BRZ_EDITOR", f"{sys.executable} ./fed.py")
+            mutter("Setting BRZ_EDITOR to %r", f"{python} ./fed.py")
+            self.overrideEnv("BRZ_EDITOR", f"{python} ./fed.py")
 
     def test_edit_commit_message_without_infotext(self):
         self.make_uncommitted_tree()
@@ -266,7 +269,7 @@ if len(sys.argv) == 2:
         self.overrideEnv("BRZ_EDITOR", editor)
 
         self.assertRaises(
-            (EnvironmentError, _mod_transport.NoSuchFile),
+            (EnvironmentError, NoSuchFile),
             msgeditor.edit_commit_message,
             "",
         )

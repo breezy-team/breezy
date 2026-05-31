@@ -20,7 +20,7 @@ pub fn str_tdelta(delt: Option<f64>) -> String {
 }
 
 #[cfg(unix)]
-use std::os::unix::io::AsRawFd;
+use std::os::fd::AsFd;
 
 #[cfg(unix)]
 /// Checks if a file descriptor supports progress display.
@@ -36,8 +36,8 @@ use std::os::unix::io::AsRawFd;
 ///
 /// True if the file descriptor is a terminal and supports progress display,
 /// false otherwise.
-pub fn supports_progress<F: Write + AsRawFd>(f: &F) -> bool {
-    match nix::unistd::isatty(f.as_raw_fd()) {
+pub fn supports_progress<F: Write + AsFd>(f: &F) -> bool {
+    match nix::unistd::isatty(f.as_fd()) {
         Ok(true) => {
             if let Ok(term) = std::env::var("TERM") {
                 term != "dumb"

@@ -16,7 +16,7 @@
 
 """Utilities for testing transport connections and hooks."""
 
-from ..transport import Transport
+from dromedary import Transport
 
 # SFTPTransport is the only bundled transport that properly counts connections
 # at the moment.

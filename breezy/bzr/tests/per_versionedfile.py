@@ -26,26 +26,17 @@ import itertools
 from gzip import GzipFile
 from io import BytesIO
 
-from vcsgraph import (
-    known_graph as _mod_known_graph,
+from bzrformats import groupcompress, versionedfile
+from bzrformats import knit as _mod_knit
+from bzrformats.errors import (
+    OutSideTransaction,
+    ReadOnlyError,
+    ReservedId,
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
 )
-
-from ... import errors, osutils, progress, transport, ui
-from ...errors import RevisionAlreadyPresent, RevisionNotPresent
-from ...tests import (
-    TestCase,
-    TestCaseWithMemoryTransport,
-    TestNotApplicable,
-    TestSkipped,
-)
-from ...tests.http_utils import TestCaseWithWebserver
-from ...tests.scenarios import load_tests_apply_scenarios
-from ...transport.memory import MemoryTransport
-from .. import groupcompress
-from .. import knit as _mod_knit
-from .. import versionedfile as versionedfile
-from ..knit import cleanup_pack_knit, make_file_factory, make_pack_factory
-from ..versionedfile import (
+from bzrformats.knit import cleanup_pack_knit, make_file_factory, make_pack_factory
+from bzrformats.versionedfile import (
     ChunkedContentFactory,
     ConstantMapper,
     ExistingContent,
@@ -55,8 +46,20 @@ from ..versionedfile import (
     VirtualVersionedFiles,
     make_versioned_files_factory,
 )
-from ..weave import WeaveFile, WeaveInvalidChecksum
-from ..weavefile import write_weave
+from bzrformats.weave import WeaveFile, WeaveInvalidChecksum
+from bzrformats.weavefile import write_weave
+from dromedary.memory import MemoryTransport
+from vcsgraph import known_graph as _mod_known_graph
+
+from ... import errors, osutils, progress, transport, ui
+from ...tests import (
+    TestCase,
+    TestCaseWithMemoryTransport,
+    TestNotApplicable,
+    TestSkipped,
+)
+from ...tests.http_utils import TestCaseWithWebserver
+from ...tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -247,14 +250,14 @@ class VersionedFileTestMixIn:
         # versioned files version sequences of bytes only.
         vf = self.get_file()
         self.assertRaises(
-            errors.BzrBadParameterUnicode,
+            (errors.BzrBadParameterUnicode, TypeError),
             vf.add_lines,
             b"a",
             [],
             [b"a\n", "b\n", b"c\n"],
         )
         self.assertRaises(
-            (errors.BzrBadParameterUnicode, NotImplementedError),
+            (errors.BzrBadParameterUnicode, TypeError, NotImplementedError),
             vf.add_lines_with_ghosts,
             b"a",
             [],
@@ -290,10 +293,14 @@ class VersionedFileTestMixIn:
         # \r characters are not permitted in lines being added
         vf = self.get_file()
         self.assertRaises(
-            errors.BzrBadParameterContainsNewline, vf.add_lines, b"a", [], [b"a\n\n"]
+            (errors.BzrBadParameterContainsNewline, ValueError),
+            vf.add_lines,
+            b"a",
+            [],
+            [b"a\n\n"],
         )
         self.assertRaises(
-            (errors.BzrBadParameterContainsNewline, NotImplementedError),
+            (errors.BzrBadParameterContainsNewline, ValueError, NotImplementedError),
             vf.add_lines_with_ghosts,
             b"a",
             [],
@@ -306,9 +313,7 @@ class VersionedFileTestMixIn:
 
     def test_add_reserved(self):
         vf = self.get_file()
-        self.assertRaises(
-            errors.ReservedId, vf.add_lines, b"a:", [], [b"a\n", b"b\n", b"c\n"]
-        )
+        self.assertRaises(ReservedId, vf.add_lines, b"a:", [], [b"a\n", b"b\n", b"c\n"])
 
     def test_add_lines_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
@@ -333,7 +338,7 @@ class VersionedFileTestMixIn:
                 nostore_sha=sha,
             )
             # and no new version should have been added.
-            self.assertRaises(errors.RevisionNotPresent, vf.get_lines, version + b"2")
+            self.assertRaises(RevisionNotPresent, vf.get_lines, version + b"2")
 
     def test_add_lines_with_ghosts_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
@@ -363,7 +368,7 @@ class VersionedFileTestMixIn:
                 nostore_sha=sha,
             )
             # and no new version should have been added.
-            self.assertRaises(errors.RevisionNotPresent, vf.get_lines, version + b"2")
+            self.assertRaises(RevisionNotPresent, vf.get_lines, version + b"2")
 
     def test_add_lines_return_value(self):
         # add_lines should return the sha1 and the text size.
@@ -390,9 +395,9 @@ class VersionedFileTestMixIn:
 
     def test_get_reserved(self):
         vf = self.get_file()
-        self.assertRaises(errors.ReservedId, vf.get_texts, [b"b:"])
-        self.assertRaises(errors.ReservedId, vf.get_lines, b"b:")
-        self.assertRaises(errors.ReservedId, vf.get_text, b"b:")
+        self.assertRaises(ReservedId, vf.get_texts, [b"b:"])
+        self.assertRaises(ReservedId, vf.get_lines, b"b:")
+        self.assertRaises(ReservedId, vf.get_text, b"b:")
 
     def test_add_unchanged_last_line_noeol_snapshot(self):
         """Add a text with an unchanged last line with no eol should work."""
@@ -499,7 +504,7 @@ class VersionedFileTestMixIn:
         except NotImplementedError:
             # old Weave formats do not allow ghosts
             return
-        self.assertRaises(errors.RevisionNotPresent, vf.make_mpdiffs, [b"ghost"])
+        self.assertRaises(RevisionNotPresent, vf.make_mpdiffs, [b"ghost"])
 
     def _setup_for_deltas(self, f):
         self.assertFalse(f.has_version("base"))
@@ -591,10 +596,8 @@ class VersionedFileTestMixIn:
         self._transaction = "before"
         f = self.get_file()
         self._transaction = "after"
-        self.assertRaises(errors.OutSideTransaction, f.add_lines, b"", [], [])
-        self.assertRaises(
-            errors.OutSideTransaction, f.add_lines_with_ghosts, b"", [], []
-        )
+        self.assertRaises(OutSideTransaction, f.add_lines, b"", [], [])
+        self.assertRaises(OutSideTransaction, f.add_lines_with_ghosts, b"", [], [])
 
     def test_copy_to(self):
         f = self.get_file()
@@ -812,10 +815,8 @@ class VersionedFileTestMixIn:
         factory = self.get_factory()
         vf = factory("id", t, 0o777, create=True, access_mode="w")
         vf = factory("id", t, access_mode="r")
-        self.assertRaises(errors.ReadOnlyError, vf.add_lines, b"base", [], [])
-        self.assertRaises(
-            errors.ReadOnlyError, vf.add_lines_with_ghosts, b"base", [], []
-        )
+        self.assertRaises(ReadOnlyError, vf.add_lines, b"base", [], [])
+        self.assertRaises(ReadOnlyError, vf.add_lines_with_ghosts, b"base", [], [])
 
     def test_get_sha1s(self):
         # check the sha1 data is available
@@ -834,67 +835,6 @@ class VersionedFileTestMixIn:
             },
             vf.get_sha1s([b"a", b"c", b"b"]),
         )
-
-
-class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
-    def get_file(self, name="foo"):
-        return WeaveFile(
-            name, self.get_transport(), create=True, get_scope=self.get_transaction
-        )
-
-    def get_file_corrupted_text(self):
-        w = WeaveFile(
-            "foo", self.get_transport(), create=True, get_scope=self.get_transaction
-        )
-        w.add_lines(b"v1", [], [b"hello\n"])
-        w.add_lines(b"v2", [b"v1"], [b"hello\n", b"there\n"])
-
-        # We are going to invasively corrupt the text
-        # Make sure the internals of weave are the same
-        self.assertEqual(
-            [(b"{", 0), b"hello\n", (b"}", None), (b"{", 1), b"there\n", (b"}", None)],
-            w._weave,
-        )
-
-        self.assertEqual(
-            [
-                b"f572d396fae9206628714fb2ce00f72e94f2258f",
-                b"90f265c6e75f1c8f9ab76dcf85528352c5f215ef",
-            ],
-            w._sha1s,
-        )
-        w.check()
-
-        # Corrupted
-        w._weave[4] = b"There\n"
-        return w
-
-    def get_file_corrupted_checksum(self):
-        w = self.get_file_corrupted_text()
-        # Corrected
-        w._weave[4] = b"there\n"
-        self.assertEqual(b"hello\nthere\n", w.get_text(b"v2"))
-
-        # Invalid checksum, first digit changed
-        w._sha1s[1] = b"f0f265c6e75f1c8f9ab76dcf85528352c5f215ef"
-        return w
-
-    def reopen_file(self, name="foo", create=False):
-        return WeaveFile(
-            name, self.get_transport(), create=create, get_scope=self.get_transaction
-        )
-
-    def test_no_implicit_create(self):
-        self.assertRaises(
-            transport.NoSuchFile,
-            WeaveFile,
-            "foo",
-            self.get_transport(),
-            get_scope=self.get_transaction,
-        )
-
-    def get_factory(self):
-        return WeaveFile
 
 
 class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
@@ -1138,13 +1078,14 @@ class MergeCasesMixin:
         b = b"""\
             line 1
             """
-        result = b"""\
-            line 1
-<<<<<<<\x20
-            line 2
-=======
->>>>>>>\x20
-            """
+        result = (
+            b"            line 1\n"
+            b"<<<<<<< \n"
+            b"            line 2\n"
+            b"=======\n"
+            b">>>>>>> \n"
+            b"            "
+        )
         self._test_merge_from_strings(base, a, b, result)
 
     def test_deletion_overlap(self):
@@ -1170,15 +1111,16 @@ class MergeCasesMixin:
             int c() {}
             end context
             """
-        result = b"""\
-            start context
-<<<<<<<\x20
-            int a() {}
-=======
-            int c() {}
->>>>>>>\x20
-            end context
-            """
+        result = (
+            b"            start context\n"
+            b"<<<<<<< \n"
+            b"            int a() {}\n"
+            b"=======\n"
+            b"            int c() {}\n"
+            b">>>>>>> \n"
+            b"            end context\n"
+            b"            "
+        )
         self._test_merge_from_strings(base, a, b, result)
 
     def test_agreement_deletion(self):
@@ -1234,17 +1176,18 @@ class MergeCasesMixin:
             both lines
             end context
             """
-        result = b"""\
-            start context
-<<<<<<<\x20
-            base line 1
-            a's replacement line 2
-=======
-            b replaces
-            both lines
->>>>>>>\x20
-            end context
-            """
+        result = (
+            b"            start context\n"
+            b"<<<<<<< \n"
+            b"            base line 1\n"
+            b"            a's replacement line 2\n"
+            b"=======\n"
+            b"            b replaces\n"
+            b"            both lines\n"
+            b">>>>>>> \n"
+            b"            end context\n"
+            b"            "
+        )
         self._test_merge_from_strings(base, a, b, result)
 
 
@@ -2650,7 +2593,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         stream = source.get_record_stream(
             [(b"missing",) * self.key_length], "topological", False
         )
-        self.assertRaises(errors.RevisionNotPresent, files.insert_record_stream, stream)
+        self.assertRaises(RevisionNotPresent, files.insert_record_stream, stream)
 
     def test_insert_record_stream_out_of_order(self):
         """An out of order stream can either error or work."""
@@ -2779,9 +2722,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.assertEqual({self.get_simple_key(b"left")}, set(missing_bases))
             self.assertEqual(set(keys), set(files.get_parent_map(keys)))
         else:
-            self.assertRaises(
-                errors.RevisionNotPresent, files.insert_record_stream, entries
-            )
+            self.assertRaises(RevisionNotPresent, files.insert_record_stream, entries)
             files.check()
 
     def test_insert_record_stream_delta_missing_basis_can_be_added_later(self):

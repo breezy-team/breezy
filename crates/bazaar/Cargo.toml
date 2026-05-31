@@ -4,7 +4,7 @@ version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2018"
 description = "Rust implementation of the Bazaar formats and protocols"
-license = "GPL-2.0+"
+license = "GPL-2.0-or-later"
 homepage = "https://www.breezy-vcs.org/"
 repository = "https://github.com/breezy-team/breezy"
 
@@ -21,7 +21,7 @@ xmltree = "0.11"
 sha1 = "0.10"
 tempfile = "3"
 log = "0.4"
-pyo3 = { version = ">=0.17", optional = true }
+pyo3 = { workspace = true, optional = true }
 crc32fast = "1.2.0"
 base64 = "0.22.1"
 maplit = "1.0.2"

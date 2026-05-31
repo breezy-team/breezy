@@ -19,6 +19,7 @@
 import os
 
 from breezy.filters import ContentFilter
+from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 from ...controldir import ControlDir
@@ -356,6 +357,11 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         )
         if not source.supports_content_filtering():
             return
+        if not source.supports_rename_tracking():
+            # Reverting a rename of a modified file needs file-id-based
+            # rename tracking; content-similarity detection cannot recover
+            # the rename intent for short files like this test uses.
+            raise TestNotApplicable("tree format does not support rename tracking")
         self.assertFileEqual(b"Foo Txt", "source/file1.txt")
         self.assert_basis_content(b"FOO TXT", source, txt_path)
 

@@ -18,8 +18,9 @@
 
 from io import BytesIO
 
+from bzrformats import pack
+
 from ... import tests
-from .. import pack
 
 
 class TestContainerSerialiser(tests.TestCase):

@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 from io import BytesIO
 from typing import TYPE_CHECKING, Union
 
@@ -35,7 +36,8 @@ from breezy import (
 """,
 )
 
-import contextlib
+from bzrformats import rio
+from dromedary.errors import NoSuchFile
 
 from .. import errors, urlutils
 from .. import revision as _mod_revision
@@ -51,7 +53,7 @@ from ..controldir import ControlDir
 from ..decorators import only_raises
 from ..lock import LogicalLockResult, _RelockDebugMixin
 from ..trace import mutter
-from . import bzrdir, lockable_files, rio
+from . import bzrdir, lockable_files
 from .repository import MetaDirRepository
 
 if TYPE_CHECKING:
@@ -191,7 +193,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         branch = self._uncommitted_branch()
         try:
             transform = branch._transport.get("stored-transform")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
         from ..shelf import Unshelver
 
@@ -311,7 +313,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         for l in _locs:
             try:
                 contents = self._transport.get_bytes(l)
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 pass
             else:
                 return contents.strip(b"\n").decode("utf-8")
@@ -380,7 +382,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         try:
             return self._transport.get_bytes("bound")[:-1].decode("utf-8")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
 
     def get_master_branch(self, possible_transports=None):
@@ -418,7 +420,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             else:
                 try:
                     self._transport.delete("bound")
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     return False
                 return True
 
@@ -756,14 +758,21 @@ class BzrBranch8(BzrBranch):
 
         :param info_dict: A dict of {file_id: (branch_location, tree_path)}
         """
+
+        def _str(value):
+            if isinstance(value, bytes):
+                return value.decode("utf-8")
+            return value
+
         s = BytesIO()
         writer = rio.RioWriter(s)
         for file_id, (branch_location, tree_path) in info_dict.items():
             stanza = rio.Stanza(
-                file_id=file_id.decode("utf-8"), branch_location=branch_location
+                file_id=_str(file_id),
+                branch_location=_str(branch_location),
             )
             if tree_path is not None:
-                stanza.add("tree_path", tree_path)
+                stanza.add("tree_path", _str(tree_path))
             writer.write_stanza(stanza)
         with self.lock_write():
             self._transport.put_bytes("references", s.getvalue())
@@ -783,11 +792,11 @@ class BzrBranch8(BzrBranch):
                     info_dict = {
                         s.get("file_id").encode("utf-8"): (
                             s.get("branch_location"),
-                            s.get("tree_path") if "tree_path" in s else None,
+                            s.get("tree_path"),
                         )
                         for s in stanzas
                     }
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 info_dict = {}
             self._reference_info = info_dict
             return info_dict
@@ -903,7 +912,7 @@ class BzrBranch8(BzrBranch):
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
                 except vcsgraph.errors.RevisionNotPresent as exc:
-                    raise vcsgraph.errors.GhostRevisionsHaveNoRevno(
+                    raise errors.GhostRevisionsHaveNoRevno(
                         revision_id, exc.revision_id
                     ) from exc
                 index = len(self._partial_revision_history_cache) - 1
@@ -960,11 +969,11 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         """Return the format for the branch object in controldir."""
         try:
             transport = controldir.get_branch_transport(None, name=name)
-        except _mod_transport.NoSuchFile as exc:
+        except NoSuchFile as exc:
             raise errors.NotBranchError(path=name, controldir=controldir) from exc
         try:
             format_string = transport.get_bytes("format")
-        except _mod_transport.NoSuchFile as exc:
+        except NoSuchFile as exc:
             raise errors.NotBranchError(
                 path=transport.base, controldir=controldir
             ) from exc
@@ -1044,7 +1053,7 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
                 ignore_fallbacks=ignore_fallbacks,
                 possible_transports=possible_transports,
             )
-        except _mod_transport.NoSuchFile as exc:
+        except NoSuchFile as exc:
             raise errors.NotBranchError(
                 path=transport.base, controldir=a_controldir
             ) from exc
@@ -1424,7 +1433,7 @@ class Converter5to6:
         # Clean up old files
         new_branch._transport.delete("revision-history")
         with branch.lock_write():
-            with contextlib.suppress(_mod_transport.NoSuchFile):
+            with contextlib.suppress(NoSuchFile):
                 branch.set_parent(None)
             branch.set_bound_location(None)
 

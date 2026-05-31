@@ -25,11 +25,14 @@ import os
 import shutil
 from contextlib import ExitStack
 
-from .errors import BzrError, DependencyNotPresent
+from dromedary.errors import NoSuchFile
+
+from breezy.errors import DependencyNotPresent
+
+from .errors import BzrError
 from .osutils import is_inside
 from .trace import warning
 from .transform import revert
-from .transport import NoSuchFile
 from .tree import Tree
 from .workingtree import WorkingTree
 
@@ -74,11 +77,12 @@ def reset_tree(
     revert(local_tree, basis_tree, [subpath] if subpath else None)
     deletables: list[str] = []
     # TODO(jelmer): Use basis tree
-    for p in local_tree.extras():
-        if not is_inside(subpath, p):
-            continue
-        if not local_tree.is_ignored(p):
-            deletables.append(local_tree.abspath(p))
+    with local_tree.lock_read():
+        for p in local_tree.extras():
+            if not is_inside(subpath, p):
+                continue
+            if not local_tree.is_ignored(p):
+                deletables.append(local_tree.abspath(p))
     delete_items(deletables)
 
 

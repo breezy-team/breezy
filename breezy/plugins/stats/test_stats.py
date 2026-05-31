@@ -68,7 +68,7 @@ class TestCollapseByPerson(TestCase):
         revisions = [
             Revision(
                 b"1",
-                [],
+                parent_ids=[],
                 committer="Foo <foo@example.com>",
                 message="",
                 properties={},
@@ -78,7 +78,7 @@ class TestCollapseByPerson(TestCase):
             ),
             Revision(
                 b"2",
-                [],
+                parent_ids=[],
                 committer="Bar <bar@example.com>",
                 message="",
                 properties={},
@@ -88,7 +88,7 @@ class TestCollapseByPerson(TestCase):
             ),
             Revision(
                 b"3",
-                [],
+                parent_ids=[],
                 committer="Bar <bar@example.com>",
                 message="",
                 properties={},
@@ -109,7 +109,7 @@ class TestCollapseByPerson(TestCase):
         revisions = [
             Revision(
                 b"1",
-                [],
+                parent_ids=[],
                 committer="Foo <foo@example.com>",
                 message="",
                 properties={},
@@ -119,7 +119,7 @@ class TestCollapseByPerson(TestCase):
             ),
             Revision(
                 b"2",
-                [],
+                parent_ids=[],
                 committer="Foo <bar@example.com>",
                 message="",
                 properties={},
@@ -129,7 +129,7 @@ class TestCollapseByPerson(TestCase):
             ),
             Revision(
                 b"3",
-                [],
+                parent_ids=[],
                 committer="Foo <bar@example.com>",
                 message="",
                 properties={},
@@ -150,7 +150,7 @@ class TestCollapseByPerson(TestCase):
         revisions = [
             Revision(
                 b"1",
-                [],
+                parent_ids=[],
                 committer="Foo <foo@example.com>",
                 message="",
                 properties={},
@@ -160,7 +160,7 @@ class TestCollapseByPerson(TestCase):
             ),
             Revision(
                 b"2",
-                [],
+                parent_ids=[],
                 committer="Bar <foo@example.com>",
                 message="",
                 properties={},
@@ -170,7 +170,7 @@ class TestCollapseByPerson(TestCase):
             ),
             Revision(
                 b"3",
-                [],
+                parent_ids=[],
                 committer="Bar <foo@example.com>",
                 message="",
                 properties={},
@@ -191,7 +191,7 @@ class TestCollapseByPerson(TestCase):
         revisions = [
             Revision(
                 b"1",
-                [],
+                parent_ids=[],
                 committer="Foo <foo@example.com>",
                 message="",
                 properties={},
@@ -201,7 +201,7 @@ class TestCollapseByPerson(TestCase):
             ),
             Revision(
                 b"2",
-                [],
+                parent_ids=[],
                 committer="Foo <foo@example.com>",
                 message="",
                 properties={},
@@ -211,7 +211,7 @@ class TestCollapseByPerson(TestCase):
             ),
             Revision(
                 b"3",
-                [],
+                parent_ids=[],
                 committer="FOO <bar@example.com>",
                 message="",
                 properties={},
