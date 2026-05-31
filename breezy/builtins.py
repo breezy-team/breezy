@@ -9230,7 +9230,6 @@ def _register_lazy_builtins():
         ("cmd_bisect", [], "breezy.bisect"),
         ("cmd_bundle_info", [], "breezy.bzr.bundle.commands"),
         ("cmd_config", [], "breezy.config"),
-        ("cmd_dump_btree", [], "breezy.bzr.debug_commands"),
         ("cmd_file_id", [], "breezy.bzr.debug_commands"),
         ("cmd_file_path", [], "breezy.bzr.debug_commands"),
         ("cmd_version_info", [], "breezy.cmd_version_info"),
