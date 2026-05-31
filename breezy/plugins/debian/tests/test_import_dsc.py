@@ -32,7 +32,6 @@ from .... import (
     tests,
 )
 from ....tests.features import (
-    Feature,
     SymlinkFeature,
 )
 from ..import_dsc import (
@@ -45,21 +44,12 @@ from ..upstream.pristinetar import (
 )
 from . import (
     BuilddebTestCase,
+    DpkgSourceFeature,
     LzmaFeature,
+    PristineTarFeature,
     SourcePackageBuilder,
     make_new_upstream_tarball_xz,
 )
-
-
-class _PristineTarFeature(Feature):
-    def feature_name(self):
-        return "/usr/bin/pristine-tar"
-
-    def _probe(self):
-        return os.path.exists("/usr/bin/pristine-tar")
-
-
-PristineTarFeature = _PristineTarFeature()
 
 
 # Copied from bzrlib.tests.test_fetch from bzr-2.5
@@ -1394,6 +1384,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertTrue(self.db1.is_version_native(version2))
 
     def test_import_native(self):
+        self.requireFeature(DpkgSourceFeature)
         version = Version("1.0")
         builder = SourcePackageBuilder("package", version, native=True)
         builder.add_default_control()
@@ -1408,6 +1399,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertTrue(self.db1.is_version_native(version))
 
     def test_import_native_two(self):
+        self.requireFeature(DpkgSourceFeature)
         version1 = Version("1.0")
         version2 = Version("1.1")
         builder = SourcePackageBuilder("package", version1, native=True)
@@ -1444,6 +1436,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertTrue(self.db1.is_version_native(version2))
 
     def test_import_native_two_unrelated(self):
+        self.requireFeature(DpkgSourceFeature)
         version1 = Version("1.0")
         version2 = Version("1.1")
         builder = SourcePackageBuilder("package", version1, native=True)
@@ -1769,6 +1762,7 @@ class DistributionBranchTests(BuilddebTestCase):
 
     def test_merge_upstream_initial(self):
         """Verify we can go from normal branches to merge-upstream."""
+        self.requireFeature(PristineTarFeature)
         tree = self.make_branch_and_tree("work")
         self.build_tree(["work/a"])
         tree.add(["a"])
@@ -1797,6 +1791,7 @@ class DistributionBranchTests(BuilddebTestCase):
 
     def test_merge_upstream_initial_with_branch(self):
         """Verify we can go from normal branches to merge-upstream."""
+        self.requireFeature(PristineTarFeature)
         tree = self.make_branch_and_tree("work")
         self.build_tree(["work/a"])
         tree.add(["a"])
@@ -1838,6 +1833,7 @@ class DistributionBranchTests(BuilddebTestCase):
 
     def test_merge_upstream_initial_with_removed_debian(self):
         """Verify we can go from normal branches to merge-upstream."""
+        self.requireFeature(PristineTarFeature)
         tree = self.make_branch_and_tree("work")
         self.build_tree(["work/a", "work/debian/"])
         cl = self.make_changelog(version="0.1-1")
@@ -1936,6 +1932,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(b"a-id", tree.path2id("a"))
 
     def test_merge_upstream_with_dash_in_version_number(self):
+        self.requireFeature(PristineTarFeature)
         tree = self.make_branch_and_tree("work")
         self.build_tree(["work/a"])
         tree.add(["a"])

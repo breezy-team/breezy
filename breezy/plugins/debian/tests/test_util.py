@@ -62,6 +62,8 @@ from ..util import (
     write_if_different,
 )
 from . import (
+    DistroInfoDataFeature,
+    DpkgSourceFeature,
     LzmaFeature,
     SourcePackageBuilder,
     TestCaseInTempDir,
@@ -76,7 +78,6 @@ from ....tests import (
     TestCase,
 )
 from ....tests.features import (
-    ModuleAvailableFeature,
     SymlinkFeature,
 )
 
@@ -249,7 +250,9 @@ class TarballNameTests(TestCase):
         )
 
 
-DistroInfoFeature = ModuleAvailableFeature("distro_info")
+# The distro_info module imports without its data files, but every lookup
+# reads them; require the data, not just the module.
+DistroInfoFeature = DistroInfoDataFeature
 
 
 class SuiteToDistributionTests(TestCase):
@@ -373,6 +376,8 @@ class WriteFileTests(TestCaseInTempDir):
 
 
 class DgetTests(TestCaseWithTransport):
+    _test_needs_features = [DpkgSourceFeature]
+
     def test_dget_local(self):
         builder = SourcePackageBuilder("package", Version("0.1-1"))
         builder.add_upstream_file("foo")

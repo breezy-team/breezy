@@ -24,7 +24,7 @@ import subprocess
 import tarfile
 
 from .....transport import get_transport
-from .. import BuilddebTestCase, Version
+from .. import BuilddebTestCase, DpkgSourceFeature, Version
 from ..test_import_dsc import PristineTarFeature
 
 
@@ -78,6 +78,7 @@ class TestBaseImportDsc(BuilddebTestCase):
             f.write("Architecture: all\n")
 
     def make_real_source_package(self, version=None):
+        self.requireFeature(DpkgSourceFeature)
         if version is None:
             version = self.package_version
         version = Version(version)

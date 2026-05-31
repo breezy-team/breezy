@@ -35,6 +35,7 @@ from ....tests import (  # noqa: F401
 )
 from ....tests.features import (  # noqa: F401
     ExecutableFeature,
+    Feature,
     ModuleAvailableFeature,
     UnicodeFilenameFeature,
 )
@@ -472,3 +473,32 @@ class SourcePackageBuilder:
 
 XzFeature = ExecutableFeature("xz")
 LzmaFeature = ModuleAvailableFeature("lzma")
+DpkgSourceFeature = ExecutableFeature("dpkg-source")
+PristineTarFeature = ExecutableFeature("pristine-tar")
+DpkgMergeChangelogsFeature = ExecutableFeature("dpkg-mergechangelogs")
+
+
+class _DistroInfoDataFeature(Feature):
+    """Whether the distro-info data files are installed.
+
+    The ``distro_info`` module imports fine without them, but reading any
+    release list raises FileNotFoundError. These files ship in the
+    ``distro-info-data`` package and are absent on non-Debian platforms.
+    """
+
+    def _probe(self):
+        try:
+            from distro_info import DebianDistroInfo
+        except ImportError:
+            return False
+        try:
+            _ = DebianDistroInfo().all
+        except FileNotFoundError:
+            return False
+        return True
+
+    def feature_name(self):
+        return "distro-info data"
+
+
+DistroInfoDataFeature = _DistroInfoDataFeature()

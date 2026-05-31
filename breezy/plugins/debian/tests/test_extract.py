@@ -34,11 +34,14 @@ from ..extract import (
     ThreeDotZeroQuiltSourceExtractor,
 )
 from . import (
+    DpkgSourceFeature,
     SourcePackageBuilder,
 )
 
 
 class OneZeroSourceExtractorTests(tests.TestCaseInTempDir):
+    _test_needs_features = [DpkgSourceFeature]
+
     def test_extract_format1(self):
         version = Version("0.1-1")
         name = "package"

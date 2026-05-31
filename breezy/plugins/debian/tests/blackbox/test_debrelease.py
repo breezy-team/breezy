@@ -24,10 +24,12 @@
 import os
 
 from .....tests.blackbox import ExternalBase
+from .. import DistroInfoDataFeature
 
 
 class TestDebrelease(ExternalBase):
     def test_simple(self):
+        self.requireFeature(DistroInfoDataFeature)
         wt = self.make_branch_and_tree("package")
         self.build_tree_contents(
             [

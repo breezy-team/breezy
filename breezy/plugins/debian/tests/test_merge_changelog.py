@@ -20,7 +20,9 @@
 """Tests for the merge_changelog code."""
 
 import logging
+import os
 import subprocess
+import tempfile
 
 from testtools.content import Content
 from testtools.content_type import ContentType
@@ -29,7 +31,7 @@ from .... import (
     merge,
     tests,
 )
-from ....tests.features import ExecutableFeature, Feature
+from ....tests.features import Feature
 from ... import debian
 from .. import merge_changelog
 
@@ -59,7 +61,35 @@ class _AlgorithmMergeFeature(Feature):
 algorithm_merge_feature = _AlgorithmMergeFeature()
 
 
-dpkg_mergechangelogs_feature = ExecutableFeature("dpkg-mergechangelogs")
+class _DpkgMergeChangelogsFeature(Feature):
+    """A working ``dpkg-mergechangelogs``.
+
+    The executable may be present but non-functional (e.g. missing its Perl
+    Dpkg modules on non-Debian platforms), so probe by actually running it on
+    an empty merge rather than only checking that it exists.
+    """
+
+    def _probe(self):
+        with tempfile.TemporaryDirectory("deb_changelog_merge") as tmpdir:
+            paths = [os.path.join(tmpdir, name) for name in ("base", "this", "other")]
+            for path in paths:
+                with open(path, "wb"):
+                    pass
+            try:
+                exitcode = subprocess.call(
+                    ["dpkg-mergechangelogs", *paths],  # noqa: S607
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except OSError:
+                return False
+            return exitcode == 0
+
+    def feature_name(self):
+        return "dpkg-mergechangelogs"
+
+
+dpkg_mergechangelogs_feature = _DpkgMergeChangelogsFeature()
 
 
 v_111_2 = b"""\
@@ -194,7 +224,7 @@ class TestMergeChangelog(tests.TestCase):
         if possible_error and status == "not_applicable":
             self.assertContainsRe(
                 self.logged_warnings.getvalue(),
-                "(?m)dpkg-mergechangelogs failed with status \\d+$",
+                b"(?m)dpkg-mergechangelogs failed with status \\d+$",
             )
             return False
         if conflicted:

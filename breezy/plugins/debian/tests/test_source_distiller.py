@@ -29,6 +29,7 @@ from ..source_distiller import (
 )
 from ..upstream import MissingUpstreamTarball
 from . import (
+    DpkgSourceFeature,
     SourcePackageBuilder,
     TestCaseWithTransport,
 )
@@ -141,6 +142,8 @@ class FullSourceDistillerTests(TestCaseWithTransport):
 
 
 class MergeModeDistillerTests(TestCaseWithTransport):
+    _test_needs_features = [DpkgSourceFeature]
+
     def make_tarball(self, name, version):
         builder = SourcePackageBuilder(name, version)
         builder.add_upstream_file("a")

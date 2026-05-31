@@ -20,7 +20,7 @@
 
 import os
 
-from .. import BuilddebTestCase
+from .. import BuilddebTestCase, DistroInfoDataFeature
 
 
 class TestBuilddeb(BuilddebTestCase):
@@ -168,6 +168,7 @@ class TestBuilddeb(BuilddebTestCase):
         self.assertInBuildDir("built")
 
     def test_package_merge_first(self):
+        self.requireFeature(DistroInfoDataFeature)
         self.make_unpacked_source()
         self.make_upstream_tarball()
         self.run_bzr("bd --package-merge --builder true")

@@ -28,6 +28,7 @@ from debian.changelog import (
 from debian.deb822 import Deb822
 
 from .....tests.blackbox import ExternalBase
+from .. import DpkgSourceFeature
 
 TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
 +++ base/afile	2012-01-02 20:03:59.710666215 +0100
@@ -96,6 +97,8 @@ class TestDo(ExternalBase):
         tree.add([".bzr-builddeb/", ".bzr-builddeb/default.conf"])
 
     def make_upstream_tarball(self):
+        # bd-do repacks the tree with dpkg-source after running the command.
+        self.requireFeature(DpkgSourceFeature)
         self.build_tree(["test-0.1/", "test-0.1/a"])
         tar = tarfile.open(os.path.join("..", "test_0.1.orig.tar.gz"), "w:gz")
         try:

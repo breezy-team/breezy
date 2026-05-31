@@ -30,6 +30,7 @@ from ...util import (
 )
 from .. import (
     BuilddebTestCase,
+    PristineTarFeature,
     SourcePackageBuilder,
 )
 
@@ -133,6 +134,8 @@ class FileMovedReplacedUpstream(Fixture):
 
 
 class TestMergeUpstream(BuilddebTestCase):
+    _test_needs_features = [PristineTarFeature]
+
     def test_merge_upstream_available(self):
         self.run_bzr("merge-upstream --help")
 
