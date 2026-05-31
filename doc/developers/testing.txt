@@ -724,7 +724,7 @@ are defined by subclassing ``breezy.tests.Feature`` and overriding the
 A helper for handling running tests based on whether a python
 module is available. This can handle 3rd-party dependencies (is
 ``paramiko`` available?) as well as stdlib (``termios``) or
-extension modules (``breezy._groupcompress_pyx``). You create a
+extension modules (``breezy._osutils_rs``). You create a
 new feature instance with::
 
     # in breezy/tests/features.py

@@ -36,11 +36,13 @@ from breezy import (
 """,
 )
 
-from .. import errors, osutils
-from .. import transport as _mod_transport
+from bzrformats import rio
+from bzrformats.inventory import NoSuchId
+from dromedary.errors import NoSuchFile
+
+from .. import osutils
 from ..conflicts import Conflict as BaseConflict
 from ..conflicts import ConflictList as BaseConflictList
-from . import rio
 
 CONFLICT_SUFFIXES = (".THIS", ".BASE", ".OTHER")
 
@@ -512,14 +514,14 @@ class ContentsConflict(PathConflict):
             tt.delete_contents(
                 tt.trans_id_tree_path(self.path + "." + suffix_to_remove)
             )
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             # There are valid cases where 'item.suffix_to_remove' either
             # never existed or was already deleted (including the case
             # where the user deleted it)
             pass
         try:
             this_path = tt._tree.id2path(self.file_id)
-        except errors.NoSuchId:
+        except NoSuchId:
             # The file is not present anymore. This may happen if the user
             # deleted the file either manually or when resolving a conflict on
             # the parent.  We may raise some exception to indicate that the
@@ -613,7 +615,7 @@ class TextConflict(Conflict):
         #                can't be auto resolved does not seem ideal.
         try:
             kind = tree.kind(self.path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return
         if kind != "file":
             raise NotImplementedError("Conflict is not a file")
@@ -959,7 +961,7 @@ class NonDirectoryParent(HandledConflict):
             raise NotImplementedError(self.action_take_other)
 
 
-ctype = {}
+ctype: dict[str, type[Conflict]] = {}
 
 
 def register_types(*conflict_types):

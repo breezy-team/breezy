@@ -36,7 +36,9 @@ unlock() method.
 import contextlib
 import warnings
 
-from . import _transport_rs, debug, errors, trace
+from dromedary import _transport_rs
+
+from . import debug, errors, trace
 from .hooks import Hooks
 from .i18n import gettext
 from .transport import Transport

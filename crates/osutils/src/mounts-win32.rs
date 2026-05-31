@@ -12,6 +12,10 @@ fn _get_fs_type(drive: &str) -> Option<String> {
         .chain(std::iter::once(0))
         .collect();
     let mut fs_type = vec![0u16; (MAX_FS_TYPE_LENGTH + 1) as usize];
+    let drive_wide: Vec<u16> = OsStr::new(drive)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
     let res = unsafe {
         GetVolumeInformationW(
             drive_wide.as_ptr(),
@@ -45,10 +49,12 @@ pub fn get_fs_type<P: AsRef<Path>>(path: P) -> Option<String> {
         .parent()
         .and_then(|p| p.to_str())
         .unwrap_or_default();
+    let drive_owned;
     let drive = if drive.contains(':') {
         drive
     } else {
-        &format!("{}\\", drive)
+        drive_owned = format!("{}\\", drive);
+        drive_owned.as_str()
     };
     let fs_type = _get_fs_type(drive)?;
     Some(match fs_type.as_str() {

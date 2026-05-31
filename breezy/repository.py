@@ -1689,8 +1689,8 @@ class InterRepository(InterObject[Repository]):
             raise errors.IncompatibleRepositories(
                 source, target, "different rich-root support"
             )
-        if not hasattr(source, "_revision_serializer") or not hasattr(
-            target, "_revision_serializer"
+        if not hasattr(source, "_inventory_serializer") or not hasattr(
+            target, "_inventory_serializer"
         ):
             if source != target:
                 raise errors.IncompatibleRepositories(
@@ -1702,7 +1702,6 @@ class InterRepository(InterObject[Repository]):
             raise errors.IncompatibleRepositories(
                 source, target, "different inventory serializers"
             )
-
         if source._revision_serializer != target._revision_serializer:
             raise errors.IncompatibleRepositories(
                 source, target, "different revision serializers"

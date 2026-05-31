@@ -21,10 +21,11 @@ import os
 from datetime import datetime
 from typing import Any
 
+from dromedary.errors import PermissionDenied, UnexpectedHttpStatus
+
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
 from ...config import AuthenticationConfig
-from ...errors import PermissionDenied, UnexpectedHttpStatus
 from ...forge import (
     AutoMergeUnavailable,
     Forge,
@@ -86,6 +87,8 @@ def store_github_token(token):
     auth_config = AuthenticationConfig()
     auth_config._set_option("Github", "scheme", "https")
     auth_config._set_option("Github", "url", API_GITHUB_URL)
+    auth_config._set_option("Github", "host", GITHUB_HOST)
+    auth_config._set_option("Github", "token", token)
     auth_config._set_option("Github", "private_token", token)
 
 

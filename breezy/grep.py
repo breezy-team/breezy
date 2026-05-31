@@ -33,6 +33,7 @@ from breezy.terminal import color_string, FG
 
 """,
 )
+
 from . import controldir, errors, osutils, trace
 from . import revision as _mod_revision
 from .revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
@@ -64,7 +65,7 @@ class GrepOptions:
     pattern = None
     include = None
     exclude = None
-    fixed_string = False
+    fixed_string: "bool | None" = False
     files_with_matches = False
     files_without_match = False
     color = None
@@ -76,7 +77,6 @@ class GrepOptions:
     patternc = None
     sub_patternc = None
     print_revno = None
-    fixed_string = None
     outf = None
     show_color = False
 

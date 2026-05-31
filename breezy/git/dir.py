@@ -20,6 +20,12 @@
 import contextlib
 import os
 
+from dromedary import (
+    do_catching_redirections,
+    get_transport_from_path,
+)
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
 from dulwich.refs import SymrefLoop
 
 from .. import branch as _mod_branch
@@ -31,12 +37,6 @@ from ..controldir import (
     ControlDirFormat,
     RepositoryAcquisitionPolicy,
     format_registry,
-)
-from ..transport import (
-    FileExists,
-    NoSuchFile,
-    do_catching_redirections,
-    get_transport_from_path,
 )
 from .mapping import decode_git_path, encode_git_path
 from .push import GitPushResult
@@ -267,7 +267,11 @@ class GitDir(ControlDir):
                     )
                 )
                 return
-            except (brz_errors.TransportError, OSError, brz_errors.PathError):
+            except (
+                transport_errors.TransportError,
+                OSError,
+                transport_errors.PathError,
+            ):
                 i += 1
                 if i > limit:
                     raise
@@ -307,9 +311,10 @@ class GitDir(ControlDir):
         Raises:
             UnstackableBranchFormat: If stacked=True (Git doesn't support stacking).
         """
+        from dromedary.local import LocalTransport
+
         from ..repository import InterRepository
         from ..transport import get_transport
-        from ..transport.local import LocalTransport
 
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -415,8 +420,9 @@ class GitDir(ControlDir):
         tag_selector=None,
     ):
         """See ControlDir.clone_on_transport."""
+        from dromedary.local import LocalTransport
+
         from ..repository import InterRepository
-        from ..transport.local import LocalTransport
         from .mapping import default_mapping
         from .refs import is_peeled
 
@@ -472,7 +478,7 @@ class GitDir(ControlDir):
                     local_wt = self.open_workingtree()
                 except brz_errors.NoWorkingTree:
                     pass
-                except brz_errors.NotLocalUrl:
+                except transport_errors.NotLocalUrl:
                     result_dir.create_workingtree(revision_id=revision_id)
                 else:
                     local_wt.clone(result_dir, revision_id=revision_id)
@@ -786,7 +792,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         """
         try:
             external_url = transport.external_url()
-        except brz_errors.InProcessTransport as err:
+        except transport_errors.InProcessTransport as err:
             raise brz_errors.NotBranchError(path=transport.base) from err
         return external_url.startswith("file:")
 
@@ -922,7 +928,7 @@ class LocalGitDir(GitDir):
                 target_path = target_branch.controldir.control_transport.local_abspath(
                     "."
                 )
-            except brz_errors.NotLocalUrl as err:
+            except transport_errors.NotLocalUrl as err:
                 raise brz_errors.IncompatibleFormat(
                     target_branch._format, self._format
                 ) from err
@@ -1320,7 +1326,7 @@ class LocalGitDir(GitDir):
         self._mode_check_done = True
         try:
             st = self.transport.stat(".")
-        except brz_errors.TransportNotPossible:
+        except transport_errors.TransportNotPossible:
             self._dir_mode = None
             self._file_mode = None
         else:

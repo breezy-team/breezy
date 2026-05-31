@@ -16,8 +16,9 @@
 
 """Tests for breezy/generate_ids.py."""
 
+from bzrformats import generate_ids
+
 from ... import tests
-from .. import generate_ids
 
 
 class TestFileIds(tests.TestCase):
@@ -76,7 +77,7 @@ class TestFileIds(tests.TestCase):
         self.assertGenFileId(b"br" + tail, "b\xe5r")
 
     def test__next_id_suffix_increments(self):
-        ids = [generate_ids._next_id_suffix(suffix="foo-") for i in range(10)]
+        ids = [generate_ids._next_id_suffix(suffix="foo-") for _ in range(10)]
         ns = [int(id.split(b"-")[-1]) for id in ids]
         for i in range(1, len(ns)):
             self.assertEqual(ns[i] - 1, ns[i - 1])

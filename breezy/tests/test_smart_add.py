@@ -16,8 +16,10 @@
 
 from io import StringIO
 
-from .. import add, errors, tests
-from ..bzr import inventory
+from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
+
+from .. import add, tests
 
 
 class AddCustomIDAction(add.AddAction):
@@ -114,11 +116,11 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.assertNotEqual(None, c_id)
         self.base_tree.lock_read()
         self.addCleanup(self.base_tree.unlock)
-        self.assertRaises(errors.NoSuchId, self.base_tree.id2path, c_id)
+        self.assertRaises(NoSuchId, self.base_tree.id2path, c_id)
 
         d_id = new_tree.path2id("subdir/d")
         self.assertNotEqual(None, d_id)
-        self.assertRaises(errors.NoSuchId, self.base_tree.id2path, d_id)
+        self.assertRaises(NoSuchId, self.base_tree.id2path, d_id)
 
     def test_copy_existing_dir(self):
         self.make_base_tree()
@@ -140,7 +142,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.assertNotEqual(None, a_id)
         self.base_tree.lock_read()
         self.addCleanup(self.base_tree.unlock)
-        self.assertRaises(errors.NoSuchId, self.base_tree.id2path, a_id)
+        self.assertRaises(NoSuchId, self.base_tree.id2path, a_id)
 
 
 class TestAddActions(tests.TestCase):

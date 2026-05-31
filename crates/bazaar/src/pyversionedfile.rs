@@ -17,9 +17,11 @@ impl<'py> IntoPyObject<'py> for PyContentFactory {
     }
 }
 
-impl FromPyObject<'_> for PyContentFactory {
-    fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
-        Ok(PyContentFactory(ob.clone().unbind()))
+impl FromPyObject<'_, '_> for PyContentFactory {
+    type Error = pyo3::PyErr;
+
+    fn extract(ob: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
+        Ok(PyContentFactory((*ob).clone().unbind()))
     }
 }
 

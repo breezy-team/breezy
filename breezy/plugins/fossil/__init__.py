@@ -168,7 +168,7 @@ class RemoteFossilProber(controldir.Prober):
             errors.NotBranchError: If the transport is not HTTP or no Fossil
                 repository is detected.
         """
-        from ...transport.http.urllib import HttpTransport
+        from dromedary.http.urllib import HttpTransport
 
         if not isinstance(transport, HttpTransport):
             raise errors.NotBranchError(path=transport.base)

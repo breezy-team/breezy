@@ -21,16 +21,23 @@ import os
 import pprint
 from io import BytesIO
 
+from bzrformats.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    NoSuchId,
+)
+from bzrformats.xml5 import inventory_serializer_v5
+
 from ... import cache_utf8, osutils
-from ...errors import BzrError, NoSuchId, TestamentMismatch
+from ...errors import BzrError, TestamentMismatch
 from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision
 from ...trace import mutter, warning
 from ...tree import InterTree
-from ..inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
-from ..xml5 import inventory_serializer_v5
 from . import apply_bundle
 
 
@@ -936,7 +943,7 @@ class BundleTree(InventoryTree):
         """
         from os.path import basename, dirname
 
-        inv = Inventory(None, self.revision_id)
+        inv = Inventory(None, self.revision_id or None)
 
         def add_entry(path, file_id):
             if path == "":
@@ -950,29 +957,35 @@ class BundleTree(InventoryTree):
 
             name = basename(path)
             if kind == "directory":
-                ie = InventoryDirectory(file_id, name, parent_id, revision_id)
+                ie = InventoryDirectory(
+                    file_id=file_id,
+                    name=name,
+                    parent_id=parent_id,
+                    revision=revision_id,
+                )
             elif kind == "file":
                 text_size, text_sha1 = self.get_size_and_sha1(path)
                 if text_size is None:
-                    raise BzrError(f"Got a text_size of None for file_id {file_id!r}")
+                    raise BzrError(
+                        "Got a text_size of None for file_id {!r}".format(file_id)
+                    )
                 ie = InventoryFile(
-                    file_id,
-                    name,
-                    parent_id,
-                    revision_id,
+                    file_id=file_id,
+                    name=name,
+                    parent_id=parent_id,
+                    revision=revision_id,
                     executable=self.is_executable(path),
                     text_size=text_size,
                     text_sha1=text_sha1,
                 )
             elif kind == "symlink":
                 ie = InventoryLink(
-                    file_id,
-                    name,
-                    parent_id,
-                    revision_id,
+                    file_id=file_id,
+                    name=name,
+                    parent_id=parent_id,
+                    revision=revision_id,
                     symlink_target=self.get_symlink_target(path),
                 )
-
             inv.add(ie)
 
         sorted_entries = self.sorted_path_id()

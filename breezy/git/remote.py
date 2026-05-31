@@ -18,6 +18,16 @@
 
 import re
 
+from dromedary import Transport, register_urlparse_netloc_protocol
+from dromedary.errors import (
+    InProcessTransport,
+    LockContention,
+    NoSuchFile,
+    NotLocalUrl,
+    PermissionDenied,
+    TransportError,
+    UnexpectedHttpStatus,
+)
 from dulwich.refs import SymrefLoop
 
 from .. import config, debug, errors, osutils, trace, ui, urlutils
@@ -26,22 +36,15 @@ from ..errors import (
     AlreadyBranchError,
     BzrError,
     DivergedBranches,
-    InProcessTransport,
     InvalidRevisionId,
-    LockContention,
     NoSuchRevision,
     NoSuchTag,
     NotBranchError,
-    NotLocalUrl,
-    PermissionDenied,
-    TransportError,
-    UnexpectedHttpStatus,
     UninitializableFormat,
 )
 from ..push import PushResult
 from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
-from ..transport import NoSuchFile, Transport, register_urlparse_netloc_protocol
 from . import is_github_url, lazy_check_versions, user_agent_for_github
 
 lazy_check_versions()
@@ -445,7 +448,7 @@ class DulwichSSHVendor(dulwich.client.SSHVendor):
 
     def __init__(self):
         """Initialize DulwichSSHVendor with Breezy's SSH vendor."""
-        from ..transport import ssh
+        from dromedary import ssh
 
         self.bzr_ssh_vendor = ssh._get_ssh_vendor()
 
@@ -1425,7 +1428,15 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         else:
             raise NotBranchError(transport.base)
         if not _found:
-            pass  # TODO(jelmer): Actually probe for something
+            # Probe by asking the git server for refs. If it's not actually a
+            # git repo (or the transport isn't serving git), dulwich raises
+            # NotGitRepository which maps cleanly to NotBranchError.
+            from dulwich.errors import NotGitRepository
+
+            try:
+                client.get_refs(split_url.path)
+            except NotGitRepository as e:
+                raise NotBranchError(transport.base) from e
         return RemoteGitDir(transport, self, client, split_url.path)
 
     def get_format_description(self):

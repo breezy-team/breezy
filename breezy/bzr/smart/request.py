@@ -33,11 +33,15 @@ Interesting module attributes:
 import threading
 from _thread import get_ident
 
-import vcsgraph.errors
+from bzrformats.errors import (
+    BzrCheckError,
+    RevisionNotPresent,
+)
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
 
 from ... import branch as _mod_branch
 from ... import debug, errors, osutils, registry, revision, trace, urlutils
-from ... import transport as _mod_transport
 
 jail_info = threading.local()
 jail_info.transports = None
@@ -98,7 +102,7 @@ def _pre_open_hook(transport):
     for allowed_transport in allowed_transports:
         try:
             allowed_transport.relpath(abspath)
-        except errors.PathNotChild:
+        except transport_errors.PathNotChild:
             continue
         else:
             return
@@ -185,7 +189,7 @@ class SmartServerRequest:
         Must return a SmartServerResponse.
         """
         if body_bytes != b"":
-            raise errors.SmartProtocolError("Request does not expect a body")
+            raise transport_errors.SmartProtocolError("Request does not expect a body")
 
     def do_chunk(self, chunk_bytes):
         """Process a chunk of streamed body data.
@@ -258,7 +262,7 @@ class SmartServerRequest:
                 raise ValueError(relpath)
             return urlutils.escape("." + relpath)
         else:
-            raise errors.PathNotChild(client_path, self._root_client_path)
+            raise transport_errors.PathNotChild(client_path, self._root_client_path)
 
     def transport_from_client_path(self, client_path):
         """Get a backing transport corresponding to the location referred to by
@@ -521,7 +525,7 @@ class SmartServerRequestHandler:
         except LookupError as e:
             if debug.debug_flag_enabled("hpss"):
                 self._trace("hpss unknown request", cmd, repr(args)[1:-1])
-            raise errors.UnknownSmartMethod(cmd) from e
+            raise transport_errors.UnknownSmartMethod(cmd) from e
         if debug.debug_flag_enabled("hpss"):
             from . import vfs
 
@@ -575,11 +579,11 @@ def _translate_error(err):
         tuple: A tuple representing the error in a format suitable for
                the smart protocol. The exact format depends on the error type.
     """
-    if isinstance(err, _mod_transport.NoSuchFile):
+    if isinstance(err, NoSuchFile):
         return (b"NoSuchFile", err.path.encode("utf-8"))
-    elif isinstance(err, _mod_transport.FileExists):
+    elif isinstance(err, FileExists):
         return (b"FileExists", err.path.encode("utf-8"))
-    elif isinstance(err, errors.DirectoryNotEmpty):
+    elif isinstance(err, transport_errors.DirectoryNotEmpty):
         return (b"DirectoryNotEmpty", err.path.encode("utf-8"))
     elif isinstance(err, errors.IncompatibleRepositories):
         return (
@@ -588,7 +592,7 @@ def _translate_error(err):
             str(err.target),
             str(err.details),
         )
-    elif isinstance(err, errors.ShortReadvError):
+    elif isinstance(err, transport_errors.ShortReadvError):
         return (
             b"ShortReadvError",
             err.path.encode("utf-8") if err.path is not None else None,
@@ -596,7 +600,7 @@ def _translate_error(err):
             str(err.length).encode("ascii") if err.length is not None else None,
             str(err.actual).encode("ascii") if err.actual is not None else None,
         )
-    elif isinstance(err, errors.RevisionNotPresent):
+    elif isinstance(err, RevisionNotPresent):
         return (b"RevisionNotPresent", err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):
         return (
@@ -612,7 +616,7 @@ def _translate_error(err):
         )
     elif isinstance(err, errors.NotStacked):
         return (b"NotStacked",)
-    elif isinstance(err, errors.BzrCheckError):
+    elif isinstance(err, BzrCheckError):
         return (b"BzrCheckError", err.msg.encode("utf-8"))
     elif isinstance(err, UnicodeError):
         # If it is a DecodeError, than most likely we are starting
@@ -634,13 +638,13 @@ def _translate_error(err):
             str(err.end),
             err.reason,
         )
-    elif isinstance(err, errors.TransportNotPossible):
+    elif isinstance(err, transport_errors.TransportNotPossible):
         if err.msg == "readonly transport":
             return (b"ReadOnlyError",)
-    elif isinstance(err, errors.ReadError):
+    elif isinstance(err, transport_errors.ReadError):
         # cannot read the file
         return (b"ReadError", err.path)
-    elif isinstance(err, errors.PermissionDenied):
+    elif isinstance(err, transport_errors.PermissionDenied):
         return (
             b"PermissionDenied",
             err.path.encode("utf-8"),
@@ -650,7 +654,7 @@ def _translate_error(err):
         return (b"TokenMismatch", err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
         return (b"LockContention",)
-    elif isinstance(err, vcsgraph.errors.GhostRevisionsHaveNoRevno):
+    elif isinstance(err, errors.GhostRevisionsHaveNoRevno):
         return (b"GhostRevisionsHaveNoRevno", err.revision_id, err.ghost_revision_id)
     elif isinstance(err, urlutils.InvalidURL):
         return (b"InvalidURL", err.path.encode("utf-8"), err.extra.encode("utf-8"))

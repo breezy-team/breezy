@@ -21,15 +21,17 @@ import hashlib
 import os
 import threading
 
+from bzrformats import btree_index as _mod_btree_index
+from bzrformats import index as _mod_index
+from bzrformats import versionedfile
+from dromedary import errors as transport_errors
+from dromedary import get_transport_from_path
+from dromedary.errors import FileExists, NoSuchFile
 from dulwich.objects import ShaFile, hex_to_sha, sha_to_hex
 
 from .. import errors as bzr_errors
 from .. import registry, trace
 from .._git_rs import get_cache_dir
-from ..bzr import btree_index as _mod_btree_index
-from ..bzr import index as _mod_index
-from ..bzr import versionedfile
-from ..transport import FileExists, NoSuchFile, get_transport_from_path
 
 
 def get_remote_cache_transport(repository):
@@ -271,7 +273,7 @@ class BzrGitCacheFormat:
         Returns:
             BzrGitCache instance.
         """
-        from ..transport.local import LocalTransport
+        from dromedary.local import LocalTransport
 
         repo_transport = getattr(repository, "_transport", None)
         if repo_transport is not None and isinstance(repo_transport, LocalTransport):
@@ -635,7 +637,7 @@ class SqliteGitCacheFormat(BzrGitCacheFormat):
         """
         try:
             basepath = transport.local_abspath(".")
-        except bzr_errors.NotLocalUrl:
+        except transport_errors.NotLocalUrl:
             basepath = get_cache_dir()
         return SqliteBzrGitCache(os.path.join(basepath, "idmap.db"))
 
@@ -943,7 +945,7 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
         """
         try:
             basepath = transport.local_abspath(".")
-        except bzr_errors.NotLocalUrl:
+        except transport_errors.NotLocalUrl:
             basepath = get_cache_dir()
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
@@ -1628,7 +1630,7 @@ def remove_readonly_transport_decorator(transport):
         Transport without read-only decorator.
 
     Raises:
-        ReadOnlyError: If transport cannot be made writable.
+        bzr_errors.ReadOnlyError: If transport cannot be made writable.
     """
     if transport.is_readonly():
         try:

@@ -23,7 +23,11 @@ from io import BytesIO
 from textwrap import dedent
 
 import configobj
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
 from testtools import matchers
+
+from breezy.transport import remote as transport_remote
 
 from .. import (
     bedding,
@@ -41,9 +45,7 @@ from .. import (
     urlutils,
 )
 from .. import registry as _mod_registry
-from .. import transport as _mod_transport
 from ..bzr import remote
-from ..transport import remote as transport_remote
 from . import features, scenarios, test_server
 
 
@@ -371,14 +373,14 @@ class FakeControlFilesAndTransport:
         try:
             return BytesIO(self.files[filename])
         except KeyError as e:
-            raise _mod_transport.NoSuchFile(filename) from e
+            raise NoSuchFile(filename) from e
 
     def get_bytes(self, filename):
         # from Transport
         try:
             return self.files[filename]
         except KeyError as e:
-            raise _mod_transport.NoSuchFile(filename) from e
+            raise NoSuchFile(filename) from e
 
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
@@ -1646,7 +1648,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
                 self.base = base
 
             def get_bytes(self, relpath):
-                raise errors.PermissionDenied(relpath, "")
+                raise transport_errors.PermissionDenied(relpath, "")
 
         cfg = config.TransportConfig(DenyingTransport("nonexisting://"), "control.conf")
         self.assertIs(None, cfg.get_option("non-existant", "SECTION"))
@@ -2583,14 +2585,14 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         t = self.get_transport()
 
         def get_bytes(relpath):
-            raise errors.PermissionDenied(relpath, "")
+            raise transport_errors.PermissionDenied(relpath, "")
 
         try:
             t.get_bytes = get_bytes
         except AttributeError as e:
             raise tests.TestSkipped("unable to override Transport.get_bytes") from e
         store = config.TransportIniFileStore(t, "foo.conf")
-        self.assertRaises(errors.PermissionDenied, store.load)
+        self.assertRaises(transport_errors.PermissionDenied, store.load)
         self.assertEqual(
             warnings,
             [
@@ -2929,7 +2931,7 @@ class TestQuotingIniFileStore(tests.TestCaseWithTransport):
 class TestTransportIniFileStore(TestStore):
     def test_loading_unknown_file_fails(self):
         store = config.TransportIniFileStore(self.get_transport(), "I-do-not-exist")
-        self.assertRaises(_mod_transport.NoSuchFile, store.load)
+        self.assertRaises(NoSuchFile, store.load)
 
     def test_invalid_content(self):
         store = config.TransportIniFileStore(self.get_transport(), "foo.conf")
@@ -4586,6 +4588,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
             "port": 99,
             "path": "/foo",
             "realm": "realm",
+            "token": None,
+            "token_scheme": "Bearer",
         }
         self.assertEqual(CREDENTIALS, credentials)
         credentials_from_disk = config.AuthenticationConfig().get_credentials(
@@ -4609,8 +4613,42 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
             "port": None,
             "path": None,
             "realm": None,
+            "token": None,
+            "token_scheme": "Bearer",
         }
         self.assertEqual(CREDENTIALS, credentials)
+
+
+class TestAuthenticationGetToken(tests.TestCaseInTempDir):
+    """Tests for ``AuthenticationConfig.get_token``."""
+
+    def _seed(self, **kwargs):
+        conf = config.AuthenticationConfig()
+        conf._get_config().update({"site": kwargs})
+        conf._save()
+        return conf
+
+    def test_no_section_returns_pair_of_none(self):
+        conf = config.AuthenticationConfig()
+        self.assertEqual((None, None), conf.get_token("https", "example.com"))
+
+    def test_section_without_token_returns_pair_of_none(self):
+        conf = self._seed(scheme="https", host="example.com", user="alice")
+        self.assertEqual((None, None), conf.get_token("https", "example.com"))
+
+    def test_token_defaults_scheme_to_bearer(self):
+        conf = self._seed(scheme="https", host="example.com", token="abc")
+        self.assertEqual(("abc", "Bearer"), conf.get_token("https", "example.com"))
+
+    def test_token_scheme_override_is_returned(self):
+        conf = self._seed(
+            scheme="https", host="example.com", token="abc", token_scheme="token"
+        )
+        self.assertEqual(("abc", "token"), conf.get_token("https", "example.com"))
+
+    def test_host_mismatch_returns_pair_of_none(self):
+        conf = self._seed(scheme="https", host="example.com", token="abc")
+        self.assertEqual((None, None), conf.get_token("https", "other.com"))
 
 
 class TestAuthenticationConfig(tests.TestCaseInTempDir):

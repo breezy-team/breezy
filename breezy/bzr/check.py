@@ -47,7 +47,9 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
-from .. import ui
+import vcsgraph.errors
+
+from .. import errors, ui
 from ..branch import Branch
 from ..check import Check
 from ..i18n import gettext
@@ -138,7 +140,12 @@ class VersionedFileCheck(Check):
                         existences.add(value)
                     else:
                         raise AssertionError(f"unknown ref kind for ref {ref}")
-                node_distances = repo.get_graph().find_lefthand_distances(distances)
+                try:
+                    node_distances = repo.get_graph().find_lefthand_distances(distances)
+                except vcsgraph.errors.GhostRevisionsHaveNoRevno as e:
+                    raise errors.GhostRevisionsHaveNoRevno(
+                        e.revision_id, e.ghost_revision_id
+                    ) from e
                 for key, distance in node_distances.items():
                     refs[("lefthand-distance", key)] = distance
                     if key in existences and distance > 0:

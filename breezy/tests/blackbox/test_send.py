@@ -17,10 +17,11 @@
 
 from io import BytesIO
 
+from dromedary import memory
+
 from ... import branch, merge_directive, tests
 from ...bzr.bundle import serializer
 from ...controldir import ControlDir
-from ...transport import memory
 from .. import scenarios
 
 load_tests = scenarios.load_tests_apply_scenarios

@@ -81,9 +81,11 @@ class cmd_git_import(Command):
         """
         import os
 
+        from breezy.errors import CommandError
+
         from .. import controldir, trace, ui, urlutils
         from ..controldir import ControlDir
-        from ..errors import CommandError, NoRepositoryPresent, NotBranchError
+        from ..errors import NoRepositoryPresent, NotBranchError
         from ..i18n import gettext
         from ..repository import InterRepository, Repository
         from ..transport import get_transport
@@ -184,8 +186,9 @@ class cmd_git_object(Command):
             directory: Repository location (defaults to current directory).
             pretty: Whether to pretty-print objects.
         """
+        from breezy.errors import CommandError
+
         from ..controldir import ControlDir
-        from ..errors import CommandError
         from ..i18n import gettext
         from .object_store import get_object_store
 
@@ -308,8 +311,10 @@ class cmd_git_push_pristine_tar_deltas(Command):
             package: Package name for pristine tar files.
             directory: Source repository location (defaults to current directory).
         """
+        from breezy.errors import CommandError
+
         from ..branch import Branch
-        from ..errors import CommandError, NoSuchRevision
+        from ..errors import NoSuchRevision
         from ..repository import Repository
         from ..trace import warning
         from .mapping import encode_git_path

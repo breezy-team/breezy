@@ -30,26 +30,33 @@ import zlib
 from io import BytesIO
 
 import fastbencode as bencode
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
+from bzrformats import inventory, inventory_delta, versionedfile
+from bzrformats._bzr_rs import revision_bencode_serializer
+from bzrformats.errors import RevisionNotPresent
+from bzrformats.revision import Revision
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+from dromedary.memory import MemoryTransport
+
+from breezy.transport.remote import (
+    RemoteSSHTransport,
+    RemoteTCPTransport,
+    RemoteTransport,
+)
 
 from ... import branch, config, controldir, errors, repository, tests, treebuilder
 from ... import transport as _mod_transport
-from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
-from ...revision import NULL_REVISION, Revision
+from ...errors import GhostRevisionsHaveNoRevno
+from ...revision import NULL_REVISION
 from ...tests import test_server
 from ...tests.scenarios import load_tests_apply_scenarios
-from ...transport.memory import MemoryTransport
-from ...transport.remote import RemoteSSHTransport, RemoteTCPTransport, RemoteTransport
 from .. import (
     RemoteBzrProber,
     bzrdir,
     groupcompress_repo,
-    inventory,
-    inventory_delta,
     knitpack_repo,
     remote,
-    versionedfile,
     vf_search,
 )
 from ..bzrdir import BzrDir, BzrDirFormat
@@ -237,9 +244,9 @@ class FakeClient(_SmartClient):
         except IndexError as e:
             raise AssertionError(f"{self!r} didn't expect any more calls") from e
         if response_tuple[0] == b"unknown":
-            raise errors.UnknownSmartMethod(response_tuple[1])
+            raise transport_errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == b"error":
-            raise errors.ErrorFromSmartServer(response_tuple[1])
+            raise transport_errors.ErrorFromSmartServer(response_tuple[1])
         return response_tuple
 
     def _check_call(self, method, args):
@@ -359,8 +366,10 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given transport_base and relpath of that transport.  (Note that
         HttpTransportBase is a subclass of SmartClientMedium).
         """
+        from breezy.bzr.smart.transport import get_smart_medium
+
         base_transport = _mod_transport.get_transport(transport_base)
-        client_medium = base_transport.get_smart_medium()
+        client_medium = get_smart_medium(base_transport)
         cloned_transport = base_transport.clone(relpath)
         result = client_medium.remote_path_from_transport(cloned_transport)
         self.assertEqual(expected, result)
@@ -673,7 +682,7 @@ class TestBzrDirOpen(TestRemote):
         )
         self.assertIsInstance(bd, RemoteBzrDir)
         self.assertTrue(bd.has_workingtree())
-        self.assertRaises(errors.NotLocalUrl, bd.open_workingtree)
+        self.assertRaises(transport_errors.NotLocalUrl, bd.open_workingtree)
         self.assertFinished(client)
 
     def test_backwards_compat(self):
@@ -1145,7 +1154,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         # it's currently hard to test that without supplying a real remote
         # transport connected to a real server.
         err = self.assertRaises(
-            errors.PermissionDenied,
+            transport_errors.PermissionDenied,
             fmt._initialize_on_transport_ex_rpc,
             client,
             b"path",
@@ -1169,7 +1178,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         transport = transport.clone("no-such-path")
         fmt = RemoteBzrDirFormat()
         self.assertRaises(
-            _mod_transport.NoSuchFile,
+            NoSuchFile,
             fmt.initialize_on_transport_ex,
             transport,
             create_prefix=False,
@@ -2652,8 +2661,10 @@ class TestTransportMkdir(tests.TestCase):
         client = FakeClient()
         client.add_error_response(b"PermissionDenied", b"remote path", b"extra")
         transport = RemoteTransport("bzr://example.com/", medium=False, _client=client)
-        exc = self.assertRaises(errors.PermissionDenied, transport.mkdir, "client path")
-        expected_error = errors.PermissionDenied("/client path", "extra")
+        exc = self.assertRaises(
+            transport_errors.PermissionDenied, transport.mkdir, "client path"
+        )
+        expected_error = transport_errors.PermissionDenied("/client path", "extra")
         self.assertEqual(expected_error, exc)
 
 
@@ -3092,7 +3103,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository("path")
         client.add_success_response(b"something unexpected!")
         self.assertRaises(
-            errors.UnexpectedSmartServerResponse,
+            transport_errors.UnexpectedSmartServerResponse,
             repo.get_parent_map,
             [b"a-revision-id"],
         )
@@ -3255,14 +3266,14 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         transport_path = "quack"
         repo, client = self.setup_fake_client_and_repository(transport_path)
         somerev1 = Revision(
-            b"somerev1",
-            committer="Joe Committer <joe@example.com>",
-            timestamp=1321828927,
-            timezone=-60,
-            inventory_sha1=b"691b39be74c67b1212a75fcb19c433aaed903c2b",
+            revision_id=b"somerev1",
             parent_ids=[],
+            committer="Joe Committer <joe@example.com>",
             message="Message",
             properties={},
+            inventory_sha1=b"691b39be74c67b1212a75fcb19c433aaed903c2b",
+            timestamp=1321828927,
+            timezone=-60,
         )
         body = zlib.compress(
             b"".join(revision_bencode_serializer.write_revision_to_lines(somerev1))
@@ -3845,7 +3856,7 @@ class TestRepositoryIterFilesBytes(TestRemoteRepository):
             iter([b"absent\0somefile\0somerev\n"]),
         )
         self.assertRaises(
-            errors.RevisionNotPresent,
+            RevisionNotPresent,
             list,
             repo.iter_files_bytes([(b"somefile", b"somerev", b"myid")]),
         )
@@ -4044,8 +4055,8 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it
             # will trigger a fallback to VFS insert_stream.
-            entry = inv.make_entry(
-                "directory", "newdir", inv.root.file_id, b"newdir-id", revision=b"ghost"
+            entry = inventory.InventoryDirectory(
+                b"newdir-id", "newdir", inv.root.file_id, revision=b"ghost"
             )
             delta = inventory_delta.InventoryDelta(
                 [(None, "newdir", b"newdir-id", entry)]
@@ -4282,7 +4293,7 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
         # Raise the ErrorFromSmartServer before passing it as an argument,
         # because _translate_error may need to re-raise it with a bare 'raise'
         # statement.
-        server_error = errors.ErrorFromSmartServer(error_tuple)
+        server_error = transport_errors.ErrorFromSmartServer(error_tuple)
         translated_error = self.translateErrorFromSmartServer(server_error, **context)
         return translated_error
 
@@ -4294,9 +4305,13 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
 
         try:
             raise error_object
-        except errors.ErrorFromSmartServer as server_error:
+        except transport_errors.ErrorFromSmartServer as server_error:
             translated_error = self.assertRaises(
-                (errors.BzrError, vcsgraph_errors.Error),
+                (
+                    errors.BzrError,
+                    transport_errors.TransportError,
+                    vcsgraph_errors.Error,
+                ),
                 remote._translate_error,
                 server_error,
                 **context,
@@ -4400,13 +4415,13 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
     def test_ReadError_no_args(self):
         path = "a path"
         translated_error = self.translateTuple((b"ReadError",), path=path)
-        expected_error = errors.ReadError(path)
+        expected_error = transport_errors.ReadError(path)
         self.assertEqual(expected_error, translated_error)
 
     def test_ReadError(self):
         path = "a path"
         translated_error = self.translateTuple((b"ReadError", path.encode("utf-8")))
-        expected_error = errors.ReadError(path)
+        expected_error = transport_errors.ReadError(path)
         self.assertEqual(expected_error, translated_error)
 
     def test_IncompatibleRepositories(self):
@@ -4428,7 +4443,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
     def test_PermissionDenied_no_args(self):
         path = "a path"
         translated_error = self.translateTuple((b"PermissionDenied",), path=path)
-        expected_error = errors.PermissionDenied(path)
+        expected_error = transport_errors.PermissionDenied(path)
         self.assertEqual(expected_error, translated_error)
 
     def test_PermissionDenied_one_arg(self):
@@ -4436,7 +4451,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         translated_error = self.translateTuple(
             (b"PermissionDenied", path.encode("utf-8"))
         )
-        expected_error = errors.PermissionDenied(path)
+        expected_error = transport_errors.PermissionDenied(path)
         self.assertEqual(expected_error, translated_error)
 
     def test_PermissionDenied_one_arg_and_context(self):
@@ -4448,7 +4463,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         translated_error = self.translateTuple(
             (b"PermissionDenied", remote_path.encode("utf-8")), path=local_path
         )
-        expected_error = errors.PermissionDenied(local_path)
+        expected_error = transport_errors.PermissionDenied(local_path)
         self.assertEqual(expected_error, translated_error)
 
     def test_PermissionDenied_two_args(self):
@@ -4457,7 +4472,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         translated_error = self.translateTuple(
             (b"PermissionDenied", path.encode("utf-8"), extra.encode("utf-8"))
         )
-        expected_error = errors.PermissionDenied(path, extra)
+        expected_error = transport_errors.PermissionDenied(path, extra)
         self.assertEqual(expected_error, translated_error)
 
     # GZ 2011-03-02: TODO test for PermissionDenied with non-ascii 'extra'
@@ -4467,7 +4482,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         translated_error = self.translateTuple(
             (b"ReadError", b"remote path"), path=local_path
         )
-        expected_error = errors.ReadError(local_path)
+        expected_error = transport_errors.ReadError(local_path)
         self.assertEqual(expected_error, translated_error)
 
     def test_NoSuchFile_without_context(self):
@@ -4475,12 +4490,12 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         translated_error = self.translateTuple(
             (b"ReadError", remote_path.encode("utf-8"))
         )
-        expected_error = errors.ReadError(remote_path)
+        expected_error = transport_errors.ReadError(remote_path)
         self.assertEqual(expected_error, translated_error)
 
     def test_ReadOnlyError(self):
         translated_error = self.translateTuple((b"ReadOnlyError",))
-        expected_error = errors.TransportNotPossible("readonly transport")
+        expected_error = transport_errors.TransportNotPossible("readonly transport")
         self.assertEqual(expected_error, translated_error)
 
     def test_MemoryError(self):
@@ -4488,7 +4503,9 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         self.assertStartsWith(str(translated_error), "remote server out of memory")
 
     def test_generic_IndexError_no_classname(self):
-        err = errors.ErrorFromSmartServer((b"error", b"list index out of range"))
+        err = transport_errors.ErrorFromSmartServer(
+            (b"error", b"list index out of range")
+        )
         translated_error = self.translateErrorFromSmartServer(err)
         expected_error = UnknownErrorFromSmartServer(err)
         self.assertEqual(expected_error, translated_error)
@@ -4496,7 +4513,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
     # GZ 2011-03-02: TODO test generic non-ascii error string
 
     def test_generic_KeyError(self):
-        err = errors.ErrorFromSmartServer((b"error", b"KeyError", b"1"))
+        err = transport_errors.ErrorFromSmartServer((b"error", b"KeyError", b"1"))
         translated_error = self.translateErrorFromSmartServer(err)
         expected_error = UnknownErrorFromSmartServer(err)
         self.assertEqual(expected_error, translated_error)
@@ -4522,7 +4539,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         ErrorFromSmartServer is propagated unmodified.
         """
         error_tuple = (b"An unknown error tuple",)
-        server_error = errors.ErrorFromSmartServer(error_tuple)
+        server_error = transport_errors.ErrorFromSmartServer(error_tuple)
         translated_error = self.translateErrorFromSmartServer(server_error)
         expected_error = UnknownErrorFromSmartServer(server_error)
         self.assertEqual(expected_error, translated_error)
@@ -4536,7 +4553,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         # in the context dict.  So let's give it an empty context dict instead
         # to exercise its error recovery.
         error_tuple = (b"NoSuchRevision", b"revid")
-        server_error = errors.ErrorFromSmartServer(error_tuple)
+        server_error = transport_errors.ErrorFromSmartServer(error_tuple)
         translated_error = self.translateErrorFromSmartServer(server_error)
         self.assertEqual(server_error, translated_error)
         # In addition to re-raising ErrorFromSmartServer, some debug info has
@@ -4549,7 +4566,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         has it, then an error is raised.
         """
         error_tuple = (b"ReadError",)
-        server_error = errors.ErrorFromSmartServer(error_tuple)
+        server_error = transport_errors.ErrorFromSmartServer(error_tuple)
         translated_error = self.translateErrorFromSmartServer(server_error)
         self.assertEqual(server_error, translated_error)
         # In addition to re-raising ErrorFromSmartServer, some debug info has
@@ -4969,7 +4986,11 @@ class TestRepositoryIterInventories(TestRemoteRepository):
 
     def _serialize_inv_delta(self, old_name, new_name, delta):
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
-        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+        return b"".join(
+            serializer.delta_to_lines(
+                old_name, new_name, inventory_delta.InventoryDelta(delta)
+            )
+        )
 
     def test_single_empty(self):
         transport_path = "quack"
@@ -5029,7 +5050,11 @@ class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
 
     def _serialize_inv_delta(self, old_name, new_name, delta):
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
-        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+        return b"".join(
+            serializer.delta_to_lines(
+                old_name, new_name, inventory_delta.InventoryDelta(delta)
+            )
+        )
 
     def test_simple(self):
         transport_path = "quack"
@@ -5083,7 +5108,11 @@ class TestRepositoryAnnotate(TestRemoteRepository):
 
     def _serialize_inv_delta(self, old_name, new_name, delta):
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
-        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+        return b"".join(
+            serializer.delta_to_lines(
+                old_name, new_name, inventory_delta.InventoryDelta(delta)
+            )
+        )
 
     def test_simple(self):
         transport_path = "quack"
@@ -5151,7 +5180,7 @@ class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
 class TestErrors(tests.TestCase):
     def test_untranslateable_error_from_smart_server(self):
         error_tuple = ("error", "tuple")
-        orig_err = errors.ErrorFromSmartServer(error_tuple)
+        orig_err = transport_errors.ErrorFromSmartServer(error_tuple)
         err = UnknownErrorFromSmartServer(orig_err)
         self.assertEqual(
             "Server sent an unexpected error: ('error', 'tuple')", str(err)

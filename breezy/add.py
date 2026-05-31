@@ -19,7 +19,9 @@
 import os
 import sys
 
-from . import errors, osutils, ui
+from bzrformats.inventory import NoSuchId
+
+from . import osutils, ui
 from .i18n import gettext
 
 
@@ -151,7 +153,7 @@ class AddFromBaseAction(AddAction):
         """
         try:
             parent_path = self.base_tree.id2path(parent_ie.file_id)
-        except errors.NoSuchId:
+        except NoSuchId:
             pass
         else:
             base_path = osutils.pathjoin(parent_path, osutils.basename(path))

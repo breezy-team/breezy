@@ -25,8 +25,9 @@ unique ID.
 
 import os
 
-from .... import transport as _mod_transport
-from ....bzr import versionedfile
+from bzrformats import versionedfile
+from dromedary.errors import NoSuchFile
+
 from ....errors import BzrError
 from ....trace import mutter
 
@@ -273,7 +274,7 @@ class TransportStore(Store):
         for name in names:
             try:
                 return self._get(name)
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 pass
         raise KeyError(fileid)
 

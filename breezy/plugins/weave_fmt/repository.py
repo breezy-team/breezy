@@ -35,21 +35,26 @@ import itertools
 from breezy import (
     ui,
     )
-from vcsgraph import (
-    graph as _mod_graph,
-    known_graph as _mod_known_graph,
-)
+from bzrformats import xml5
 """,
 )
-from ... import debug, errors, lockdir, osutils, trace, urlutils
-from ... import transport as _mod_transport
-from ...bzr import lockable_files, tuned_gzip, versionedfile, weave, weavefile
-from ...bzr.repository import RepositoryFormatMetaDir
-from ...bzr.versionedfile import (
+from bzrformats import tuned_gzip, versionedfile, weave, weavefile
+from bzrformats._bzr_rs import revision_serializer_v5
+from bzrformats.errors import (
+    ObjectNotLocked,
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
+)
+from bzrformats.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
     VersionedFiles,
 )
+from dromedary.errors import NoSuchFile
+
+from ... import debug, errors, lockdir, osutils, trace, urlutils
+from ...bzr import lockable_files
+from ...bzr.repository import RepositoryFormatMetaDir
 from ...bzr.vf_repository import (
     InterSameDataRepository,
     MetaDirVersionedFileRepository,
@@ -67,16 +72,12 @@ class AllInOneRepository(VersionedFileRepository):
     """Legacy support - the repository behaviour for all-in-one branches."""
 
     @property
-    def _revision_serializer(self):
-        from ...bzr.xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _escape(self, file_or_path):
         """Escape a file or path for use in a URL.
@@ -286,8 +287,8 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
             control_files: The lockable files instance for this repository.
         """
         super().__init__(_format, a_controldir, control_files)
-        self._revision_serializer = _format._revision_serializer
         self._inventory_serializer = _format._inventory_serializer
+        self._revision_serializer = _format._revision_serializer
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
@@ -524,7 +525,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         return None
 
     def _get_revisions(self, repo_transport, repo):
-        from .xml4 import revision_serializer_v4
+        from bzrformats.xml4 import revision_serializer_v4
 
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
@@ -562,16 +563,12 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     supports_funky_characters = False
 
     @property
-    def _revision_serializer(self):
-        from ...bzr.xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -588,7 +585,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         )
 
     def _get_revisions(self, repo_transport, repo):
-        from ...bzr.xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
@@ -630,16 +627,12 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     supports_funky_characters = False
 
     @property
-    def _revision_serializer(self):
-        from ...bzr.xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -656,7 +649,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
         )
 
     def _get_revisions(self, repo_transport, repo):
-        from ...bzr.xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
@@ -707,16 +700,12 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     fast_deltas = False
 
     @property
-    def _revision_serializer(self):
-        from ...bzr.xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     @classmethod
     def get_format_string(cls):
@@ -734,7 +723,7 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
         )
 
     def _get_revisions(self, repo_transport, repo):
-        from ...bzr.xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
@@ -855,7 +844,7 @@ class TextVersionedFiles(VersionedFiles):
             ValueError: If the key contains invalid characters.
         """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         if not self._can_write():
             raise errors.ReadOnlyError(self)
         if b"/" in key[-1]:
@@ -881,7 +870,7 @@ class TextVersionedFiles(VersionedFiles):
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == "absent":
-                raise errors.RevisionNotPresent([record.key[0]], self)
+                raise RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
             if record.storage_kind in ("fulltext", "chunks", "lines"):
                 self.add_lines(record.key, None, record.get_bytes_as("lines"))
@@ -896,7 +885,7 @@ class TextVersionedFiles(VersionedFiles):
                 lines = adapter.get_bytes(
                     record, record.get_bytes_as(record.storage_kind)
                 )
-                with contextlib.suppress(errors.RevisionAlreadyPresent):
+                with contextlib.suppress(RevisionAlreadyPresent):
                     self.add_lines(record.key, None, lines)
 
     def _load_text(self, key):
@@ -912,19 +901,19 @@ class TextVersionedFiles(VersionedFiles):
             ObjectNotLocked: If the store is not locked.
         """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         path = self._map(key)
         try:
             text = self._transport.get_bytes(path)
             compressed = self._compressed
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             if self._compressed:
                 # try without the .gz
                 path = path[:-3]
                 try:
                     text = self._transport.get_bytes(path)
                     compressed = False
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     return None
             else:
                 return None
@@ -1004,9 +993,11 @@ class RevisionTextStore(TextVersionedFiles):
         Returns:
             KnownGraph instance containing the ancestry.
         """
+        from vcsgraph.known_graph import KnownGraph
+
         keys = self.keys()
         parent_map = self.get_parent_map(keys)
-        kg = _mod_known_graph.KnownGraph(parent_map)
+        kg = KnownGraph(parent_map)
         return kg
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
@@ -1037,7 +1028,7 @@ class RevisionTextStore(TextVersionedFiles):
             ObjectNotLocked: If the store is not locked.
         """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         relpaths = set()
         for quoted_relpath in self._transport.iter_files_recursive():
             relpath = urlutils.unquote(quoted_relpath)
@@ -1115,7 +1106,7 @@ class SignatureTextStore(TextVersionedFiles):
             ObjectNotLocked: If the store is not locked.
         """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         relpaths = set()
         for quoted_relpath in self._transport.iter_files_recursive():
             relpath = urlutils.unquote(quoted_relpath)

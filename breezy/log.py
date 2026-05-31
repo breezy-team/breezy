@@ -74,9 +74,10 @@ from breezy.i18n import gettext, ngettext
 """,
 )
 
+from dromedary.errors import NoSuchFile
+
 from . import errors, registry, revisionspec, trace
 from . import revision as _mod_revision
-from . import transport as _mod_transport
 from .osutils import (
     UnsupportedTimezoneFormat,
     format_date,
@@ -872,7 +873,7 @@ def _linear_view_revisions(
         ):
             try:
                 br_revno, br_rev_id = branch.last_revision_info()
-            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+            except errors.GhostRevisionsHaveNoRevno:
                 br_rev_id = branch.last_revision()
                 cur_revno = None
             else:
@@ -2504,7 +2505,7 @@ def _get_kind_for_file(tree, path):
     with tree.lock_read():
         try:
             return tree.stored_kind(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
 
 

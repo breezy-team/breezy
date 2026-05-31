@@ -20,13 +20,13 @@ import os
 import stat
 import time
 
+from bzrformats import knit, versionedfile
+from bzrformats.inventory import Inventory
 from dulwich.objects import S_IFGITLINK, Blob, Tag, Tree
 from dulwich.repo import Repo as GitRepo
 
 from ... import osutils
 from ...branch import Branch
-from ...bzr import knit, versionedfile
-from ...bzr.inventory import Inventory
 from ...controldir import ControlDir
 from ...repository import Repository
 from ...tests import TestCaseWithTransport
@@ -348,7 +348,7 @@ class ImportObjects(TestCaseWithTransport):
             b"bla",
             (None, "blobname"),
             None,
-            b"parentid",
+            b"rootid",
             b"somerevid",
             [],
             objs.__getitem__,
@@ -397,10 +397,8 @@ class ImportObjects(TestCaseWithTransport):
         self.assertEqual(None, ret[0][0])
         self.assertEqual("", ret[0][1])
         ie = ret[0][3]
-        self.assertEqual(False, ie.executable)
         self.assertEqual("directory", ie.kind)
         self.assertEqual(b"somerevid", ie.revision)
-        self.assertEqual(None, ie.text_sha1)
 
     def test_import_tree_empty(self):
         tree = Tree()
@@ -426,7 +424,6 @@ class ImportObjects(TestCaseWithTransport):
         self.assertEqual("bla", ret[0][1])
         ie = ret[0][3]
         self.assertEqual("directory", ie.kind)
-        self.assertEqual(False, ie.executable)
         self.assertEqual(b"somerevid", ie.revision)
 
     def test_import_tree_with_file(self):

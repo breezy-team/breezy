@@ -19,6 +19,10 @@
 import re
 from io import BytesIO
 
+from bzrformats.errors import RevisionNotPresent
+from bzrformats.inventory import NoSuchId
+from dromedary import errors as transport_errors
+
 from ... import (
     commit,
     controldir,
@@ -513,12 +517,12 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(b"bar", extracted["file2"])
         self.assertEqual(b"baz", extracted["file1-new"])
         self.assertRaises(
-            errors.RevisionNotPresent,
+            RevisionNotPresent,
             list,
             repository.iter_files_bytes([(file1_id, b"rev3", "file1-notpresent")]),
         )
         self.assertRaises(
-            (errors.RevisionNotPresent, errors.NoSuchId),
+            (RevisionNotPresent, NoSuchId),
             list,
             repository.iter_files_bytes([(b"file3-id", b"rev3", "file1-notpresent")]),
         )
@@ -639,7 +643,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         local_bzrdir = self.make_controldir("local")
         try:
             local_repo = remote_repo.sprout(local_bzrdir)
-        except errors.TransportNotPossible as err:
+        except transport_errors.TransportNotPossible as err:
             raise tests.TestNotApplicable(
                 "Cannot lock_read old formats like AllInOne over HPSS."
             ) from err
@@ -659,7 +663,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         remote_branch = remote_repo.controldir.create_branch()
         try:
             local_bzrdir = remote_branch.controldir.sprout("local")
-        except errors.TransportNotPossible as err:
+        except transport_errors.TransportNotPossible as err:
             raise tests.TestNotApplicable(
                 "Cannot lock_read old formats like AllInOne over HPSS."
             ) from err
@@ -695,7 +699,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         ).open_branch()
         try:
             local_bzrdir = remote_branch.controldir.sprout("local")
-        except errors.TransportNotPossible as err:
+        except transport_errors.TransportNotPossible as err:
             raise tests.TestNotApplicable(
                 "Cannot lock_read old formats like AllInOne over HPSS."
             ) from err

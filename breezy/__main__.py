@@ -65,12 +65,19 @@ def main():
     # there's no point doing any additional cleanup.  Abruptly exiting here
     # stops any background threads getting into trouble as code is unloaded,
     # and it may also be slightly faster, through avoiding gc of objects that
-    # are just about to be discarded anyhow.  This does mean that atexit hooks
-    # won't run but we don't use them.  Also file buffers won't be flushed,
-    # but our policy is to always close files from a finally block. -- mbp 20070215
-    exitfunc = getattr(sys, "exitfunc", None)
-    if exitfunc is not None:
-        exitfunc()
+    # are just about to be discarded anyhow.  Also file buffers won't be
+    # flushed, but our policy is to always close files from a finally block.
+    # -- mbp 20070215
+    # We do still need to run two cleanup phases that the normal interpreter
+    # shutdown would do for us: atexit hooks (the selftest uses one to remove
+    # its TEST_ROOT) and pending weakref finalizers (DiskTreeTransform uses
+    # one to remove leaked limbo dirs).  Without these, every selftest run
+    # leaks /tmp/testbzr-*.tmp and /tmp/{bzr,git}-limbo-*.
+    import atexit
+    import weakref
+
+    atexit._run_exitfuncs()
+    weakref.finalize._exitfunc()
     os._exit(exit_val)
 
 

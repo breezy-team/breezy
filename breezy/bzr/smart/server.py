@@ -24,6 +24,8 @@ import sys
 import threading
 import time
 
+from dromedary import errors as transport_errors
+
 from ... import errors, trace
 from ... import transport as _mod_transport
 from ...hooks import Hooks
@@ -37,7 +39,7 @@ from breezy.bzr.smart import (
     medium,
     signals,
     )
-from breezy.transport import (
+from dromedary import (
     chroot,
     pathfilter,
     )
@@ -152,7 +154,7 @@ class SmartTCPServer:
         # so we group those in a list - as there might be more aliases
         # in the future.
         urls = [self.backing_transport.base]
-        with contextlib.suppress(errors.InProcessTransport):
+        with contextlib.suppress(transport_errors.InProcessTransport):
             urls.append(self.backing_transport.external_url())
         return urls
 
@@ -455,7 +457,7 @@ def _local_path_for_transport(transport):
     """
     try:
         base_url = transport.external_url()
-    except (errors.InProcessTransport, NotImplementedError):
+    except (transport_errors.InProcessTransport, NotImplementedError):
         return None
     else:
         # Strip readonly prefix

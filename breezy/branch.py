@@ -27,6 +27,8 @@ import itertools
 from typing import TYPE_CHECKING, Optional, TextIO, cast
 
 import vcsgraph.errors
+from bzrformats.errors import BzrCheckError
+from dromedary import errors as transport_errors
 
 from . import config as _mod_config
 from . import debug, errors, registry, repository, urlutils
@@ -403,7 +405,7 @@ class Branch(ControlComponent):
             try:
                 return self.get_rev_id(revno[0])
             except vcsgraph.errors.RevisionNotPresent as exc:
-                raise vcsgraph.errors.GhostRevisionsHaveNoRevno(
+                raise errors.GhostRevisionsHaveNoRevno(
                     revno[0], exc.revision_id
                 ) from exc
         revision_id_to_revno = self.get_revision_id_to_revno_map()
@@ -837,10 +839,16 @@ class Branch(ControlComponent):
                 (last_revid, last_revno),
                 (_mod_revision.NULL_REVISION, 0),
             ]
-            if last_rev is not None and not graph.is_ancestor(last_rev, revision_id):
-                # our previous tip is not merged into stop_revision
-                raise errors.DivergedBranches(self, other_branch)
-            revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+            if last_rev is not None:
+                if not graph.is_ancestor(last_rev, revision_id):
+                    # our previous tip is not merged into stop_revision
+                    raise errors.DivergedBranches(self, other_branch)
+            try:
+                revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno as e:
+                raise errors.GhostRevisionsHaveNoRevno(
+                    e.revision_id, e.ghost_revision_id
+                ) from e
             self.set_last_revision_info(revno, revision_id)
 
     def _set_parent_location(self, url: str | None) -> None:
@@ -1314,8 +1322,10 @@ class Branch(ControlComponent):
             actual_revno = refs[("lefthand-distance", last_revision_id)]
             if actual_revno != last_revno:
                 result.errors.append(
-                    errors.BzrCheckError(
-                        f"revno does not match len(mainline) {last_revno} != {actual_revno}"
+                    BzrCheckError(
+                        "revno does not match len(mainline) {} != {}".format(
+                            last_revno, actual_revno
+                        )
                     )
                 )
             # TODO: We should probably also check that self.revision_history
@@ -2369,13 +2379,18 @@ class GenericInterBranch(InterBranch):
                 if graph is None:
                     graph = self.target.repository.get_graph()
                 this_revno, this_last_revision = self.target.last_revision_info()
-                stop_revno = graph.find_distance_to_null(
-                    stop_revision,
-                    [
-                        (other_last_revision, other_revno),
-                        (this_last_revision, this_revno),
-                    ],
-                )
+                try:
+                    stop_revno = graph.find_distance_to_null(
+                        stop_revision,
+                        [
+                            (other_last_revision, other_revno),
+                            (this_last_revision, this_revno),
+                        ],
+                    )
+                except vcsgraph.errors.GhostRevisionsHaveNoRevno as e:
+                    raise errors.GhostRevisionsHaveNoRevno(
+                        e.revision_id, e.ghost_revision_id
+                    ) from e
             self.target.set_last_revision_info(stop_revno, stop_revision)
 
     def pull(
@@ -2409,7 +2424,7 @@ class GenericInterBranch(InterBranch):
                 try:
                     relpath = self.source.user_transport.relpath(normalized)
                     source_is_master = relpath == ""
-                except (errors.PathNotChild, urlutils.InvalidURL):
+                except (transport_errors.PathNotChild, urlutils.InvalidURL):
                     source_is_master = False
             if not local and bound_location and not source_is_master:
                 # not pulling from master, so we need to update master.

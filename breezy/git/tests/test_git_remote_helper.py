@@ -19,13 +19,13 @@
 """Tests for the git remote helper."""
 
 import os
+import site
 import subprocess
-import sys
 from io import BytesIO
 
 from dulwich.repo import Repo
 
-from ...tests import TestCaseWithTransport
+from ...tests import TestCaseWithTransport, python_executable, subprocess_pythonpath
 from ...tests.features import PathFeature
 from ..git_remote_helper import RemoteHelper, fetch, open_local_dir
 from ..object_store import get_object_store
@@ -93,9 +93,20 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         remote_dir = remote_tree.controldir
         env = dict(os.environ)
         env["GIT_DIR"] = local_path
-        env["PYTHONPATH"] = ":".join(sys.path)
+        env["PYTHONPATH"] = subprocess_pythonpath()
+        # ``HOME`` is overridden to a tempdir for the duration of the
+        # test, hiding the user-site directory; pin
+        # ``PYTHONUSERBASE`` so editable installs (whose `.pth` lives
+        # there) keep working in the spawned subprocess.
+        if site.USER_BASE is not None:
+            env["PYTHONUSERBASE"] = site.USER_BASE
         p = subprocess.Popen(
-            [sys.executable, git_remote_bzr_path, local_path, remote_dir.user_url],
+            [
+                python_executable(),
+                git_remote_bzr_path,
+                local_path,
+                remote_dir.user_url,
+            ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

@@ -18,7 +18,6 @@ import contextlib
 import os
 import re
 import subprocess
-import sys
 import tempfile
 from io import BytesIO
 
@@ -1033,7 +1032,10 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
     def test_execute(self):
         output = BytesIO()
         diff_obj = diff.DiffFromTool(
-            [sys.executable, "-c", 'print("{old_path} {new_path}")'], None, None, output
+            [tests.python_executable(), "-c", 'print("{old_path} {new_path}")'],
+            None,
+            None,
+            output,
         )
         self.addCleanup(diff_obj.finish)
         diff_obj._execute("old", "new")
@@ -1063,7 +1065,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
         diff_obj = diff.DiffFromTool(
-            [sys.executable, "-c", 'print "{old_path} {new_path}"'],
+            [tests.python_executable(), "-c", 'print "{old_path} {new_path}"'],
             basis_tree,
             tree,
             output,
@@ -1103,7 +1105,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = diff.DiffFromTool(
-            [sys.executable, "-c", 'print "{old_path} {new_path}"'],
+            [tests.python_executable(), "-c", 'print "{old_path} {new_path}"'],
             old_tree,
             tree,
             output,

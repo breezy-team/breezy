@@ -18,10 +18,12 @@
 import os
 from io import BytesIO
 
+from dromedary.errors import NoSuchFile
+
 import breezy
+from breezy.errors import LockContention
 
 from .. import config, controldir, errors, osutils, trace
-from .. import transport as _mod_transport
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
 from ..commit import (
@@ -31,7 +33,7 @@ from ..commit import (
     PointlessCommit,
     filter_excluded,
 )
-from ..errors import BzrError, LockContention
+from ..errors import BzrError
 from ..tree import TreeChange
 from . import TestCase, TestCaseWithTransport, test_foreign
 from .features import SymlinkFeature
@@ -373,7 +375,10 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual(b"1", inv.get_entry(b"dirid").revision)
         self.assertEqual(b"1", inv.get_entry(b"file1id").revision)
         # FIXME: This should raise a KeyError I think, rbc20051006
-        self.assertRaises(BzrError, inv.get_entry, b"file2id")
+        # bzrformats raises its own NoSuchId class which is not a BzrError.
+        from bzrformats.inventory import NoSuchId
+
+        self.assertRaises((BzrError, NoSuchId), inv.get_entry, b"file2id")
 
     def test_strict_commit(self):
         """Try and commit with unknown files and strict = True, should fail."""
@@ -828,11 +833,11 @@ create_signatures=when-possible
         # simulate network failure
 
         def raise_(self, arg, arg2, arg3=None, arg4=None):
-            raise _mod_transport.NoSuchFile("foo")
+            raise NoSuchFile("foo")
 
         repository.add_inventory = raise_
         repository.add_inventory_by_delta = raise_
-        self.assertRaises(_mod_transport.NoSuchFile, tree.commit, message_callback=cb)
+        self.assertRaises(NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
 
     def test_selected_file_merge_commit(self):

@@ -17,6 +17,8 @@
 
 from operator import itemgetter
 
+import vcsgraph.errors
+
 from breezy import controldir
 
 from ... import errors, osutils, transport
@@ -164,7 +166,12 @@ class BranchUpdater:
         last_rev_id = self.cache_mgr.lookup_committish(last_mark)
         with self.repo.lock_read():
             graph = self.repo.get_graph()
-            revno = graph.find_distance_to_null(last_rev_id, [])
+            try:
+                revno = graph.find_distance_to_null(last_rev_id, [])
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno as e:
+                raise errors.GhostRevisionsHaveNoRevno(
+                    e.revision_id, e.ghost_revision_id
+                ) from e
         existing_revno, existing_last_rev_id = br.last_revision_info()
         changed = False
         if revno != existing_revno or last_rev_id != existing_last_rev_id:

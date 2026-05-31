@@ -17,10 +17,12 @@
 import os
 
 import fastbencode as bencode
+from bzrformats import generate_ids
+from dromedary.errors import FileExists
+from dromedary.local import file_kind
 
 from .. import osutils, tests, trace, transform
 from .. import revision as _mod_revision
-from ..bzr import generate_ids
 from ..controldir import ControlDir
 from ..errors import StrictCommitFailed
 from ..merge import Merge3Merger
@@ -33,8 +35,6 @@ from ..transform import (
     _FileMover,
     resolve_conflicts,
 )
-from ..transport import FileExists
-from ..transport.local import file_kind
 from . import TestCaseInTempDir, features
 from .features import HardlinkFeature, SymlinkFeature
 
@@ -376,9 +376,13 @@ class TestCommitTransform(tests.TestCaseWithTransport):
             ["Author1 <author1@example.com>", "Author2 <author2@example.com>"],
             revision.get_apparent_authors(),
         )
-        properties = dict(revision.properties)
-        del properties["authors"]
-        self.assertEqual({"foo": "bar", "branch-nick": "tree"}, properties)
+        # ``revision.properties`` may be a fresh dict on each access (e.g.
+        # built from a Rust-side struct), so deleting from it doesn't
+        # persist; compare a filtered copy instead.
+        self.assertEqual(
+            {"foo": "bar", "branch-nick": "tree"},
+            {k: v for k, v in revision.properties.items() if k != "authors"},
+        )
 
     def test_no_explicit_revprops(self):
         branch, tt = self.get_branch_and_transform()

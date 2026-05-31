@@ -26,7 +26,9 @@ __docformat__ = "google"
 
 import re
 
-from . import errors, osutils, transport
+from dromedary.errors import NoSuchFile
+
+from . import errors, osutils
 
 _VIEWS_FORMAT_MARKER_RE = re.compile(b"Bazaar views format (\\d+)")
 _VIEWS_FORMAT1_MARKER = b"Bazaar views format 1\n"
@@ -227,7 +229,7 @@ class PathBasedViews(_Views):
             with self.tree.lock_read():
                 try:
                     view_content = self.tree._transport.get_bytes("views")
-                except transport.NoSuchFile:
+                except NoSuchFile:
                     self._current, self._views = None, {}
                 else:
                     keywords, self._views = self._deserialize_view_content(view_content)

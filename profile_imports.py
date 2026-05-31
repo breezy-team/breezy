@@ -23,7 +23,7 @@ import time
 
 _parent_stack: list[tuple[int, str]] = []
 _total_stack: dict[tuple[int, str], list[tuple[int, str]]] = {}
-_info = {}
+_info: dict[tuple[int, str], list] = {}
 _cur_id = 0
 _timer = time.time
 if sys.platform == "win32":

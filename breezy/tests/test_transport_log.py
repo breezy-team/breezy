@@ -17,11 +17,10 @@
 
 """Tests for log+ transport decorator."""
 
+from dromedary.log import TransportLogDecorator
+
 from breezy import transport
 from breezy.tests import TestCaseWithMemoryTransport
-
-from ..trace import mutter
-from ..transport.log import TransportLogDecorator
 
 
 class TestTransportLog(TestCaseWithMemoryTransport):
@@ -29,13 +28,13 @@ class TestTransportLog(TestCaseWithMemoryTransport):
         base_transport = self.get_transport("")
         logging_transport = transport.get_transport("log+" + base_transport.base)
 
-        # operations such as mkdir are logged
-        mutter("where are you?")
-        logging_transport.mkdir("subdir")
-        log = self.get_log()
-        # GZ 2017-05-24: Used to expect abspath logged, logger needs fixing.
-        self.assertContainsRe(log, r"mkdir subdir")
-        self.assertContainsRe(log, "  --> None")
+        # Capture logging output from dromedary.log
+        with self.assertLogs("dromedary.log", level="DEBUG") as cm:
+            logging_transport.mkdir("subdir")
+
+        log_output = "\n".join(cm.output)
+        self.assertContainsRe(log_output, r"mkdir subdir")
+        self.assertContainsRe(log_output, "  --> None")
         # they have the expected effect
         self.assertTrue(logging_transport.has("subdir"))
         # and they operate on the underlying transport
@@ -60,14 +59,16 @@ class TestTransportLog(TestCaseWithMemoryTransport):
         next(result)
 
         result = logging_transport.readv("foo", [(0, 10)])
-        self.assertEqual(list(result), [(0, "abcdefghij")])
+        self.assertEqual(list(result), [(0, b"abcdefghij")])
 
 
 class DummyReadvTransport:
     base = "dummy:///"
 
-    def readv(self, filename, offset_length_pairs):
-        yield (0, "abcdefghij")
+    def readv(
+        self, filename, offset_length_pairs, adjust_for_latency=False, upper_limit=None
+    ):
+        yield (0, b"abcdefghij")
 
     def abspath(self, path):
         return self.base + path

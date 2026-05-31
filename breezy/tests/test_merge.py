@@ -17,11 +17,14 @@
 import contextlib
 import os
 
+from bzrformats import inventory, knit, versionedfile
+from bzrformats.inventory import NoSuchId
+from dromedary.local import file_kind
+
 from .. import branch as _mod_branch
 from .. import errors, option, tests
 from .. import merge as _mod_merge
 from .. import revision as _mod_revision
-from ..bzr import inventory, knit, versionedfile
 from ..bzr.conflicts import (
     ContentsConflict,
     DeletingParent,
@@ -32,7 +35,6 @@ from ..bzr.conflicts import (
 from ..errors import NoCommits, UnrelatedBranches
 from ..merge import _PlanMerge, merge_inner, transform_tree
 from ..osutils import basename, pathjoin
-from ..transport.local import file_kind
 from ..workingtree import PointlessMerge, WorkingTree
 from . import (
     TestCaseWithMemoryTransport,
@@ -1493,6 +1495,70 @@ class TestMergerInMemory(TestMergerBase):
         self.assertNotIn("lca_trees", merge_obj.kwargs)
 
 
+class TestMergerEntries3PathBased(tests.TestCase):
+    """``_entries3`` on trees whose iter_changes yields plain TreeChange.
+
+    Inventory-less trees (generic MemoryTree, svn, future path-based
+    backends) yield ``TreeChange`` objects without ``parent_id`` /
+    ``file_id`` attributes. ``_entries3`` must derive parents and names
+    from paths in that case instead of crashing.
+    """
+
+    def _make_merger(self, base, other, this):
+        merger = _mod_merge.Merge3Merger.__new__(_mod_merge.Merge3Merger)
+        merger.base_tree = base
+        merger.other_tree = other
+        merger.this_tree = this
+        merger.interesting_files = None
+        merger._lca_trees = None
+        return merger
+
+    def test_entries3_with_plain_tree_change(self):
+        """A tree yielding plain TreeChange doesn't crash _entries3."""
+        from ..tree import InterTree, TreeChange
+
+        class PathTree:
+            supports_file_ids = False
+
+            def iter_changes(self, base, specific_files=None, extra_trees=None):
+                yield TreeChange(
+                    path=(None, "a.txt"),
+                    changed_content=True,
+                    versioned=(False, True),
+                    name=(None, "a.txt"),
+                    kind=(None, "file"),
+                    executable=(None, False),
+                )
+
+            def lock_read(self):
+                return contextlib.nullcontext()
+
+        class PathInter(InterTree):
+            @classmethod
+            def is_compatible(cls, source, target):
+                return isinstance(source, PathTree) and isinstance(target, PathTree)
+
+            def find_source_path(self, path, recurse="none"):
+                return None
+
+        InterTree.register_optimiser(PathInter)
+        self.addCleanup(InterTree.unregister_optimiser, PathInter)
+
+        merger = self._make_merger(PathTree(), PathTree(), PathTree())
+        entries = list(merger._entries3())
+        self.assertEqual(1, len(entries))
+        file_id, changed, paths3, parents3, names3, _executable3, _copied = entries[0]
+        # No file id on plain TreeChange.
+        self.assertIsNone(file_id)
+        self.assertTrue(changed)
+        # Paths: absent in base/this, present in other.
+        self.assertEqual((None, "a.txt", None), paths3)
+        # Parents derived from dirname — top-level file → "" in other.
+        self.assertEqual((None, "", None), parents3)
+        # Names from basename.
+        self.assertEqual((None, "a.txt", None), names3)
+
+
 class TestMergerEntriesLCA(TestMergerBase):
     def make_merge_obj(self, builder, other_revision_id, interesting_files=None):
         merger = self.make_Merger(
@@ -2570,7 +2636,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b"B-id", b"C-id"], [], revision_id=b"D-id")
         wt, conflicts = self.do_merge(builder, b"F-id")
         self.assertEqual([], conflicts)
-        self.assertRaises(errors.NoSuchId, wt.id2path, b"foo-id")
+        self.assertRaises(NoSuchId, wt.id2path, b"foo-id")
 
     def test_executable_changes(self):
         #   A       Path at 'foo'

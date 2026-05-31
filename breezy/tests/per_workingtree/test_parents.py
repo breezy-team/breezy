@@ -19,10 +19,15 @@
 import os
 from io import BytesIO
 
+from bzrformats.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+)
+
 from ... import errors
 from ... import revision as _mod_revision
-from ...bzr.inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
-from ...bzr.inventory_delta import InventoryDelta
 from ...bzr.inventorytree import InventoryRevisionTree, InventoryTree
 from ...tests import TestNotApplicable
 from ...uncommit import uncommit
@@ -433,6 +438,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
+        from bzrformats.inventory_delta import InventoryDelta
+
         old_ids = set(old.iter_all_ids())
         new_ids = set(new.iter_all_ids())
         adds = new_ids - old_ids
@@ -476,7 +483,16 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
         with tree.lock_write():
             if shape.root.revision is None:
-                shape.root.revision = revid
+                old_root = shape.root
+                shape.delete(old_root.file_id)
+                shape.add(
+                    InventoryDirectory(
+                        file_id=old_root.file_id,
+                        name=old_root.name,
+                        parent_id=None,
+                        revision=revid,
+                    )
+                )
             builder = tree.branch.get_commit_builder(
                 parents=[],
                 timestamp=0,
@@ -497,24 +513,31 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             builder.finish_inventory()
             builder.commit("Message")
 
-    def add_entry(self, inv, entry):
-        inv.add(entry)
-
     def add_dir(self, inv, rev_id, file_id, parent_id, name):
-        new_dir = InventoryDirectory(file_id, name, parent_id, rev_id)
-        self.add_entry(inv, new_dir)
+        inv.add(InventoryDirectory(file_id, name, parent_id, revision=rev_id))
 
     def add_file(self, inv, rev_id, file_id, parent_id, name, sha, size):
-        new_file = InventoryFile(
-            file_id, name, parent_id, rev_id, text_sha1=sha, text_size=size
+        inv.add(
+            InventoryFile(
+                file_id,
+                name,
+                parent_id,
+                revision=rev_id,
+                text_sha1=sha,
+                text_size=size,
+            )
         )
-        self.add_entry(inv, new_file)
 
     def add_link(self, inv, rev_id, file_id, parent_id, name, target):
-        new_link = InventoryLink(
-            file_id, name, parent_id, rev_id, symlink_target=target
+        inv.add(
+            InventoryLink(
+                file_id,
+                name,
+                parent_id,
+                revision=rev_id,
+                symlink_target=target,
+            )
         )
-        self.add_entry(inv, new_link)
 
     def add_new_root(self, new_shape, old_revid, new_revid):
         if self.bzrdir_format.repository_format.rich_root_data:

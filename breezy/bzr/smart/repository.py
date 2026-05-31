@@ -26,18 +26,21 @@ import threading
 import zlib
 
 import fastbencode as bencode
-
-from ... import errors, osutils, trace, ui, zlib_util
-from ... import revision as _mod_revision
-from ...repository import _strip_NULL_ghosts, network_format_registry
-from .. import inventory as _mod_inventory
-from .. import inventory_delta, pack, vf_search
-from ..bzrdir import BzrDir
-from ..versionedfile import (
+from bzrformats import inventory as _mod_inventory
+from bzrformats import inventory_delta, pack
+from bzrformats.errors import RevisionNotPresent
+from bzrformats.inventory import _make_delta as make_inventory_delta
+from bzrformats.versionedfile import (
     ChunkedContentFactory,
     NetworkRecordStream,
     record_to_fulltext_bytes,
 )
+
+from ... import errors, osutils, trace, ui, zlib_util
+from ... import revision as _mod_revision
+from ...repository import _strip_NULL_ghosts, network_format_registry
+from .. import vf_search
+from ..bzrdir import BzrDir
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -639,7 +642,6 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         if (  # noqa: SIM103
             to_format.supports_chks
             and from_format.repository_class is to_format.repository_class
-            and from_format._revision_serializer == to_format._revision_serializer
             and from_format._inventory_serializer == to_format._inventory_serializer
         ):
             # Source is CHK, but target matches: that's ok
@@ -703,7 +705,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         byte_stream = _stream_to_byte_stream(stream, repository._format)
         try:
             yield from byte_stream
-        except errors.RevisionNotPresent as e:
+        except RevisionNotPresent as e:
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.
             repository.unlock()
@@ -1668,7 +1670,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
             for inv, _revid in repository._iter_inventories(revids, ordering):
                 if inv is None:
                     continue
-                inv_delta = _mod_inventory._make_delta(inv, prev_inv)
+                inv_delta = make_inventory_delta(inv, prev_inv)
                 lines = serializer.delta_to_lines(
                     prev_inv.revision_id, inv.revision_id, inv_delta
                 )
@@ -1792,7 +1794,7 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
         byte_stream = _stream_to_byte_stream(stream, repository._format)
         try:
             yield from byte_stream
-        except errors.RevisionNotPresent as e:
+        except RevisionNotPresent as e:
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.
             repository.unlock()

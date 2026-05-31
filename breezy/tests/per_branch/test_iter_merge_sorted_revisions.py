@@ -16,6 +16,8 @@
 
 """Tests for Branch.iter_merge_sorted_revisions()."""
 
+from dromedary import errors as transport_errors
+
 from breezy import errors, tests
 from breezy.tests import per_branch
 
@@ -45,7 +47,10 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
     def make_builder_with_merges(self, relpath):
         try:
             builder = self.make_branch_builder(relpath)
-        except (errors.TransportNotPossible, errors.UninitializableFormat) as e:
+        except (
+            transport_errors.TransportNotPossible,
+            errors.UninitializableFormat,
+        ) as e:
             raise tests.TestNotApplicable("format not directly constructable") from e
         builder.start_series()
         # 1
@@ -178,7 +183,10 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
     def make_branch_builder(self, relpath):
         try:
             builder = super().make_branch_builder(relpath)
-        except (errors.TransportNotPossible, errors.UninitializableFormat) as e:
+        except (
+            transport_errors.TransportNotPossible,
+            errors.UninitializableFormat,
+        ) as e:
             raise tests.TestNotApplicable("format not directly constructable") from e
         return builder
 

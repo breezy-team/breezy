@@ -19,6 +19,10 @@
 
 import re
 
+from dromedary import errors as transport_errors
+from dromedary import memory
+from dromedary.tests import http_server
+
 from breezy import (
     branch,
     controldir,
@@ -32,8 +36,7 @@ from breezy import (
     workingtree,
 )
 from breezy.bzr import bzrdir, knitrepo
-from breezy.tests import http_server, scenarios, script, test_foreign
-from breezy.transport import memory
+from breezy.tests import scenarios, script, test_foreign
 
 load_tests = scenarios.load_tests_apply_scenarios
 
@@ -630,11 +633,11 @@ class TestPush(tests.TestCaseWithTransport):
 class RedirectingMemoryTransport(memory.MemoryTransport):
     def mkdir(self, relpath, mode=None):
         if self._cwd == "/source/":
-            raise errors.RedirectRequested(
+            raise transport_errors.RedirectRequested(
                 self.abspath(relpath), self.abspath("../target"), is_permanent=True
             )
         elif self._cwd == "/infinite-loop/":
-            raise errors.RedirectRequested(
+            raise transport_errors.RedirectRequested(
                 self.abspath(relpath),
                 self.abspath("../infinite-loop"),
                 is_permanent=True,
@@ -644,7 +647,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
 
     def get(self, relpath):
         if self.clone(relpath)._cwd == "/infinite-loop/":
-            raise errors.RedirectRequested(
+            raise transport_errors.RedirectRequested(
                 self.abspath(relpath),
                 self.abspath("../infinite-loop"),
                 is_permanent=True,
@@ -659,18 +662,14 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
 
 class RedirectingMemoryServer(memory.MemoryServer):
     def start_server(self):
-        self._dirs = {"/": None}
-        self._files = {}
-        self._locks = {}
+        from dromedary.memory import MemoryStoreHandle
+
+        self._store = MemoryStoreHandle()
         self._scheme = f"redirecting-memory+{id(self)}:///"
         transport.register_transport(self._scheme, self._memory_factory)
 
     def _memory_factory(self, url):
-        result = RedirectingMemoryTransport(url)
-        result._dirs = self._dirs
-        result._files = self._files
-        result._locks = self._locks
-        return result
+        return RedirectingMemoryTransport(url, _shared_store=self._store)
 
     def stop_server(self):
         transport.unregister_transport(self._scheme, self._memory_factory)
