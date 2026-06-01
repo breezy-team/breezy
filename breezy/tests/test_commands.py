@@ -529,6 +529,44 @@ class TestRustPyCommand(tests.TestCase):
         self.assertEqual("commit", wrapped.name())
         self.assertEqual("ci", wrapped.invoked_as())
 
+    def test_external_command(self):
+        from ..externalcommand import ExternalCommand
+
+        cmd = ExternalCommand("/usr/bin/some-external-tool")
+        wrapped = self.PyCommand(cmd)
+        # ExternalCommand overrides name() and bypasses Command.__init__.
+        self.assertEqual("some-external-tool", wrapped.name())
+        self.assertEqual([], wrapped.aliases())
+        self.assertEqual([], wrapped.takes_args())
+        self.assertEqual(False, wrapped.hidden())
+        self.assertEqual("strict", wrapped.encoding_type())
+        self.assertIs(None, wrapped.invoked_as())
+
+    def test_all_commands_round_trip(self):
+        # Wrap every resolvable command and assert each trait method agrees
+        # with the underlying Python object, exercising PyCommand against the
+        # whole command set.
+        for name in sorted(commands.all_command_names()):
+            cmd = commands.get_cmd_object(name)
+            wrapped = self.PyCommand(cmd)
+            self.assertEqual(cmd.name(), wrapped.name())
+            self.assertEqual(list(cmd.aliases), wrapped.aliases())
+            self.assertEqual(list(cmd.takes_args), wrapped.takes_args())
+            self.assertEqual(cmd.hidden, wrapped.hidden())
+            self.assertEqual(cmd.encoding_type, wrapped.encoding_type())
+            self.assertEqual(cmd.invoked_as, wrapped.invoked_as())
+            self.assertEqual(cmd.plugin_name(), wrapped.plugin_name())
+            self.assertEqual(cmd.help(), wrapped.help())
+
+    def test_get_cmd_object_runs_trait_check(self):
+        # With the command_trait debug flag set, _get_cmd_object runs the
+        # round-trip check itself for every lookup.
+        from breezy import debug
+
+        debug.set_debug_flag("command_trait")
+        for name in sorted(commands.all_command_names()):
+            commands.get_cmd_object(name)
+
 
 class TestMatchArgform(tests.TestCase):
     """The Rust port of ``_match_argform``, reached through commands.py."""

@@ -349,7 +349,38 @@ def _get_cmd_object(
         hook(cmd)
     if getattr(cmd, "invoked_as", None) is None:
         cmd.invoked_as = cmd_name
+    if debug.debug_flag_enabled("command_trait"):
+        _check_command_trait(cmd)
     return cmd
+
+
+def _check_command_trait(cmd):
+    """Verify the Rust Command trait round-trips for ``cmd``.
+
+    This wraps ``cmd`` in the Rust PyCommand and checks that each trait method
+    agrees with the Python command object. It is only run when the
+    ``command_trait`` debug flag is set, so it stays out of the normal lookup
+    path; it exists to exercise the wrapper against every real command during
+    the migration to a Rust command trait.
+    """
+    wrapped = _commands_rs.PyCommand(cmd)
+    mismatches = []
+    for trait_value, python_value in [
+        (wrapped.name(), cmd.name()),
+        (wrapped.aliases(), list(cmd.aliases)),
+        (wrapped.takes_args(), list(cmd.takes_args)),
+        (wrapped.hidden(), cmd.hidden),
+        (wrapped.encoding_type(), cmd.encoding_type),
+        (wrapped.invoked_as(), cmd.invoked_as),
+        (wrapped.plugin_name(), cmd.plugin_name()),
+        (wrapped.help(), cmd.help()),
+    ]:
+        if trait_value != python_value:
+            mismatches.append((trait_value, python_value))
+    if mismatches:
+        raise AssertionError(
+            f"Rust Command trait mismatch for {cmd.name()!r}: {mismatches!r}"
+        )
 
 
 class NoPluginAvailable(errors.BzrError):
