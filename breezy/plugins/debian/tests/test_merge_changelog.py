@@ -204,7 +204,7 @@ class TestMergeChangelog(tests.TestCase):
     _test_needs_features = [dpkg_mergechangelogs_feature]
 
     def setUp(self):
-        super(tests.TestCase, self).setUp()
+        super().setUp()
         # Intercept warnings from merge_changelog's logger: this is where
         self.logged_warnings = self.make_utf8_encoded_stringio()
         self.addCleanup(self.addMergeChangelogWarningsDetail)
