@@ -1143,88 +1143,91 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     argv = _specified_or_unicode_argv(argv)
     trace.mutter("brz arguments: %r", argv)
 
-    # --no-plugins is handled specially at a very early stage. We need
-    # to load plugins before doing other command parsing so that they
-    # can override commands, but this needs to happen first.
-    master_opts, argv_copy = _commands_rs.scan_master_options(argv)
-    opt_lsprof = master_opts.lsprof
-    opt_profile = master_opts.profile
-    opt_no_plugins = master_opts.no_plugins
-    opt_no_aliases = master_opts.no_aliases
-    opt_no_l10n = master_opts.no_l10n
-    opt_builtin = master_opts.builtin
-    opt_coverage = master_opts.coverage
-    opt_lsprof_file = master_opts.lsprof_file
-    if master_opts.concurrency is not None:
-        os.environ["BRZ_CONCURRENCY"] = master_opts.concurrency
-    for flag in master_opts.debug_flags:
+    # The orchestration lives in Rust (breezy._cmd_rs.commands.run_bzr); this
+    # context object provides the side-effecting operations it drives. The Rust
+    # side scans the master options, applies their side effects through this
+    # object, loads plugins, resolves aliases, looks up the command and runs it
+    # under the selected profiler, restoring verbosity and overrides afterwards.
+    context = _RunBzrContext(load_plugins, disable_plugins)
+    return _commands_rs.run_bzr(argv, context)
+
+
+class _RunBzrContext:
+    """Side-effecting operations driven by the Rust ``run_bzr`` orchestrator."""
+
+    def __init__(self, load_plugins, disable_plugins):
+        self._load_plugins = load_plugins
+        self._disable_plugins = disable_plugins
+        self._saved_verbosity_level = None
+        self._cmdline_overrides = breezy.get_global_state().cmdline_overrides
+
+    def set_debug_flag(self, flag):
         debug.set_debug_flag(flag)
-    override_config = master_opts.config_overrides
 
-    cmdline_overrides = breezy.get_global_state().cmdline_overrides
-    cmdline_overrides._from_cmdline(override_config)
+    def set_concurrency(self, value):
+        os.environ["BRZ_CONCURRENCY"] = value
 
-    debug.set_debug_flags_from_config()
+    def apply_cmdline_overrides(self, override_config):
+        self._cmdline_overrides._from_cmdline(override_config)
 
-    if not opt_no_plugins:
+    def set_debug_flags_from_config(self):
+        debug.set_debug_flags_from_config()
+
+    def warn_plugin_load_problems(self):
         from breezy import config
 
         c = config.GlobalConfig()
-        warn_load_problems = not c.suppress_warning("plugin_load_failure")
-        load_plugins(warn_load_problems=warn_load_problems)
-    else:
-        disable_plugins()
+        return not c.suppress_warning("plugin_load_failure")
 
-    argv = argv_copy
-    if not argv:
+    def load_plugins(self, warn_load_problems):
+        self._load_plugins(warn_load_problems=warn_load_problems)
+
+    def disable_plugins(self):
+        self._disable_plugins()
+
+    def run_help(self):
         get_cmd_object("help").run_argv_aliases([])
-        return 0
 
-    if argv[0] == "--version":
+    def run_version(self):
         get_cmd_object("version").run_argv_aliases([])
-        return 0
 
-    alias_argv = None
+    def get_alias(self, cmd):
+        return get_alias(cmd)
 
-    if not opt_no_aliases:
-        alias_argv = get_alias(argv[0])
-        if alias_argv:
-            argv[0] = alias_argv.pop(0)
+    def get_cmd_object(self, cmd, plugins_override):
+        return get_cmd_object(cmd, plugins_override=plugins_override)
 
-    cmd = argv.pop(0)
-    cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
-    if opt_no_l10n:
+    def set_no_l10n(self, cmd_obj):
         cmd_obj.l10n = False
-    run = cmd_obj.run_argv_aliases
-    run_argv = [argv, alias_argv]
 
-    try:
-        # We can be called recursively (tests for example), but we don't want
-        # the verbosity level to propagate.
-        saved_verbosity_level = option._verbosity_level
-        option._verbosity_level = 0
-        if opt_lsprof:
-            if opt_coverage:
-                trace.warning("--coverage ignored, because --lsprof is in use.")
-            ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
-        elif opt_profile:
-            if opt_coverage:
-                trace.warning("--coverage ignored, because --profile is in use.")
-            ret = apply_profiled(run, *run_argv)
-        elif opt_coverage:
-            ret = apply_coveraged(run, *run_argv)
+    def get_verbosity_level(self):
+        return option._verbosity_level
+
+    def set_verbosity_level(self, level):
+        option._verbosity_level = level
+
+    def warning(self, message):
+        trace.warning(message)
+
+    def run_command(self, cmd_obj, argv, alias_argv, profiler, lsprof_file):
+        run = cmd_obj.run_argv_aliases
+        if profiler == "lsprof":
+            return apply_lsprofiled(lsprof_file, run, argv, alias_argv)
+        elif profiler == "profile":
+            return apply_profiled(run, argv, alias_argv)
+        elif profiler == "coverage":
+            return apply_coveraged(run, argv, alias_argv)
         else:
-            ret = run(*run_argv)
-        return ret or 0
-    finally:
-        # reset, in case we may do other commands later within the same
-        # process. Commands that want to execute sub-commands must propagate
-        # --verbose in their own way.
-        if debug.debug_flag_enabled("memory"):
-            trace.debug_memory("Process status after command:", short=False)
-        option._verbosity_level = saved_verbosity_level
-        # Reset the overrides
-        cmdline_overrides._reset()
+            return run(argv, alias_argv)
+
+    def memory_debug_enabled(self):
+        return debug.debug_flag_enabled("memory")
+
+    def debug_memory(self):
+        trace.debug_memory("Process status after command:", short=False)
+
+    def reset_cmdline_overrides(self):
+        self._cmdline_overrides._reset()
 
 
 def display_command(func):

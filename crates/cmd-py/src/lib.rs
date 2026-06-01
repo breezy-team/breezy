@@ -734,6 +734,16 @@ fn scan_master_options(argv: Vec<String>) -> PyResult<(PyMasterOptions, Vec<Stri
     Ok((PyMasterOptions(opts), remaining))
 }
 
+/// Drive a single ``brz`` invocation.
+///
+/// `argv` is the raw argument vector (master options included); `ctx` is a
+/// Python object providing the side-effecting operations as methods. Returns
+/// the command's exit code.
+#[pyfunction]
+fn run_bzr(argv: Vec<String>, ctx: &Bound<'_, PyAny>) -> PyResult<i32> {
+    breezy::pycommand::run_bzr(argv, ctx)
+}
+
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
 
@@ -968,6 +978,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     commandsm.add_function(wrap_pyfunction!(get_help_parts, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(guess_command, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(scan_master_options, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(run_bzr, &commandsm)?)?;
     commandsm.add_class::<PyMasterOptions>()?;
     m.add_submodule(&commandsm)?;
 

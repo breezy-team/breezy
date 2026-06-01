@@ -435,6 +435,44 @@ pub fn scan_master_options(
     Ok((opts, remaining))
 }
 
+/// Which profiler `run_bzr` should run a command under.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Profiler {
+    /// No profiler.
+    None,
+    /// The lsprof profiler (``--lsprof`` / ``--lsprof-file``).
+    Lsprof,
+    /// The hotshot profiler (``--profile``).
+    Profile,
+    /// Coverage reporting (``--coverage``).
+    Coverage,
+}
+
+/// Decide which profiler to use given the master options, and collect any
+/// warnings that should be emitted.
+///
+/// Mirrors the precedence in ``run_bzr``: ``--lsprof`` wins over ``--profile``
+/// which wins over ``--coverage``; when ``--coverage`` is combined with a
+/// higher-precedence profiler a warning is produced explaining it was ignored.
+pub fn select_profiler(opts: &MasterOptions) -> (Profiler, Vec<String>) {
+    let mut warnings = Vec::new();
+    if opts.lsprof {
+        if opts.coverage {
+            warnings.push("--coverage ignored, because --lsprof is in use.".to_string());
+        }
+        (Profiler::Lsprof, warnings)
+    } else if opts.profile {
+        if opts.coverage {
+            warnings.push("--coverage ignored, because --profile is in use.".to_string());
+        }
+        (Profiler::Profile, warnings)
+    } else if opts.coverage {
+        (Profiler::Coverage, warnings)
+    } else {
+        (Profiler::None, warnings)
+    }
+}
+
 /// The abstract interface implemented by every breezy command.
 ///
 /// Each method mirrors an attribute or method of the Python `Command` class.
@@ -809,5 +847,63 @@ mod tests {
         assert_eq!(err.option, "--lsprof-file");
         let err = scan_master_options(argv(&["--concurrency"])).unwrap_err();
         assert_eq!(err.option, "--concurrency");
+    }
+
+    fn opts_with(lsprof: bool, profile: bool, coverage: bool) -> MasterOptions {
+        MasterOptions {
+            lsprof,
+            profile,
+            coverage,
+            ..MasterOptions::default()
+        }
+    }
+
+    #[test]
+    fn profiler_none() {
+        let (p, w) = select_profiler(&opts_with(false, false, false));
+        assert_eq!(p, Profiler::None);
+        assert!(w.is_empty());
+    }
+
+    #[test]
+    fn profiler_precedence() {
+        assert_eq!(
+            select_profiler(&opts_with(true, false, false)).0,
+            Profiler::Lsprof
+        );
+        assert_eq!(
+            select_profiler(&opts_with(false, true, false)).0,
+            Profiler::Profile
+        );
+        assert_eq!(
+            select_profiler(&opts_with(false, false, true)).0,
+            Profiler::Coverage
+        );
+        // lsprof wins over profile and coverage.
+        assert_eq!(
+            select_profiler(&opts_with(true, true, true)).0,
+            Profiler::Lsprof
+        );
+    }
+
+    #[test]
+    fn profiler_coverage_ignored_warnings() {
+        let (p, w) = select_profiler(&opts_with(true, false, true));
+        assert_eq!(p, Profiler::Lsprof);
+        assert_eq!(
+            w,
+            vec!["--coverage ignored, because --lsprof is in use.".to_string()]
+        );
+
+        let (p, w) = select_profiler(&opts_with(false, true, true));
+        assert_eq!(p, Profiler::Profile);
+        assert_eq!(
+            w,
+            vec!["--coverage ignored, because --profile is in use.".to_string()]
+        );
+
+        // Coverage alone produces no warning.
+        let (_p, w) = select_profiler(&opts_with(false, false, true));
+        assert!(w.is_empty());
     }
 }
