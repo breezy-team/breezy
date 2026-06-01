@@ -547,6 +547,76 @@ impl PyCommandWrapper {
     }
 }
 
+import_exception!(breezy.errors, CommandError);
+
+/// Translate `template` via ``breezy.i18n.gettext`` and format it with `args`.
+///
+/// This mirrors the Python ``i18n.gettext(template).format(...)`` calls so the
+/// ``{0!r}`` repr-conversions and the active translation are byte-identical to
+/// the original implementation.
+fn gettext_format(py: Python<'_>, template: &str, args: (String, String)) -> PyResult<String> {
+    let i18n = py.import("breezy.i18n")?;
+    let translated = i18n.call_method1("gettext", (template,))?;
+    translated.call_method1("format", args)?.extract::<String>()
+}
+
+fn arg_match_error_to_py(py: Python<'_>, err: breezy::command::ArgMatchError) -> PyErr {
+    use breezy::command::ArgMatchError;
+    let msg = match err {
+        ArgMatchError::NeedsOneOrMore { cmd, argname } => {
+            gettext_format(py, "command {0!r} needs one or more {1}", (cmd, argname))
+        }
+        ArgMatchError::RequiresArgument { cmd, argname } => {
+            gettext_format(py, "command {0!r} requires argument {1}", (cmd, argname))
+        }
+        ArgMatchError::ExtraArgument { cmd, extra } => {
+            gettext_format(py, "extra argument to command {0}: {1}", (cmd, extra))
+        }
+    };
+    match msg {
+        Ok(msg) => CommandError::new_err(msg),
+        Err(e) => e,
+    }
+}
+
+/// Match positional arguments against a command's ``takes_args`` specification.
+///
+/// A port of the Python ``breezy.commands._match_argform``. Returns a dict
+/// mapping parameter names to their bound values (a string, a list, or `None`
+/// for an empty ``*`` match), preserving the declaration order of `takes_args`.
+#[pyfunction]
+fn match_argform<'py>(
+    py: Python<'py>,
+    cmd: &str,
+    takes_args: Vec<String>,
+    args: Vec<String>,
+) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+    use breezy::command::ArgValue;
+    let matched = breezy::command::match_argform(cmd, &takes_args, args)
+        .map_err(|e| arg_match_error_to_py(py, e))?;
+    let dict = pyo3::types::PyDict::new(py);
+    for (key, value) in matched {
+        match value {
+            ArgValue::Scalar(s) => dict.set_item(key, s)?,
+            ArgValue::List(None) => dict.set_item(key, py.None())?,
+            ArgValue::List(Some(items)) => dict.set_item(key, items)?,
+        }
+    }
+    Ok(dict)
+}
+
+/// Convert a squished class name (``cmd_foo_bar``) to a command name (``foo-bar``).
+#[pyfunction]
+fn unsquish_command_name(name: &str) -> String {
+    breezy::command::unsquish_command_name(name)
+}
+
+/// Convert a command name (``foo-bar``) to a squished class name (``cmd_foo_bar``).
+#[pyfunction]
+fn squish_command_name(name: &str) -> String {
+    breezy::command::squish_command_name(name)
+}
+
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
 
@@ -774,6 +844,9 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     let commandsm = PyModule::new(py, "commands")?;
     commandsm.add_class::<PyCommandWrapper>()?;
+    commandsm.add_function(wrap_pyfunction!(match_argform, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(unsquish_command_name, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(squish_command_name, &commandsm)?)?;
     m.add_submodule(&commandsm)?;
 
     m.add_class::<TreeBuilder>()?;

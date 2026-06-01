@@ -54,6 +54,7 @@ from breezy import (
 
 
 from . import debug, errors, registry
+from ._cmd_rs import commands as _commands_rs
 from .hooks import Hooks
 from .plugin import disable_plugins, load_plugins, plugin_name
 
@@ -201,12 +202,8 @@ def register_command(cmd, decorate=False):
     return plugin_cmds.register(cmd, decorate)
 
 
-def _squish_command_name(cmd):
-    return "cmd_" + cmd.replace("-", "_")
-
-
-def _unsquish_command_name(cmd):
-    return cmd[4:].replace("_", "-")
+_squish_command_name = _commands_rs.squish_command_name
+_unsquish_command_name = _commands_rs.unsquish_command_name
 
 
 def _register_builtin_commands():
@@ -999,57 +996,7 @@ def parse_args(command, argv, alias_argv=None):
 
 
 def _match_argform(cmd, takes_args, args):
-    argdict = {}
-
-    # step through args and takes_args, allowing appropriate 0-many matches
-    for ap in takes_args:
-        argname = ap[:-1]
-        if ap[-1] == "?":
-            if args:
-                argdict[argname] = args.pop(0)
-        elif ap[-1] == "*":  # all remaining arguments
-            if args:
-                argdict[argname + "_list"] = args[:]
-                args = []
-            else:
-                argdict[argname + "_list"] = None
-        elif ap[-1] == "+":
-            if not args:
-                raise errors.CommandError(
-                    i18n.gettext("command {0!r} needs one or more {1}").format(
-                        cmd, argname.upper()
-                    )
-                )
-            else:
-                argdict[argname + "_list"] = args[:]
-                args = []
-        elif ap[-1] == "$":  # all but one
-            if len(args) < 2:
-                raise errors.CommandError(
-                    i18n.gettext("command {0!r} needs one or more {1}").format(
-                        cmd, argname.upper()
-                    )
-                )
-            argdict[argname + "_list"] = args[:-1]
-            args[:-1] = []
-        else:
-            # just a plain arg
-            argname = ap
-            if not args:
-                raise errors.CommandError(
-                    i18n.gettext("command {0!r} requires argument {1}").format(
-                        cmd, argname.upper()
-                    )
-                )
-            else:
-                argdict[argname] = args.pop(0)
-
-    if args:
-        raise errors.CommandError(
-            i18n.gettext("extra argument to command {0}: {1}").format(cmd, args[0])
-        )
-
-    return argdict
+    return _commands_rs.match_argform(cmd, list(takes_args), list(args))
 
 
 def apply_coveraged(the_callable, *args, **kwargs):

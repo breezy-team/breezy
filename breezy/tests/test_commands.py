@@ -528,3 +528,58 @@ class TestRustPyCommand(tests.TestCase):
         wrapped = self.PyCommand(commands.get_cmd_object("ci"))
         self.assertEqual("commit", wrapped.name())
         self.assertEqual("ci", wrapped.invoked_as())
+
+
+class TestMatchArgform(tests.TestCase):
+    """The Rust port of ``_match_argform``, reached through commands.py."""
+
+    def test_plain_required(self):
+        self.assertEqual(
+            {"a": "x", "b": "y"},
+            commands._match_argform("cmd", ["a", "b"], ["x", "y"]),
+        )
+
+    def test_optional_present_and_absent(self):
+        self.assertEqual({"a": "x"}, commands._match_argform("cmd", ["a?"], ["x"]))
+        self.assertEqual({}, commands._match_argform("cmd", ["a?"], []))
+
+    def test_star_empty_is_none(self):
+        self.assertEqual(
+            {"file_list": None}, commands._match_argform("cmd", ["file*"], [])
+        )
+
+    def test_star_collects_remaining(self):
+        self.assertEqual(
+            {"file_list": ["a", "b"]},
+            commands._match_argform("cmd", ["file*"], ["a", "b"]),
+        )
+
+    def test_plus_collects_remaining(self):
+        self.assertEqual(
+            {"file_list": ["a"]},
+            commands._match_argform("cmd", ["file+"], ["a"]),
+        )
+
+    def test_all_but_one(self):
+        self.assertEqual(
+            {"names_list": ["a", "b"], "tail": "c"},
+            commands._match_argform("cmd", ["names$", "tail"], ["a", "b", "c"]),
+        )
+
+    def test_missing_required(self):
+        e = self.assertRaises(
+            errors.CommandError, commands._match_argform, "cmd", ["loc"], []
+        )
+        self.assertEqual('command \'cmd\' requires argument LOC', str(e))
+
+    def test_plus_needs_one(self):
+        e = self.assertRaises(
+            errors.CommandError, commands._match_argform, "cmd", ["file+"], []
+        )
+        self.assertEqual("command 'cmd' needs one or more FILE", str(e))
+
+    def test_extra_argument(self):
+        e = self.assertRaises(
+            errors.CommandError, commands._match_argform, "cmd", ["a"], ["x", "y"]
+        )
+        self.assertEqual("extra argument to command cmd: y", str(e))
