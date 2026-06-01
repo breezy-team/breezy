@@ -54,6 +54,7 @@ from breezy import (
 
 
 from . import debug, errors, registry
+from ._cmd_rs import commands as _commands_rs
 from .hooks import Hooks
 from .plugin import disable_plugins, load_plugins, plugin_name
 
@@ -201,12 +202,8 @@ def register_command(cmd, decorate=False):
     return plugin_cmds.register(cmd, decorate)
 
 
-def _squish_command_name(cmd):
-    return "cmd_" + cmd.replace("-", "_")
-
-
-def _unsquish_command_name(cmd):
-    return cmd[4:].replace("_", "-")
+_squish_command_name = _commands_rs.squish_command_name
+_unsquish_command_name = _commands_rs.unsquish_command_name
 
 
 def _register_builtin_commands():
@@ -285,34 +282,8 @@ def guess_command(cmd_name):
         names.add(name)
         cmd = get_cmd_object(name)
         names.update(cmd.aliases)
-    # candidate: modified levenshtein distance against cmd_name.
-    costs = {}
-    import patiencediff
-
-    for name in sorted(names):
-        matcher = patiencediff.PatienceSequenceMatcher(None, cmd_name, name)
-        distance = 0.0
-        opcodes = matcher.get_opcodes()
-        for opcode, l1, l2, r1, r2 in opcodes:
-            if opcode == "delete":
-                distance += l2 - l1
-            elif opcode == "replace":
-                distance += max(l2 - l1, r2 - l1)
-            elif opcode == "insert":
-                distance += r2 - r1
-            elif opcode == "equal":
-                # Score equal ranges lower, making similar commands of equal
-                # length closer than arbitrary same length commands.
-                distance -= 0.1 * (l2 - l1)
-        costs[name] = distance
-    costs.update(_GUESS_OVERRIDES.get(cmd_name, {}))
-    costs = sorted((costs[key], key) for key in costs)
-    if not costs:
-        return
-    if costs[0][0] > 4:
-        return
-    candidate = costs[0][1]
-    return candidate
+    overrides = list(_GUESS_OVERRIDES.get(cmd_name, {}).items())
+    return _commands_rs.guess_command(cmd_name, list(names), overrides)
 
 
 def get_cmd_object(cmd_name: str, plugins_override: bool = True) -> "Command":
@@ -378,7 +349,38 @@ def _get_cmd_object(
         hook(cmd)
     if getattr(cmd, "invoked_as", None) is None:
         cmd.invoked_as = cmd_name
+    if debug.debug_flag_enabled("command_trait"):
+        _check_command_trait(cmd)
     return cmd
+
+
+def _check_command_trait(cmd):
+    """Verify the Rust Command trait round-trips for ``cmd``.
+
+    This wraps ``cmd`` in the Rust PyCommand and checks that each trait method
+    agrees with the Python command object. It is only run when the
+    ``command_trait`` debug flag is set, so it stays out of the normal lookup
+    path; it exists to exercise the wrapper against every real command during
+    the migration to a Rust command trait.
+    """
+    wrapped = _commands_rs.PyCommand(cmd)
+    mismatches = []
+    for trait_value, python_value in [
+        (wrapped.name(), cmd.name()),
+        (wrapped.aliases(), list(cmd.aliases)),
+        (wrapped.takes_args(), list(cmd.takes_args)),
+        (wrapped.hidden(), cmd.hidden),
+        (wrapped.encoding_type(), cmd.encoding_type),
+        (wrapped.invoked_as(), cmd.invoked_as),
+        (wrapped.plugin_name(), cmd.plugin_name()),
+        (wrapped.help(), cmd.help()),
+    ]:
+        if trait_value != python_value:
+            mismatches.append((trait_value, python_value))
+    if mismatches:
+        raise AssertionError(
+            f"Rust Command trait mismatch for {cmd.name()!r}: {mismatches!r}"
+        )
 
 
 class NoPluginAvailable(errors.BzrError):
@@ -576,18 +578,7 @@ class Command:
 
         Only describes arguments, not options.
         """
-        s = "brz " + self.name() + " "
-        for aname in self.takes_args:
-            aname = aname.upper()
-            if aname[-1] in ["$", "+"]:
-                aname = aname[:-1] + "..."
-            elif aname[-1] == "?":
-                aname = "[" + aname[:-1] + "]"
-            elif aname[-1] == "*":
-                aname = "[" + aname[:-1] + "...]"
-            s += aname + " "
-        s = s[:-1]  # remove last space
-        return s
+        return _commands_rs.usage(self.name(), list(self.takes_args))
 
     def get_help_text(
         self,
@@ -724,34 +715,7 @@ class Command:
             All text found outside a named section is assigned to the
             default section which is given the key of None.
         """
-
-        def save_section(sections, order, label, section):
-            if len(section) > 0:
-                if label in sections:
-                    sections[label] += "\n" + section
-                else:
-                    order.append(label)
-                    sections[label] = section
-
-        lines = text.rstrip().splitlines()
-        summary = lines.pop(0)
-        sections = {}
-        order = []
-        label, section = None, ""
-        for line in lines:
-            if line.startswith(":") and line.endswith(":") and len(line) > 2:
-                save_section(sections, order, label, section)
-                label, section = line[1:-1], ""
-            elif label is not None and len(line) > 1 and not line[0].isspace():
-                save_section(sections, order, label, section)
-                label, section = None, line
-            else:
-                if len(section) > 0:
-                    section += "\n" + line
-                else:
-                    section = line
-        save_section(sections, order, label, section)
-        return summary, sections, order
+        return _commands_rs.get_help_parts(text)
 
     def get_help_topic(self):
         """Return the commands help topic - its name."""
@@ -999,57 +963,7 @@ def parse_args(command, argv, alias_argv=None):
 
 
 def _match_argform(cmd, takes_args, args):
-    argdict = {}
-
-    # step through args and takes_args, allowing appropriate 0-many matches
-    for ap in takes_args:
-        argname = ap[:-1]
-        if ap[-1] == "?":
-            if args:
-                argdict[argname] = args.pop(0)
-        elif ap[-1] == "*":  # all remaining arguments
-            if args:
-                argdict[argname + "_list"] = args[:]
-                args = []
-            else:
-                argdict[argname + "_list"] = None
-        elif ap[-1] == "+":
-            if not args:
-                raise errors.CommandError(
-                    i18n.gettext("command {0!r} needs one or more {1}").format(
-                        cmd, argname.upper()
-                    )
-                )
-            else:
-                argdict[argname + "_list"] = args[:]
-                args = []
-        elif ap[-1] == "$":  # all but one
-            if len(args) < 2:
-                raise errors.CommandError(
-                    i18n.gettext("command {0!r} needs one or more {1}").format(
-                        cmd, argname.upper()
-                    )
-                )
-            argdict[argname + "_list"] = args[:-1]
-            args[:-1] = []
-        else:
-            # just a plain arg
-            argname = ap
-            if not args:
-                raise errors.CommandError(
-                    i18n.gettext("command {0!r} requires argument {1}").format(
-                        cmd, argname.upper()
-                    )
-                )
-            else:
-                argdict[argname] = args.pop(0)
-
-    if args:
-        raise errors.CommandError(
-            i18n.gettext("extra argument to command {0}: {1}").format(cmd, args[0])
-        )
-
-    return argdict
+    return _commands_rs.match_argform(cmd, list(takes_args), list(args))
 
 
 def apply_coveraged(the_callable, *args, **kwargs):
@@ -1229,115 +1143,91 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     argv = _specified_or_unicode_argv(argv)
     trace.mutter("brz arguments: %r", argv)
 
-    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = opt_coverage = (
-        opt_no_l10n
-    ) = opt_no_aliases = False
-    opt_lsprof_file = None
+    # The orchestration lives in Rust (breezy._cmd_rs.commands.run_bzr); this
+    # context object provides the side-effecting operations it drives. The Rust
+    # side scans the master options, applies their side effects through this
+    # object, loads plugins, resolves aliases, looks up the command and runs it
+    # under the selected profiler, restoring verbosity and overrides afterwards.
+    context = _RunBzrContext(load_plugins, disable_plugins)
+    return _commands_rs.run_bzr(argv, context)
 
-    # --no-plugins is handled specially at a very early stage. We need
-    # to load plugins before doing other command parsing so that they
-    # can override commands, but this needs to happen first.
 
-    argv_copy = []
-    i = 0
-    override_config = []
-    while i < len(argv):
-        a = argv[i]
-        if a == "--profile":
-            opt_profile = True
-        elif a == "--lsprof":
-            opt_lsprof = True
-        elif a == "--lsprof-file":
-            opt_lsprof = True
-            opt_lsprof_file = argv[i + 1]
-            i += 1
-        elif a == "--no-plugins":
-            opt_no_plugins = True
-        elif a == "--no-aliases":
-            opt_no_aliases = True
-        elif a == "--no-l10n":
-            opt_no_l10n = True
-        elif a == "--builtin":
-            opt_builtin = True
-        elif a == "--concurrency":
-            os.environ["BRZ_CONCURRENCY"] = argv[i + 1]
-            i += 1
-        elif a == "--coverage":
-            opt_coverage = True
-        elif a == "--profile-imports":
-            pass  # already handled in startup script Bug #588277
-        elif a.startswith("-D"):
-            debug.set_debug_flag(a[2:])
-        elif a.startswith("-O"):
-            override_config.append(a[2:])
-        else:
-            argv_copy.append(a)
-        i += 1
+class _RunBzrContext:
+    """Side-effecting operations driven by the Rust ``run_bzr`` orchestrator."""
 
-    cmdline_overrides = breezy.get_global_state().cmdline_overrides
-    cmdline_overrides._from_cmdline(override_config)
+    def __init__(self, load_plugins, disable_plugins):
+        self._load_plugins = load_plugins
+        self._disable_plugins = disable_plugins
+        self._saved_verbosity_level = None
+        self._cmdline_overrides = breezy.get_global_state().cmdline_overrides
 
-    debug.set_debug_flags_from_config()
+    def set_debug_flag(self, flag):
+        debug.set_debug_flag(flag)
 
-    if not opt_no_plugins:
+    def set_concurrency(self, value):
+        os.environ["BRZ_CONCURRENCY"] = value
+
+    def apply_cmdline_overrides(self, override_config):
+        self._cmdline_overrides._from_cmdline(override_config)
+
+    def set_debug_flags_from_config(self):
+        debug.set_debug_flags_from_config()
+
+    def warn_plugin_load_problems(self):
         from breezy import config
 
         c = config.GlobalConfig()
-        warn_load_problems = not c.suppress_warning("plugin_load_failure")
-        load_plugins(warn_load_problems=warn_load_problems)
-    else:
-        disable_plugins()
+        return not c.suppress_warning("plugin_load_failure")
 
-    argv = argv_copy
-    if not argv:
+    def load_plugins(self, warn_load_problems):
+        self._load_plugins(warn_load_problems=warn_load_problems)
+
+    def disable_plugins(self):
+        self._disable_plugins()
+
+    def run_help(self):
         get_cmd_object("help").run_argv_aliases([])
-        return 0
 
-    if argv[0] == "--version":
+    def run_version(self):
         get_cmd_object("version").run_argv_aliases([])
-        return 0
 
-    alias_argv = None
+    def get_alias(self, cmd):
+        return get_alias(cmd)
 
-    if not opt_no_aliases:
-        alias_argv = get_alias(argv[0])
-        if alias_argv:
-            argv[0] = alias_argv.pop(0)
+    def get_cmd_object(self, cmd, plugins_override):
+        return get_cmd_object(cmd, plugins_override=plugins_override)
 
-    cmd = argv.pop(0)
-    cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
-    if opt_no_l10n:
+    def set_no_l10n(self, cmd_obj):
         cmd_obj.l10n = False
-    run = cmd_obj.run_argv_aliases
-    run_argv = [argv, alias_argv]
 
-    try:
-        # We can be called recursively (tests for example), but we don't want
-        # the verbosity level to propagate.
-        saved_verbosity_level = option._verbosity_level
-        option._verbosity_level = 0
-        if opt_lsprof:
-            if opt_coverage:
-                trace.warning("--coverage ignored, because --lsprof is in use.")
-            ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
-        elif opt_profile:
-            if opt_coverage:
-                trace.warning("--coverage ignored, because --profile is in use.")
-            ret = apply_profiled(run, *run_argv)
-        elif opt_coverage:
-            ret = apply_coveraged(run, *run_argv)
+    def get_verbosity_level(self):
+        return option._verbosity_level
+
+    def set_verbosity_level(self, level):
+        option._verbosity_level = level
+
+    def warning(self, message):
+        trace.warning(message)
+
+    def run_command(self, cmd_obj, argv, alias_argv, profiler, lsprof_file):
+        run = cmd_obj.run_argv_aliases
+        if profiler == "lsprof":
+            return apply_lsprofiled(lsprof_file, run, argv, alias_argv)
+        elif profiler == "profile":
+            return apply_profiled(run, argv, alias_argv)
+        elif profiler == "coverage":
+            return apply_coveraged(run, argv, alias_argv)
         else:
-            ret = run(*run_argv)
-        return ret or 0
-    finally:
-        # reset, in case we may do other commands later within the same
-        # process. Commands that want to execute sub-commands must propagate
-        # --verbose in their own way.
-        if debug.debug_flag_enabled("memory"):
-            trace.debug_memory("Process status after command:", short=False)
-        option._verbosity_level = saved_verbosity_level
-        # Reset the overrides
-        cmdline_overrides._reset()
+            return run(argv, alias_argv)
+
+    def memory_debug_enabled(self):
+        return debug.debug_flag_enabled("memory")
+
+    def debug_memory(self):
+        trace.debug_memory("Process status after command:", short=False)
+
+    def reset_cmdline_overrides(self):
+        self._cmdline_overrides._reset()
 
 
 def display_command(func):

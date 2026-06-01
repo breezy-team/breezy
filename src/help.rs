@@ -332,12 +332,19 @@ Basic commands:
   brz help topics    list all help topics
 "#;
 
+/// Render the basic help topic, substituting the Breezy version into the
+/// banner. The template keeps the ``{breezy.__version__}`` placeholder that the
+/// original Python f-string used; it is filled in here at render time.
+fn basic_help(_topic: &str) -> String {
+    BASIC_HELP.replace("{breezy.__version__}", env!("CARGO_PKG_VERSION"))
+}
+
 inventory::submit! {
     HelpTopic::new(
         Section::List,
         "basic",
         "Basic commands",
-        HelpContents::Text(BASIC_HELP))
+        HelpContents::Callback(basic_help))
 }
 
 const STORAGE_FORMATS: &str = r#"Storage Formats

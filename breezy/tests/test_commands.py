@@ -487,3 +487,249 @@ class GuessCommandTests(tests.TestCase):
 
     def test_none(self):
         self.assertIs(None, commands.guess_command("nothingisevenclose"))
+
+
+class TestRustPyCommand(tests.TestCase):
+    """The Rust Command trait, exercised through the PyCommand wrapper.
+
+    The wrapper implements the Rust Command trait by delegating to a Python
+    command object. These tests assert the delegation round-trips for the
+    grandfathered Python builtins.
+    """
+
+    def setUp(self):
+        super().setUp()
+        commands._register_builtin_commands()
+        commands.install_bzr_command_hooks()
+        from breezy._cmd_rs.commands import PyCommand
+
+        self.PyCommand = PyCommand
+
+    def test_simple_command(self):
+        wrapped = self.PyCommand(commands.get_cmd_object("rocks"))
+        self.assertEqual("rocks", wrapped.name())
+        self.assertEqual([], wrapped.aliases())
+        self.assertEqual([], wrapped.takes_args())
+        self.assertEqual(True, wrapped.hidden())
+        self.assertEqual("strict", wrapped.encoding_type())
+        self.assertEqual("rocks", wrapped.invoked_as())
+        self.assertIs(None, wrapped.plugin_name())
+        self.assertEqual("Statement of optimism.", wrapped.help())
+
+    def test_command_with_aliases_and_args(self):
+        wrapped = self.PyCommand(commands.get_cmd_object("status"))
+        self.assertEqual("status", wrapped.name())
+        self.assertEqual(["st", "stat"], wrapped.aliases())
+        self.assertEqual(["file*"], wrapped.takes_args())
+        self.assertEqual(False, wrapped.hidden())
+        self.assertEqual("replace", wrapped.encoding_type())
+
+    def test_invoked_as_tracks_alias(self):
+        wrapped = self.PyCommand(commands.get_cmd_object("ci"))
+        self.assertEqual("commit", wrapped.name())
+        self.assertEqual("ci", wrapped.invoked_as())
+
+    def test_external_command(self):
+        from ..externalcommand import ExternalCommand
+
+        cmd = ExternalCommand("/usr/bin/some-external-tool")
+        wrapped = self.PyCommand(cmd)
+        # ExternalCommand overrides name() and bypasses Command.__init__.
+        self.assertEqual("some-external-tool", wrapped.name())
+        self.assertEqual([], wrapped.aliases())
+        self.assertEqual([], wrapped.takes_args())
+        self.assertEqual(False, wrapped.hidden())
+        self.assertEqual("strict", wrapped.encoding_type())
+        self.assertIs(None, wrapped.invoked_as())
+
+    def test_all_commands_round_trip(self):
+        # Wrap every resolvable command and assert each trait method agrees
+        # with the underlying Python object, exercising PyCommand against the
+        # whole command set.
+        for name in sorted(commands.all_command_names()):
+            cmd = commands.get_cmd_object(name)
+            wrapped = self.PyCommand(cmd)
+            self.assertEqual(cmd.name(), wrapped.name())
+            self.assertEqual(list(cmd.aliases), wrapped.aliases())
+            self.assertEqual(list(cmd.takes_args), wrapped.takes_args())
+            self.assertEqual(cmd.hidden, wrapped.hidden())
+            self.assertEqual(cmd.encoding_type, wrapped.encoding_type())
+            self.assertEqual(cmd.invoked_as, wrapped.invoked_as())
+            self.assertEqual(cmd.plugin_name(), wrapped.plugin_name())
+            self.assertEqual(cmd.help(), wrapped.help())
+
+    def test_get_cmd_object_runs_trait_check(self):
+        # With the command_trait debug flag set, _get_cmd_object runs the
+        # round-trip check itself for every lookup.
+        from breezy import debug
+
+        debug.set_debug_flag("command_trait")
+        for name in sorted(commands.all_command_names()):
+            commands.get_cmd_object(name)
+
+
+class TestMatchArgform(tests.TestCase):
+    """The Rust port of ``_match_argform``, reached through commands.py."""
+
+    def test_plain_required(self):
+        self.assertEqual(
+            {"a": "x", "b": "y"},
+            commands._match_argform("cmd", ["a", "b"], ["x", "y"]),
+        )
+
+    def test_optional_present_and_absent(self):
+        self.assertEqual({"a": "x"}, commands._match_argform("cmd", ["a?"], ["x"]))
+        self.assertEqual({}, commands._match_argform("cmd", ["a?"], []))
+
+    def test_star_empty_is_none(self):
+        self.assertEqual(
+            {"file_list": None}, commands._match_argform("cmd", ["file*"], [])
+        )
+
+    def test_star_collects_remaining(self):
+        self.assertEqual(
+            {"file_list": ["a", "b"]},
+            commands._match_argform("cmd", ["file*"], ["a", "b"]),
+        )
+
+    def test_plus_collects_remaining(self):
+        self.assertEqual(
+            {"file_list": ["a"]},
+            commands._match_argform("cmd", ["file+"], ["a"]),
+        )
+
+    def test_all_but_one(self):
+        self.assertEqual(
+            {"names_list": ["a", "b"], "tail": "c"},
+            commands._match_argform("cmd", ["names$", "tail"], ["a", "b", "c"]),
+        )
+
+    def test_missing_required(self):
+        e = self.assertRaises(
+            errors.CommandError, commands._match_argform, "cmd", ["loc"], []
+        )
+        self.assertEqual("command 'cmd' requires argument LOC", str(e))
+
+    def test_plus_needs_one(self):
+        e = self.assertRaises(
+            errors.CommandError, commands._match_argform, "cmd", ["file+"], []
+        )
+        self.assertEqual("command 'cmd' needs one or more FILE", str(e))
+
+    def test_extra_argument(self):
+        e = self.assertRaises(
+            errors.CommandError, commands._match_argform, "cmd", ["a"], ["x", "y"]
+        )
+        self.assertEqual("extra argument to command cmd: y", str(e))
+
+
+class TestUsage(tests.TestCase):
+    """The Rust port of ``Command._usage``."""
+
+    def _usage(self, takes_args):
+        class cmd_sample(commands.Command):
+            __doc__ = """Sample."""
+
+        cmd = cmd_sample()
+        cmd.takes_args = takes_args
+        return cmd._usage()
+
+    def test_no_args(self):
+        self.assertEqual("brz sample", self._usage([]))
+
+    def test_each_specifier(self):
+        self.assertEqual("brz sample LOC", self._usage(["loc"]))
+        self.assertEqual("brz sample [LOC]", self._usage(["loc?"]))
+        self.assertEqual("brz sample [FILE...]", self._usage(["file*"]))
+        self.assertEqual("brz sample FILE...", self._usage(["file+"]))
+        self.assertEqual("brz sample NAMES...", self._usage(["names$"]))
+
+    def test_multiple_args(self):
+        self.assertEqual(
+            "brz sample FROM [TO] [FILE...]",
+            self._usage(["from", "to?", "file*"]),
+        )
+
+
+class TestGetHelpParts(tests.TestCase):
+    """The Rust port of ``Command._get_help_parts``."""
+
+    def test_summary_only(self):
+        summary, sections, order = commands.Command._get_help_parts("One line.")
+        self.assertEqual("One line.", summary)
+        self.assertEqual({}, sections)
+        self.assertEqual([], order)
+
+    def test_default_section(self):
+        summary, sections, order = commands.Command._get_help_parts(
+            "Summary.\n\nMore detail.\nSecond line."
+        )
+        self.assertEqual("Summary.", summary)
+        self.assertEqual({None: "More detail.\nSecond line."}, sections)
+        self.assertEqual([None], order)
+
+    def test_named_sections_in_order(self):
+        text = "Summary.\n\nBody.\n\n:Examples:\n  thing\n\n:See also: status"
+        summary, sections, order = commands.Command._get_help_parts(text)
+        self.assertEqual("Summary.", summary)
+        # ":See also: status" is not a heading, so it stays in the default
+        # section.
+        self.assertEqual(
+            {None: "Body.\n\n:See also: status", "Examples": "  thing\n"},
+            sections,
+        )
+        self.assertEqual([None, "Examples"], order)
+
+    def test_repeated_label_merges(self):
+        text = "Summary.\n\n:Note:\n  first\n\n:Note:\n  second"
+        _summary, sections, order = commands.Command._get_help_parts(text)
+        self.assertEqual({"Note": "  first\n\n  second"}, sections)
+        self.assertEqual(["Note"], order)
+
+
+class TestScanMasterOptions(tests.TestCase):
+    """The Rust port of the run_bzr master-option scanner."""
+
+    def _scan(self, argv):
+        return commands._commands_rs.scan_master_options(argv)
+
+    def test_no_master_options(self):
+        opts, rest = self._scan(["status", "-v"])
+        self.assertEqual(["status", "-v"], rest)
+        self.assertFalse(opts.no_plugins)
+        self.assertFalse(opts.builtin)
+
+    def test_boolean_flags(self):
+        opts, rest = self._scan(
+            ["--no-plugins", "--builtin", "--no-aliases", "--no-l10n", "st"]
+        )
+        self.assertTrue(opts.no_plugins)
+        self.assertTrue(opts.builtin)
+        self.assertTrue(opts.no_aliases)
+        self.assertTrue(opts.no_l10n)
+        self.assertEqual(["st"], rest)
+
+    def test_lsprof_file_consumes_next(self):
+        opts, rest = self._scan(["--lsprof-file", "out.prof", "log"])
+        self.assertTrue(opts.lsprof)
+        self.assertEqual("out.prof", opts.lsprof_file)
+        self.assertEqual(["log"], rest)
+
+    def test_concurrency_consumes_next(self):
+        opts, rest = self._scan(["--concurrency", "4", "selftest"])
+        self.assertEqual("4", opts.concurrency)
+        self.assertEqual(["selftest"], rest)
+
+    def test_debug_and_override_collected(self):
+        opts, rest = self._scan(["-Dhpss", "-Ofoo=bar", "-Dbytes", "log"])
+        self.assertEqual(["hpss", "bytes"], opts.debug_flags)
+        self.assertEqual(["foo=bar"], opts.config_overrides)
+        self.assertEqual(["log"], rest)
+
+    def test_profile_imports_dropped(self):
+        _opts, rest = self._scan(["--profile-imports", "version"])
+        self.assertEqual(["version"], rest)
+
+    def test_missing_lookahead_raises(self):
+        self.assertRaises(IndexError, self._scan, ["--lsprof-file"])
+        self.assertRaises(IndexError, self._scan, ["--concurrency"])

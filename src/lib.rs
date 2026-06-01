@@ -57,6 +57,9 @@ pub mod tree;
 /// Tree builder utilities.
 pub mod treebuilder;
 
+/// Command trait and infrastructure.
+pub mod command;
+
 #[cfg(feature = "pyo3")]
 /// Python bindings for Tree.
 pub mod pytree;
@@ -64,6 +67,10 @@ pub mod pytree;
 #[cfg(feature = "pyo3")]
 /// Python bindings for Branch.
 pub mod pybranch;
+
+#[cfg(feature = "pyo3")]
+/// Python bindings for Command.
+pub mod pycommand;
 
 #[cfg(feature = "pyo3")]
 /// Python bindings for Forge.
