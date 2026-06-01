@@ -542,46 +542,16 @@ class RegistryOption(Option):
         return getattr(self.registry.get_info(name), "hidden", False)
 
 
-class OptionParser(optparse.OptionParser):
-    """OptionParser that raises exceptions instead of exiting.
+class OptionParser:
+    """Carrier for the sentinel marking an unset value option.
 
-    This is used to integrate with breezy's error handling system rather
-    than having optparse call sys.exit() on errors.
+    Command-line parsing is now done by :class:`RustOptionParser`; this class
+    is retained only for the ``DEFAULT_VALUE`` sentinel, which the optparse
+    shim in :meth:`Option.add_option` (used by the completion plugins) and
+    ``commands.parse_args`` still reference.
     """
 
     DEFAULT_VALUE = object()
-
-    def __init__(self):
-        """Initialize OptionParser."""
-        optparse.OptionParser.__init__(self)
-        self.formatter = GettextIndentedHelpFormatter()
-
-    def error(self, message):
-        """Handle option parsing errors.
-
-        Args:
-            message: Error message to report.
-
-        Raises:
-            CommandError: Always, instead of calling sys.exit().
-        """
-        raise errors.CommandError(message)
-
-
-class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
-    """Adds gettext() call to format_option()."""
-
-    def __init__(self):
-        """Initialize GettextIndentedHelpFormatter."""
-        optparse.IndentedHelpFormatter.__init__(self)
-
-    def format_option(self, option):
-        """Code taken from Python's optparse.py."""
-        if option.help:
-            from .i18n import gettext
-
-            option.help = gettext(option.help)
-        return optparse.IndentedHelpFormatter.format_option(self, option)
 
 
 class OptionValues:
@@ -907,16 +877,8 @@ class RustOptionParser:
 
 
 def get_optparser(options):
-    """Generate an optparse parser for breezy-style options."""
-    import os
-
-    if os.environ.get("BRZ_RUST_OPTPARSE"):
-        return RustOptionParser(options)
-    parser = OptionParser()
-    parser.remove_option("--help")
-    for option in options:
-        option.add_option(parser, option.short_name())
-    return parser
+    """Generate a parser for breezy-style options."""
+    return RustOptionParser(options)
 
 
 def custom_help(name, help):
