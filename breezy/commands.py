@@ -1143,50 +1143,23 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     argv = _specified_or_unicode_argv(argv)
     trace.mutter("brz arguments: %r", argv)
 
-    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = opt_coverage = (
-        opt_no_l10n
-    ) = opt_no_aliases = False
-    opt_lsprof_file = None
-
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
     # can override commands, but this needs to happen first.
-
-    argv_copy = []
-    i = 0
-    override_config = []
-    while i < len(argv):
-        a = argv[i]
-        if a == "--profile":
-            opt_profile = True
-        elif a == "--lsprof":
-            opt_lsprof = True
-        elif a == "--lsprof-file":
-            opt_lsprof = True
-            opt_lsprof_file = argv[i + 1]
-            i += 1
-        elif a == "--no-plugins":
-            opt_no_plugins = True
-        elif a == "--no-aliases":
-            opt_no_aliases = True
-        elif a == "--no-l10n":
-            opt_no_l10n = True
-        elif a == "--builtin":
-            opt_builtin = True
-        elif a == "--concurrency":
-            os.environ["BRZ_CONCURRENCY"] = argv[i + 1]
-            i += 1
-        elif a == "--coverage":
-            opt_coverage = True
-        elif a == "--profile-imports":
-            pass  # already handled in startup script Bug #588277
-        elif a.startswith("-D"):
-            debug.set_debug_flag(a[2:])
-        elif a.startswith("-O"):
-            override_config.append(a[2:])
-        else:
-            argv_copy.append(a)
-        i += 1
+    master_opts, argv_copy = _commands_rs.scan_master_options(argv)
+    opt_lsprof = master_opts.lsprof
+    opt_profile = master_opts.profile
+    opt_no_plugins = master_opts.no_plugins
+    opt_no_aliases = master_opts.no_aliases
+    opt_no_l10n = master_opts.no_l10n
+    opt_builtin = master_opts.builtin
+    opt_coverage = master_opts.coverage
+    opt_lsprof_file = master_opts.lsprof_file
+    if master_opts.concurrency is not None:
+        os.environ["BRZ_CONCURRENCY"] = master_opts.concurrency
+    for flag in master_opts.debug_flags:
+        debug.set_debug_flag(flag)
+    override_config = master_opts.config_overrides
 
     cmdline_overrides = breezy.get_global_state().cmdline_overrides
     cmdline_overrides._from_cmdline(override_config)

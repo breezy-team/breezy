@@ -685,3 +685,51 @@ class TestGetHelpParts(tests.TestCase):
         _summary, sections, order = commands.Command._get_help_parts(text)
         self.assertEqual({"Note": "  first\n\n  second"}, sections)
         self.assertEqual(["Note"], order)
+
+
+class TestScanMasterOptions(tests.TestCase):
+    """The Rust port of the run_bzr master-option scanner."""
+
+    def _scan(self, argv):
+        return commands._commands_rs.scan_master_options(argv)
+
+    def test_no_master_options(self):
+        opts, rest = self._scan(["status", "-v"])
+        self.assertEqual(["status", "-v"], rest)
+        self.assertFalse(opts.no_plugins)
+        self.assertFalse(opts.builtin)
+
+    def test_boolean_flags(self):
+        opts, rest = self._scan(
+            ["--no-plugins", "--builtin", "--no-aliases", "--no-l10n", "st"]
+        )
+        self.assertTrue(opts.no_plugins)
+        self.assertTrue(opts.builtin)
+        self.assertTrue(opts.no_aliases)
+        self.assertTrue(opts.no_l10n)
+        self.assertEqual(["st"], rest)
+
+    def test_lsprof_file_consumes_next(self):
+        opts, rest = self._scan(["--lsprof-file", "out.prof", "log"])
+        self.assertTrue(opts.lsprof)
+        self.assertEqual("out.prof", opts.lsprof_file)
+        self.assertEqual(["log"], rest)
+
+    def test_concurrency_consumes_next(self):
+        opts, rest = self._scan(["--concurrency", "4", "selftest"])
+        self.assertEqual("4", opts.concurrency)
+        self.assertEqual(["selftest"], rest)
+
+    def test_debug_and_override_collected(self):
+        opts, rest = self._scan(["-Dhpss", "-Ofoo=bar", "-Dbytes", "log"])
+        self.assertEqual(["hpss", "bytes"], opts.debug_flags)
+        self.assertEqual(["foo=bar"], opts.config_overrides)
+        self.assertEqual(["log"], rest)
+
+    def test_profile_imports_dropped(self):
+        _opts, rest = self._scan(["--profile-imports", "version"])
+        self.assertEqual(["version"], rest)
+
+    def test_missing_lookahead_raises(self):
+        self.assertRaises(IndexError, self._scan, ["--lsprof-file"])
+        self.assertRaises(IndexError, self._scan, ["--concurrency"])

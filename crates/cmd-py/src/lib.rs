@@ -666,6 +666,74 @@ fn guess_command(
     breezy::command::guess_command(cmd_name, &candidates, &overrides)
 }
 
+/// The master options parsed from the front of a ``brz`` command line.
+///
+/// Exposes the parsed flags to Python as read-only attributes; the caller
+/// applies the side effects (debug flags, ``BRZ_CONCURRENCY``, config overrides).
+#[pyclass(name = "MasterOptions", frozen)]
+struct PyMasterOptions(breezy::command::MasterOptions);
+
+#[pymethods]
+impl PyMasterOptions {
+    #[getter]
+    fn lsprof(&self) -> bool {
+        self.0.lsprof
+    }
+    #[getter]
+    fn profile(&self) -> bool {
+        self.0.profile
+    }
+    #[getter]
+    fn no_plugins(&self) -> bool {
+        self.0.no_plugins
+    }
+    #[getter]
+    fn no_aliases(&self) -> bool {
+        self.0.no_aliases
+    }
+    #[getter]
+    fn no_l10n(&self) -> bool {
+        self.0.no_l10n
+    }
+    #[getter]
+    fn builtin(&self) -> bool {
+        self.0.builtin
+    }
+    #[getter]
+    fn coverage(&self) -> bool {
+        self.0.coverage
+    }
+    #[getter]
+    fn lsprof_file(&self) -> Option<String> {
+        self.0.lsprof_file.clone()
+    }
+    #[getter]
+    fn concurrency(&self) -> Option<String> {
+        self.0.concurrency.clone()
+    }
+    #[getter]
+    fn debug_flags(&self) -> Vec<String> {
+        self.0.debug_flags.clone()
+    }
+    #[getter]
+    fn config_overrides(&self) -> Vec<String> {
+        self.0.config_overrides.clone()
+    }
+}
+
+/// Scan and strip the master options from the front of `argv`.
+///
+/// Returns ``(MasterOptions, remaining_argv)``. Raises ``IndexError`` if
+/// ``--lsprof-file`` or ``--concurrency`` is given without a following
+/// argument, matching the Python behaviour.
+#[pyfunction]
+fn scan_master_options(argv: Vec<String>) -> PyResult<(PyMasterOptions, Vec<String>)> {
+    let (opts, remaining) = breezy::command::scan_master_options(argv).map_err(|e| {
+        pyo3::exceptions::PyIndexError::new_err(format!("missing argument for {}", e.option))
+    })?;
+    Ok((PyMasterOptions(opts), remaining))
+}
+
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
 
@@ -899,6 +967,8 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     commandsm.add_function(wrap_pyfunction!(usage, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(get_help_parts, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(guess_command, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(scan_master_options, &commandsm)?)?;
+    commandsm.add_class::<PyMasterOptions>()?;
     m.add_submodule(&commandsm)?;
 
     m.add_class::<TreeBuilder>()?;

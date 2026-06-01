@@ -342,6 +342,99 @@ pub fn guess_command(
     Some(candidate)
 }
 
+/// The master options parsed from the front of a ``brz`` command line.
+///
+/// These control how the command itself is interpreted and are stripped from
+/// the argument vector before command lookup. Side effects (setting debug
+/// flags, the concurrency environment variable, config overrides) are left to
+/// the caller; this struct only carries the parsed data.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MasterOptions {
+    /// ``--lsprof`` or ``--lsprof-file`` was given.
+    pub lsprof: bool,
+    /// ``--profile`` was given.
+    pub profile: bool,
+    /// ``--no-plugins`` was given.
+    pub no_plugins: bool,
+    /// ``--no-aliases`` was given.
+    pub no_aliases: bool,
+    /// ``--no-l10n`` was given.
+    pub no_l10n: bool,
+    /// ``--builtin`` was given.
+    pub builtin: bool,
+    /// ``--coverage`` was given.
+    pub coverage: bool,
+    /// The argument to ``--lsprof-file``, if any.
+    pub lsprof_file: Option<String>,
+    /// The argument to ``--concurrency``, if any (the caller sets
+    /// ``BRZ_CONCURRENCY`` from it).
+    pub concurrency: Option<String>,
+    /// Debug flags collected from ``-D`` arguments.
+    pub debug_flags: Vec<String>,
+    /// Config overrides collected from ``-O`` arguments.
+    pub config_overrides: Vec<String>,
+}
+
+/// Error returned when a master option that consumes the next argument is
+/// missing it (e.g. a trailing ``--lsprof-file``). Mirrors the Python
+/// implementation's ``IndexError``.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MissingMasterOptionArgument {
+    /// The option that was missing its argument.
+    pub option: String,
+}
+
+/// Scan and strip the master options from the front of `argv`.
+///
+/// A port of the ``run_bzr`` master-option loop. Returns the parsed
+/// [`MasterOptions`] and the remaining argument vector (with the master options
+/// removed). Returns an error if ``--lsprof-file`` or ``--concurrency`` appears
+/// without a following argument, matching the Python ``IndexError``.
+pub fn scan_master_options(
+    argv: Vec<String>,
+) -> Result<(MasterOptions, Vec<String>), MissingMasterOptionArgument> {
+    let mut opts = MasterOptions::default();
+    let mut remaining: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < argv.len() {
+        let a = &argv[i];
+        match a.as_str() {
+            "--profile" => opts.profile = true,
+            "--lsprof" => opts.lsprof = true,
+            "--lsprof-file" => {
+                opts.lsprof = true;
+                let value = argv.get(i + 1).ok_or(MissingMasterOptionArgument {
+                    option: "--lsprof-file".to_string(),
+                })?;
+                opts.lsprof_file = Some(value.clone());
+                i += 1;
+            }
+            "--no-plugins" => opts.no_plugins = true,
+            "--no-aliases" => opts.no_aliases = true,
+            "--no-l10n" => opts.no_l10n = true,
+            "--builtin" => opts.builtin = true,
+            "--concurrency" => {
+                let value = argv.get(i + 1).ok_or(MissingMasterOptionArgument {
+                    option: "--concurrency".to_string(),
+                })?;
+                opts.concurrency = Some(value.clone());
+                i += 1;
+            }
+            "--coverage" => opts.coverage = true,
+            "--profile-imports" => {} // already handled in the startup script
+            other if other.starts_with("-D") => {
+                opts.debug_flags.push(other[2..].to_string());
+            }
+            other if other.starts_with("-O") => {
+                opts.config_overrides.push(other[2..].to_string());
+            }
+            _ => remaining.push(a.clone()),
+        }
+        i += 1;
+    }
+    Ok((opts, remaining))
+}
+
 /// The abstract interface implemented by every breezy command.
 ///
 /// Each method mirrors an attribute or method of the Python `Command` class.
@@ -647,5 +740,74 @@ mod tests {
         // smaller name wins, matching Python's ``sorted((cost, key))``.
         let candidates = specs(&["b", "a"]);
         assert_eq!(guess_command("z", &candidates, &[]), Some("a".to_string()));
+    }
+
+    #[test]
+    fn master_options_none() {
+        let (opts, rest) = scan_master_options(argv(&["status", "-v"])).unwrap();
+        assert_eq!(opts, MasterOptions::default());
+        assert_eq!(rest, argv(&["status", "-v"]));
+    }
+
+    #[test]
+    fn master_options_boolean_flags() {
+        let (opts, rest) = scan_master_options(argv(&[
+            "--no-plugins",
+            "--builtin",
+            "--no-aliases",
+            "--no-l10n",
+            "--profile",
+            "--lsprof",
+            "--coverage",
+            "st",
+        ]))
+        .unwrap();
+        assert!(opts.no_plugins);
+        assert!(opts.builtin);
+        assert!(opts.no_aliases);
+        assert!(opts.no_l10n);
+        assert!(opts.profile);
+        assert!(opts.lsprof);
+        assert!(opts.coverage);
+        assert_eq!(rest, argv(&["st"]));
+    }
+
+    #[test]
+    fn master_options_lsprof_file_consumes_next() {
+        let (opts, rest) =
+            scan_master_options(argv(&["--lsprof-file", "out.prof", "status"])).unwrap();
+        assert!(opts.lsprof);
+        assert_eq!(opts.lsprof_file, Some("out.prof".to_string()));
+        assert_eq!(rest, argv(&["status"]));
+    }
+
+    #[test]
+    fn master_options_concurrency_consumes_next() {
+        let (opts, rest) = scan_master_options(argv(&["--concurrency", "4", "selftest"])).unwrap();
+        assert_eq!(opts.concurrency, Some("4".to_string()));
+        assert_eq!(rest, argv(&["selftest"]));
+    }
+
+    #[test]
+    fn master_options_debug_and_override() {
+        let (opts, rest) =
+            scan_master_options(argv(&["-Dhpss", "-Ofoo=bar", "-Dbytes", "log"])).unwrap();
+        assert_eq!(opts.debug_flags, specs(&["hpss", "bytes"]));
+        assert_eq!(opts.config_overrides, specs(&["foo=bar"]));
+        assert_eq!(rest, argv(&["log"]));
+    }
+
+    #[test]
+    fn master_options_profile_imports_dropped() {
+        let (_opts, rest) = scan_master_options(argv(&["--profile-imports", "version"])).unwrap();
+        assert_eq!(rest, argv(&["version"]));
+    }
+
+    #[test]
+    fn master_options_missing_lookahead_errors() {
+        let err = scan_master_options(argv(&["--lsprof-file"])).unwrap_err();
+        assert_eq!(err.option, "--lsprof-file");
+        let err = scan_master_options(argv(&["--concurrency"])).unwrap_err();
+        assert_eq!(err.option, "--concurrency");
     }
 }
