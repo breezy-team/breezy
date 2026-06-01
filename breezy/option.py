@@ -782,6 +782,112 @@ class RustOptionParser:
             self.error(str(e))
         return self.values, remaining
 
+    def format_option_help(self):
+        """Render the options help text, matching optparse's layout.
+
+        The output is "Options:" followed by each option's switches and help,
+        with registry value-switch options grouped under their title. Hidden
+        options are suppressed and help strings are translated.
+        """
+        groups = self._help_groups()
+        out = ["Options:\n"]
+        for title, entries in groups:
+            indent = 2
+            if title is not None:
+                out.append(f"{' ' * indent}{title}:\n")
+                indent += 2
+            out.append(self._format_group(entries, indent))
+        return "".join(out)
+
+    def _help_groups(self):
+        """Return ``[(title, [(option_string, help), ...]), ...]``.
+
+        The first group has a ``None`` title (the ungrouped options); each
+        registry option with value switches contributes its own titled group.
+        """
+        from .i18n import gettext
+
+        main = []
+        groups = [(None, main)]
+        for option in self._options:
+            if isinstance(option, RegistryOption) and option.value_switches:
+                entries = []
+                if option.enum_switch and not option.is_hidden(option.name):
+                    entries.append(
+                        (self._option_string(option), gettext(option.help or ""))
+                    )
+                alias_map = option.registry.alias_map()
+                for key in option.registry.keys():
+                    if key in option.registry.aliases():
+                        continue
+                    if option.is_hidden(key):
+                        continue
+                    names = [key] + [
+                        a
+                        for a in alias_map.get(key, [])
+                        if not option.is_hidden(a)
+                    ]
+                    switch = ", ".join(f"--{n}" for n in names)
+                    if (
+                        option.short_value_switches
+                        and key in option.short_value_switches
+                    ):
+                        switch = f"-{option.short_value_switches[key]}, {switch}"
+                    entries.append((switch, gettext(option.registry.get_help(key) or "")))
+                groups.append((option.title, entries))
+            else:
+                if option.is_hidden(option.name):
+                    continue
+                main.append(
+                    (self._option_string(option), gettext(option.help or ""))
+                )
+        return groups
+
+    @staticmethod
+    def _option_string(option):
+        """Build the switch string for an option, e.g. ``-F MSGFILE, --file=MSGFILE``."""
+        if isinstance(option, RegistryOption):
+            takes_value = True
+        else:
+            takes_value = option.type is not None
+        metavar = option.argname.upper() if takes_value and option.argname else None
+        parts = []
+        short = option.short_name()
+        if short is not None:
+            parts.append(f"-{short} {metavar}" if metavar else f"-{short}")
+        parts.append(f"--{option.name}={metavar}" if metavar else f"--{option.name}")
+        return ", ".join(parts)
+
+    @staticmethod
+    def _format_group(entries, indent):
+        """Lay out ``entries`` (option_string, help) with optparse-style columns."""
+        import textwrap
+
+        width = 78
+        max_help_position = 24
+        # Help column: just past the longest option string (plus the indent and
+        # a two-space gap), capped at max_help_position, like optparse.
+        max_len = max((len(opt) + indent for opt, _ in entries), default=0)
+        help_position = min(max_len + 2, max_help_position)
+        help_width = max(width - help_position, 11)
+        out = []
+        for opt, help in entries:
+            head = f"{' ' * indent}{opt}"
+            if not help:
+                out.append(head + "\n")
+                continue
+            help_lines = textwrap.wrap(help, help_width)
+            if len(head) + 2 <= help_position:
+                # Option string and first help line share a row.
+                line = f"{head}{' ' * (help_position - len(head))}{help_lines[0]}\n"
+            else:
+                # Option string is too long; help starts on the next line.
+                line = head + "\n" + " " * help_position + help_lines[0] + "\n"
+            out.append(line)
+            for extra in help_lines[1:]:
+                out.append(" " * help_position + extra + "\n")
+        return "".join(out)
+
 
 def get_optparser(options):
     """Generate an optparse parser for breezy-style options."""
