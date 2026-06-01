@@ -58,6 +58,7 @@ from breezy.i18n import gettext, ngettext
 
 import contextlib
 
+from ._cmd_rs import commands as _commands_rs
 from .commands import Command, builtin_command_registry, display_command
 from .option import ListOption, Option, RegistryOption, _parse_revision_str, custom_help
 from .revisionspec import RevisionInfo, RevisionSpec
@@ -5600,7 +5601,10 @@ class cmd_rocks(Command):  # noqa: D101
     @display_command
     def run(self):
         """Execute the rocks command."""
-        self.outf.write(gettext("It sure does!\n"))
+        # The command body is implemented in Rust; this Python class remains
+        # the registration and dispatch shim so command discovery, hooks and
+        # self.outf keep working unchanged.
+        _commands_rs.run_rocks(self.outf)
 
 
 class cmd_find_merge_base(Command):  # noqa: D101

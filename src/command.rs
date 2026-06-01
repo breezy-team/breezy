@@ -435,6 +435,50 @@ pub fn scan_master_options(
     Ok((opts, remaining))
 }
 
+/// A native Rust implementation of the ``rocks`` command.
+///
+/// This is the first command whose behaviour lives in Rust rather than Python.
+/// It is still registered and dispatched through a thin Python `Command`
+/// subclass so that command discovery, hooks and ``self.outf`` keep working
+/// unchanged; only the body moves here.
+#[derive(Debug, Default)]
+pub struct CmdRocks;
+
+impl CmdRocks {
+    /// The message the command prints. Marked for translation via
+    /// ``i18n.gettext`` at the Python boundary.
+    pub fn message() -> &'static str {
+        "It sure does!\n"
+    }
+}
+
+impl Command for CmdRocks {
+    fn name(&self) -> String {
+        "rocks".to_string()
+    }
+    fn aliases(&self) -> Vec<String> {
+        Vec::new()
+    }
+    fn takes_args(&self) -> Vec<String> {
+        Vec::new()
+    }
+    fn hidden(&self) -> bool {
+        true
+    }
+    fn encoding_type(&self) -> String {
+        "strict".to_string()
+    }
+    fn invoked_as(&self) -> Option<String> {
+        None
+    }
+    fn plugin_name(&self) -> Option<String> {
+        None
+    }
+    fn help(&self) -> Option<String> {
+        Some("Statement of optimism.".to_string())
+    }
+}
+
 /// Which profiler `run_bzr` should run a command under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Profiler {
@@ -905,5 +949,17 @@ mod tests {
         // Coverage alone produces no warning.
         let (_p, w) = select_profiler(&opts_with(false, false, true));
         assert!(w.is_empty());
+    }
+
+    #[test]
+    fn rocks_metadata() {
+        let cmd = CmdRocks;
+        assert_eq!(cmd.name(), "rocks");
+        assert_eq!(cmd.aliases(), Vec::<String>::new());
+        assert_eq!(cmd.takes_args(), Vec::<String>::new());
+        assert!(cmd.hidden());
+        assert_eq!(cmd.encoding_type(), "strict");
+        assert_eq!(cmd.help().as_deref(), Some("Statement of optimism."));
+        assert_eq!(CmdRocks::message(), "It sure does!\n");
     }
 }

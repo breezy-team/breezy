@@ -744,6 +744,20 @@ fn run_bzr(argv: Vec<String>, ctx: &Bound<'_, PyAny>) -> PyResult<i32> {
     breezy::pycommand::run_bzr(argv, ctx)
 }
 
+/// Run the native Rust ``rocks`` command, writing its message to `outf`.
+///
+/// The message is translated through ``breezy.i18n.gettext`` (matching the
+/// original Python command) and written to the supplied output stream.
+#[pyfunction]
+fn run_rocks(py: Python<'_>, outf: &Bound<'_, PyAny>) -> PyResult<()> {
+    let message = breezy::command::CmdRocks::message();
+    let translated = py
+        .import("breezy.i18n")?
+        .call_method1("gettext", (message,))?;
+    outf.call_method1("write", (translated,))?;
+    Ok(())
+}
+
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
 
@@ -979,6 +993,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     commandsm.add_function(wrap_pyfunction!(guess_command, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(scan_master_options, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(run_bzr, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(run_rocks, &commandsm)?)?;
     commandsm.add_class::<PyMasterOptions>()?;
     m.add_submodule(&commandsm)?;
 
