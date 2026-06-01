@@ -494,6 +494,59 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
 
 mod help;
 
+use breezy::command::Command as _;
+use breezy::pycommand::PyCommand;
+
+/// A Rust view onto a Python `Command` object.
+///
+/// This wraps a Python command in the Rust [`PyCommand`] and exposes the
+/// [`breezy::command::Command`] trait methods back to Python. It exists so the
+/// Rust command trait can be exercised against the real Python command classes
+/// while the infrastructure is migrated; it is not yet used by the command
+/// dispatch path.
+#[pyclass(name = "PyCommand")]
+struct PyCommandWrapper(PyCommand);
+
+#[pymethods]
+impl PyCommandWrapper {
+    #[new]
+    fn new(command: Py<PyAny>) -> Self {
+        PyCommandWrapper(PyCommand::new(command))
+    }
+
+    fn name(&self) -> String {
+        self.0.name()
+    }
+
+    fn aliases(&self) -> Vec<String> {
+        self.0.aliases()
+    }
+
+    fn takes_args(&self) -> Vec<String> {
+        self.0.takes_args()
+    }
+
+    fn hidden(&self) -> bool {
+        self.0.hidden()
+    }
+
+    fn encoding_type(&self) -> String {
+        self.0.encoding_type()
+    }
+
+    fn invoked_as(&self) -> Option<String> {
+        self.0.invoked_as()
+    }
+
+    fn plugin_name(&self) -> Option<String> {
+        self.0.plugin_name()
+    }
+
+    fn help(&self) -> Option<String> {
+        self.0.help()
+    }
+}
+
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
 
@@ -719,6 +772,10 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     uncommitm.add_function(wrap_pyfunction!(remove_tags, &uncommitm)?)?;
     m.add_submodule(&uncommitm)?;
 
+    let commandsm = PyModule::new(py, "commands")?;
+    commandsm.add_class::<PyCommandWrapper>()?;
+    m.add_submodule(&commandsm)?;
+
     m.add_class::<TreeBuilder>()?;
 
     // PyO3 submodule hack for proper import support
@@ -730,6 +787,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.i18n", module_name), &i18n)?;
     modules.set_item(format!("{}.help", module_name), &helpm)?;
     modules.set_item(format!("{}.uncommit", module_name), &uncommitm)?;
+    modules.set_item(format!("{}.commands", module_name), &commandsm)?;
 
     Ok(())
 }

@@ -487,3 +487,44 @@ class GuessCommandTests(tests.TestCase):
 
     def test_none(self):
         self.assertIs(None, commands.guess_command("nothingisevenclose"))
+
+
+class TestRustPyCommand(tests.TestCase):
+    """The Rust Command trait, exercised through the PyCommand wrapper.
+
+    The wrapper implements the Rust Command trait by delegating to a Python
+    command object. These tests assert the delegation round-trips for the
+    grandfathered Python builtins.
+    """
+
+    def setUp(self):
+        super().setUp()
+        commands._register_builtin_commands()
+        commands.install_bzr_command_hooks()
+        from breezy._cmd_rs.commands import PyCommand
+
+        self.PyCommand = PyCommand
+
+    def test_simple_command(self):
+        wrapped = self.PyCommand(commands.get_cmd_object("rocks"))
+        self.assertEqual("rocks", wrapped.name())
+        self.assertEqual([], wrapped.aliases())
+        self.assertEqual([], wrapped.takes_args())
+        self.assertEqual(True, wrapped.hidden())
+        self.assertEqual("strict", wrapped.encoding_type())
+        self.assertEqual("rocks", wrapped.invoked_as())
+        self.assertIs(None, wrapped.plugin_name())
+        self.assertEqual("Statement of optimism.", wrapped.help())
+
+    def test_command_with_aliases_and_args(self):
+        wrapped = self.PyCommand(commands.get_cmd_object("status"))
+        self.assertEqual("status", wrapped.name())
+        self.assertEqual(["st", "stat"], wrapped.aliases())
+        self.assertEqual(["file*"], wrapped.takes_args())
+        self.assertEqual(False, wrapped.hidden())
+        self.assertEqual("replace", wrapped.encoding_type())
+
+    def test_invoked_as_tracks_alias(self):
+        wrapped = self.PyCommand(commands.get_cmd_object("ci"))
+        self.assertEqual("commit", wrapped.name())
+        self.assertEqual("ci", wrapped.invoked_as())
