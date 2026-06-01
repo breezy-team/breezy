@@ -661,12 +661,15 @@ class RustOptionParser:
             self._register_plain(option)
 
     def _register_plain(self, option):
+        # The spec key is the option's long name, which is unique within a
+        # command; the applier knows which param_name to write. (Two options
+        # can share a param_name, e.g. --change writes the "revision" param.)
         param = option._param_name
         short = option.short_name()
         if option.type is None:
             # Boolean: the affirmative sets True, the negation sets False.
             self._add_spec(
-                param,
+                option.name,
                 option.name,
                 short,
                 option.get_negation_name(),
@@ -676,14 +679,19 @@ class RustOptionParser:
         else:
             self._defaults[param] = self.DEFAULT_VALUE
             self._add_spec(
-                param, option.name, short, None, True, self._make_value_applier(option)
+                option.name,
+                option.name,
+                short,
+                None,
+                True,
+                self._make_value_applier(option),
             )
 
     def _register_list(self, option):
         param = option._param_name
         self._defaults[param] = []
         self._add_spec(
-            param,
+            option.name,
             option.name,
             option.short_name(),
             None,
@@ -692,10 +700,9 @@ class RustOptionParser:
         )
 
     def _register_registry(self, option):
-        param = option._param_name
         if option.enum_switch:
             self._add_spec(
-                param,
+                option.name,
                 option.name,
                 option.short_name(),
                 None,
@@ -709,10 +716,10 @@ class RustOptionParser:
                 short = None
                 if option.short_value_switches and key in option.short_value_switches:
                     short = option.short_value_switches[key]
-                # A distinct spec key per value switch, all writing the same
+                # A distinct spec key per value switch, all writing the option's
                 # param. The negation slot is unused for value switches.
                 self._add_spec(
-                    f"{param}\x00{key}",
+                    f"{option.name}\x00{key}",
                     key,
                     short,
                     None,
@@ -730,13 +737,23 @@ class RustOptionParser:
 
         return apply
 
+    @staticmethod
+    def _option_identity(option):
+        """Render an option's identity like optparse, e.g. ``-p/--strip``."""
+        names = []
+        short = option.short_name()
+        if short is not None:
+            names.append(f"-{short}")
+        names.append(f"--{option.name}")
+        return "/".join(names)
+
     def _make_value_applier(self, option):
         def apply(opt_str, value, flag_value):
             try:
                 v = option.type(value)
             except ValueError as e:
                 raise _OptError(
-                    f"invalid value for option {opt_str}: {value}"
+                    f"invalid value for option {self._option_identity(option)}: {value}"
                 ) from e
             setattr(self.values, option._param_name, v)
             if option.custom_callback is not None:
