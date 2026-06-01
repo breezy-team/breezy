@@ -608,7 +608,7 @@ class TestMatchArgform(tests.TestCase):
         e = self.assertRaises(
             errors.CommandError, commands._match_argform, "cmd", ["loc"], []
         )
-        self.assertEqual('command \'cmd\' requires argument LOC', str(e))
+        self.assertEqual("command 'cmd' requires argument LOC", str(e))
 
     def test_plus_needs_one(self):
         e = self.assertRaises(
