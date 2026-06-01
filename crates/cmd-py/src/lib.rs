@@ -758,6 +758,76 @@ fn run_rocks(py: Python<'_>, outf: &Bound<'_, PyAny>) -> PyResult<()> {
     Ok(())
 }
 
+/// A single parsed option or argument token returned by ``tokenize_options``.
+///
+/// ``is_option`` distinguishes the two cases. For an option, ``key``,
+/// ``opt_str`` and ``flag_value`` are set and ``value`` holds the argument (or
+/// ``None`` for a flag). For an argument, only ``value`` is set (the positional
+/// text) and ``is_option`` is ``False``.
+#[pyclass(name = "OptionToken", frozen, get_all)]
+struct PyOptionToken {
+    is_option: bool,
+    key: Option<String>,
+    opt_str: Option<String>,
+    value: Option<String>,
+    flag_value: bool,
+}
+
+/// Tokenize `argv` against the option `specs`.
+///
+/// Each spec is a tuple ``(key, long, short, negation, takes_value)`` where
+/// `short` and `negation` may be ``None``. Returns a list of ``OptionToken``.
+/// Raises ``breezy.errors.CommandError`` with optparse-compatible wording on an
+/// unknown option, a missing argument or an ambiguous abbreviation.
+#[pyfunction]
+fn tokenize_options(
+    specs: Vec<(String, String, Option<char>, Option<String>, bool)>,
+    argv: Vec<String>,
+) -> PyResult<Vec<PyOptionToken>> {
+    use breezy::optparse::{OptionKind, OptionSpec, Spec, Token};
+    let options = specs
+        .into_iter()
+        .map(|(key, long, short, negation, takes_value)| OptionSpec {
+            key,
+            long,
+            short,
+            negation,
+            kind: if takes_value {
+                OptionKind::Value
+            } else {
+                OptionKind::Flag
+            },
+        })
+        .collect();
+    let spec = Spec::from_options(options);
+    let tokens = breezy::optparse::tokenize(&spec, argv)
+        .map_err(|e| CommandError::new_err(e.to_string()))?;
+    Ok(tokens
+        .into_iter()
+        .map(|token| match token {
+            Token::Option {
+                key,
+                opt_str,
+                value,
+                flag_value,
+            } => PyOptionToken {
+                is_option: true,
+                key: Some(key),
+                opt_str: Some(opt_str),
+                value,
+                flag_value,
+            },
+            Token::Argument(arg) => PyOptionToken {
+                is_option: false,
+                key: None,
+                opt_str: None,
+                value: Some(arg),
+                flag_value: false,
+            },
+        })
+        .collect())
+}
+
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
 
@@ -997,6 +1067,11 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     commandsm.add_class::<PyMasterOptions>()?;
     m.add_submodule(&commandsm)?;
 
+    let optparsem = PyModule::new(py, "optparse")?;
+    optparsem.add_function(wrap_pyfunction!(tokenize_options, &optparsem)?)?;
+    optparsem.add_class::<PyOptionToken>()?;
+    m.add_submodule(&optparsem)?;
+
     m.add_class::<TreeBuilder>()?;
 
     // PyO3 submodule hack for proper import support
@@ -1009,6 +1084,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.help", module_name), &helpm)?;
     modules.set_item(format!("{}.uncommit", module_name), &uncommitm)?;
     modules.set_item(format!("{}.commands", module_name), &commandsm)?;
+    modules.set_item(format!("{}.optparse", module_name), &optparsem)?;
 
     Ok(())
 }
