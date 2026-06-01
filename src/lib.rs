@@ -60,6 +60,9 @@ pub mod treebuilder;
 /// Command trait and infrastructure.
 pub mod command;
 
+/// Command-line option parsing (a replacement for Python's optparse).
+pub mod optparse;
+
 #[cfg(feature = "pyo3")]
 /// Python bindings for Tree.
 pub mod pytree;
