@@ -584,8 +584,211 @@ class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
         return optparse.IndentedHelpFormatter.format_option(self, option)
 
 
+class OptionValues:
+    """Holds parsed option values.
+
+    A drop-in for ``optparse.Values``: attributes hold the parsed values and
+    equality compares against another ``OptionValues`` or a plain dict (matching
+    the behaviour the option tests rely on).
+    """
+
+    def __init__(self):
+        """Initialize with no values set."""
+
+    def __eq__(self, other):
+        """Compare values by their attribute dict, like optparse.Values."""
+        if isinstance(other, OptionValues):
+            return self.__dict__ == other.__dict__
+        elif isinstance(other, dict):
+            return self.__dict__ == other
+        else:
+            return NotImplemented
+
+    def __repr__(self):
+        """Return a debug representation of the held values."""
+        return f"OptionValues({self.__dict__!r})"
+
+
+class _OptError(Exception):
+    """Internal error raised while applying a parsed option value.
+
+    The message is reported to the user via ``RustOptionParser.error`` as a
+    CommandError, mirroring optparse's behaviour.
+    """
+
+
+class RustOptionParser:
+    """A standalone option parser backed by the Rust tokenizer.
+
+    This replaces breezy's previous ``optparse``-based ``OptionParser``. It
+    introspects breezy ``Option`` objects to build a token spec for the Rust
+    tokenizer, then applies type conversion, list handling, registry conversion
+    and custom callbacks itself, producing an :class:`OptionValues` result.
+    """
+
+    DEFAULT_VALUE = OptionParser.DEFAULT_VALUE
+
+    def __init__(self, options):
+        """Build a parser for the given breezy ``Option`` objects."""
+        self._options = options
+        self.values = OptionValues()
+        # Each spec entry is (key, long, short, negation, takes_value); each key
+        # maps to an applier callable invoked with (opt_str, value, flag_value).
+        self._specs = []
+        self._appliers = {}
+        # The values that must default to the empty list (ListOption) or the
+        # DEFAULT_VALUE sentinel (plain value options), applied up front.
+        self._defaults = {}
+        for option in options:
+            self._register(option)
+        for param_name, default in self._defaults.items():
+            setattr(self.values, param_name, default)
+
+    def error(self, message):
+        """Raise a CommandError instead of exiting, like the old parser."""
+        raise errors.CommandError(message)
+
+    def _add_spec(self, key, long, short, negation, takes_value, applier):
+        self._specs.append((key, long, short, negation, takes_value))
+        self._appliers[key] = applier
+
+    def _register(self, option):
+        if isinstance(option, ListOption):
+            self._register_list(option)
+        elif isinstance(option, RegistryOption):
+            self._register_registry(option)
+        else:
+            self._register_plain(option)
+
+    def _register_plain(self, option):
+        param = option._param_name
+        short = option.short_name()
+        if option.type is None:
+            # Boolean: the affirmative sets True, the negation sets False.
+            self._add_spec(
+                param,
+                option.name,
+                short,
+                option.get_negation_name(),
+                False,
+                self._make_bool_applier(option),
+            )
+        else:
+            self._defaults[param] = self.DEFAULT_VALUE
+            self._add_spec(
+                param, option.name, short, None, True, self._make_value_applier(option)
+            )
+
+    def _register_list(self, option):
+        param = option._param_name
+        self._defaults[param] = []
+        self._add_spec(
+            param,
+            option.name,
+            option.short_name(),
+            None,
+            True,
+            self._make_list_applier(option),
+        )
+
+    def _register_registry(self, option):
+        param = option._param_name
+        if option.enum_switch:
+            self._add_spec(
+                param,
+                option.name,
+                option.short_name(),
+                None,
+                True,
+                self._make_value_applier(option),
+            )
+        if option.value_switches:
+            for key in option.registry.keys():
+                if key in option.registry.aliases():
+                    continue
+                short = None
+                if option.short_value_switches and key in option.short_value_switches:
+                    short = option.short_value_switches[key]
+                # A distinct spec key per value switch, all writing the same
+                # param. The negation slot is unused for value switches.
+                self._add_spec(
+                    f"{param}\x00{key}",
+                    key,
+                    short,
+                    None,
+                    False,
+                    self._make_value_switch_applier(option, key),
+                )
+
+    def _make_bool_applier(self, option):
+        def apply(opt_str, value, flag_value):
+            setattr(self.values, option._param_name, flag_value)
+            if option.custom_callback is not None:
+                option.custom_callback(
+                    option, option._param_name, flag_value, self
+                )
+
+        return apply
+
+    def _make_value_applier(self, option):
+        def apply(opt_str, value, flag_value):
+            try:
+                v = option.type(value)
+            except ValueError as e:
+                raise _OptError(
+                    f"invalid value for option {opt_str}: {value}"
+                ) from e
+            setattr(self.values, option._param_name, v)
+            if option.custom_callback is not None:
+                option.custom_callback(option, option.name, v, self)
+
+        return apply
+
+    def _make_list_applier(self, option):
+        def apply(opt_str, value, flag_value):
+            values = getattr(self.values, option._param_name)
+            if value == "-":
+                del values[:]
+            else:
+                values.append(option.type(value))
+            if option.custom_callback is not None:
+                option.custom_callback(option, option._param_name, values, self)
+
+        return apply
+
+    def _make_value_switch_applier(self, option, key):
+        def apply(opt_str, value, flag_value):
+            v = option.type(key)
+            setattr(self.values, option._param_name, v)
+            if option.custom_callback is not None:
+                option.custom_callback(option, option._param_name, v, self)
+
+        return apply
+
+    def parse_args(self, args):
+        """Parse ``args``, returning ``(values, remaining_args)``."""
+        from ._cmd_rs.optparse import tokenize_options
+
+        tokens = tokenize_options(self._specs, list(args))
+        remaining = []
+        try:
+            for token in tokens:
+                if not token.is_option:
+                    remaining.append(token.value)
+                    continue
+                applier = self._appliers[token.key]
+                applier(token.opt_str, token.value, token.flag_value)
+        except _OptError as e:
+            self.error(str(e))
+        return self.values, remaining
+
+
 def get_optparser(options):
     """Generate an optparse parser for breezy-style options."""
+    import os
+
+    if os.environ.get("BRZ_RUST_OPTPARSE"):
+        return RustOptionParser(options)
     parser = OptionParser()
     parser.remove_option("--help")
     for option in options:
