@@ -38,7 +38,8 @@ class TestVerify(TestCase):
 
         context = gpg.Context()
 
-        key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        key = gpg.Data(
+            b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mQENBE343IgBCADwzPW7kmKb2bjB+UU+1ER/ABMZspvtoZMPusUw7bk6coXHF/0W
@@ -68,9 +69,11 @@ boff+kIsoa/TAMLwtJoSrX1nXm0K3vZePRLnIgmwVzdkOIkaRJUG2tSQFvkfhvtE
 LhnkL5l4MO0wrUds0UWRwa3d7j/P2ExrqXdlLmEzrifWyEQ=
 =hUJn
 -----END PGP PUBLIC KEY BLOCK-----
-""")
+"""
+        )
 
-        secret_key = gpg.Data(b"""-----BEGIN PGP PRIVATE KEY BLOCK-----
+        secret_key = gpg.Data(
+            b"""-----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 lQOYBE343IgBCADwzPW7kmKb2bjB+UU+1ER/ABMZspvtoZMPusUw7bk6coXHF/0W
@@ -127,9 +130,11 @@ Gmk1tz5uh9/6Qiyhr9MAwvC0mhKtfWdebQre9l49EuciCbBXN2Q4iRpElQba1JAW
 +R+G+0QuGeQvmXgw7TCtR2zRRZHBrd3uP8/YTGupd2UuYTOuJ9bIRA==
 =LXn0
 -----END PGP PRIVATE KEY BLOCK-----
-""")
+"""
+        )
 
-        revoked_key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        revoked_key = gpg.Data(
+            b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mI0ETjlW5gEEAOb/6P+TVM59E897wRtatxys2BhsHCXM4T7xjIiANfDwejDdifqh
@@ -152,9 +157,11 @@ YUJsPy/EL++OKPH1aFasOdTxwkTka85+RdYqhP1+z/aYLFMWq6mRFI+o6x2k5mGi
 7dMv2kKTJPoXUpiXJbg=
 =hLYO
 -----END PGP PUBLIC KEY BLOCK-----
-""")
+"""
+        )
 
-        expired_key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        expired_key = gpg.Data(
+            b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mI0ETjZ6PAEEALkR4GcFQidCCxV7pgQwQd5MZua0YO2l92fVqHX+PhnZ6egCLKdD
@@ -174,7 +181,8 @@ WzyX8DaHQEjKpLJJjXcAbTiZBNMk0QaVC9RvIeHpCf3n3DC49DdjsPJRMKOn8KDi
 kRk=
 =p0gt
 -----END PGP PUBLIC KEY BLOCK-----
-""")
+"""
+        )
         context.op_import(key)
         context.op_import(secret_key)
         context.op_import(revoked_key)

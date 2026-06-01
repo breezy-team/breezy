@@ -28,6 +28,11 @@ forges.register_lazy("github", __name__ + ".forge", "GitHub")
 
 
 def test_suite():
+    """Load test suite for the GitHub plugin.
+
+    Returns:
+        TestSuite: A test suite containing all tests for the GitHub plugin.
+    """
     from unittest import TestSuite
 
     from .tests import test_suite

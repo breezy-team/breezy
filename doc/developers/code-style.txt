@@ -486,7 +486,7 @@ variable:
  * If importing a module, not an attribute, and the module is a top-level
    module (i.e. has no dots in the name), then it's ok to use the builtin
    ``__import__``, e.g. ``__import__(module_name)``.
- * In all other cases, prefer ``breezy.pyutils.get_named_object`` to the
+ * In all other cases, prefer ``catalogus.pyutils.get_named_object`` to the
    built-in ``__import__``.  ``__import__`` has some subtleties and
    unintuitive behaviours that make it hard to use correctly.
 

@@ -47,6 +47,8 @@ LICENSE_EXCEPTIONS = [
 
 
 class TestSourceHelper(TestCase):
+    """Base helper class for source code analysis tests."""
+
     def source_file_name(self, package):
         """Return the path of the .py file for package."""
         if getattr(sys, "frozen", None) is not None:
@@ -59,6 +61,8 @@ class TestSourceHelper(TestCase):
 
 
 class TestApiUsage(TestSourceHelper):
+    """Tests for API usage patterns in the source code."""
+
     def find_occurences(self, rule, filename):
         """Find the number of occurences of rule in a file."""
         occurences = 0
@@ -93,6 +97,8 @@ class TestApiUsage(TestSourceHelper):
 
 
 class TestSource(TestSourceHelper):
+    """Tests for source code quality and compliance."""
+
     def get_breezy_dir(self):
         """Get the path to the root of breezy."""
         source = self.source_file_name(breezy)
@@ -101,7 +107,7 @@ class TestSource(TestSourceHelper):
         # Avoid the case when breezy is packaged in a zip file
         if not os.path.isdir(source_dir):
             raise TestSkipped(
-                "Cannot find breezy source directory. Expected {}".format(source_dir)
+                f"Cannot find breezy source directory. Expected {source_dir}"
             )
         return source_dir
 
@@ -129,6 +135,14 @@ class TestSource(TestSourceHelper):
                 yield osutils.pathjoin(root, f)
 
     def get_source_file_contents(self, extensions=None):
+        """Yield source file names and their contents.
+
+        Args:
+            extensions: Tuple of file extensions to include (default: None).
+
+        Yields:
+            Tuple of (filename, file_contents) for each matching source file.
+        """
         for fname in self.get_source_files(extensions=extensions):
             with open(fname) as f:
                 yield fname, f.read()
@@ -159,7 +173,7 @@ class TestSource(TestSourceHelper):
                 )
 
     def test_copyright(self):
-        """Test that all .py and .pyx files have a valid copyright statement."""
+        """Test that all .py files have a valid copyright statement."""
         incorrect = []
 
         copyright_re = re.compile("#\\s*copyright.*(?=\n)", re.I)
@@ -169,23 +183,20 @@ class TestSource(TestSourceHelper):
             r" [^ ]*"
         )  # and then whoever.
 
-        for fname, text in self.get_source_file_contents(extensions=(".py", ".pyx")):
+        for fname, text in self.get_source_file_contents():
             if self.is_copyright_exception(fname):
                 continue
             match = copyright_statement_re.search(text)
             if not match:
                 match = copyright_re.search(text)
                 if match:
-                    incorrect.append((fname, "found: {}".format(match.group())))
+                    incorrect.append((fname, f"found: {match.group()}"))
                 else:
                     incorrect.append((fname, "no copyright line found\n"))
             else:
                 if "by Canonical" in match.group():
                     incorrect.append(
-                        (
-                            fname,
-                            'should not have: "by Canonical": {}'.format(match.group()),
-                        )
+                        (fname, f'should not have: "by Canonical": {match.group()}')
                     )
 
         if incorrect:
@@ -196,7 +207,7 @@ class TestSource(TestSourceHelper):
                 " COPYRIGHT_EXCEPTIONS in"
                 " breezy/tests/test_source.py",
                 # this is broken to prevent a false match
-                "or add '# Copyright (C) 2007 Bazaar hackers' to these files:",
+                "or add '# Copyright (C) 2023 Breezy developers ' to these files:",
                 "",
             ]
             for fname, comment in incorrect:
@@ -206,7 +217,7 @@ class TestSource(TestSourceHelper):
             self.fail("\n".join(help_text))
 
     def test_gpl(self):
-        """Test that all .py and .pyx files have a GPL disclaimer."""
+        """Test that all .py files have a GPL disclaimer."""
         incorrect = []
 
         gpl_txt = """
@@ -226,7 +237,7 @@ class TestSource(TestSourceHelper):
 """
         gpl_re = re.compile(re.escape(gpl_txt), re.MULTILINE)
 
-        for fname, text in self.get_source_file_contents(extensions=(".py", ".pyx")):
+        for fname, text in self.get_source_file_contents():
             if self.is_license_exception(fname):
                 continue
             if not gpl_re.search(text):
@@ -256,7 +267,7 @@ class TestSource(TestSourceHelper):
     def _format_message(self, dict_, message):
         files = sorted(
             [
-                "{}: {}".format(f, ", ".join([str(i + 1) for i in lines]))
+                f"{f}: {', '.join([str(i + 1) for i in lines])}"
                 for f, lines in dict_.items()
             ]
         )
@@ -276,7 +287,7 @@ class TestSource(TestSourceHelper):
         tabs = {}
         illegal_newlines = {}
         no_newline_at_eof = []
-        for fname, text in self.get_source_file_contents(extensions=(".py", ".pyx")):
+        for fname, text in self.get_source_file_contents():
             if not self.is_our_code(fname):
                 continue
             lines = text.splitlines(True)
@@ -337,59 +348,3 @@ class TestSource(TestSourceHelper):
                     "\n".join(badfiles)
                 )
             )
-
-    def test_extension_exceptions(self):
-        """Extension functions should propagate exceptions.
-
-        Either they should return an object, have an 'except' clause, or
-        have a "# cannot_raise" to indicate that we've audited them and
-        defined them as not raising exceptions.
-        """
-        both_exc_and_no_exc = []
-        missing_except = []
-        common_classes = ("tuple",)
-        class_re = re.compile(
-            r"^(cdef\s+)?(public\s+)?" r"(api\s+)?class (\w+).*:", re.MULTILINE
-        )
-        except_re = re.compile(
-            r"cdef\s+"  # start with cdef
-            r"([\w *]*?)\s*"  # this is the return signature
-            r"(\w+)\s*\("  # the function name
-            r"[^)]*\)\s*"  # parameters
-            r"(.*)\s*:"  # the except clause
-            r"\s*(#\s*cannot[- _]raise)?"
-        )  # cannot raise comment
-        for fname, text in self.get_source_file_contents(extensions=(".pyx",)):
-            known_classes = {m[-1] for m in class_re.findall(text)}
-            known_classes.update(common_classes)
-            cdefs = except_re.findall(text)
-            for sig, func, exc_clause, no_exc_comment in cdefs:
-                if sig.startswith("api "):
-                    sig = sig[4:]
-                if not sig or sig in known_classes:
-                    sig = "object"
-                if "nogil" in exc_clause:
-                    exc_clause = exc_clause.replace("nogil", "").strip()
-                if exc_clause and no_exc_comment:
-                    both_exc_and_no_exc.append((fname, func))
-                if sig != "object" and not (exc_clause or no_exc_comment):
-                    missing_except.append((fname, func))
-        error_msg = []
-        if both_exc_and_no_exc:
-            error_msg.append(
-                'The following functions had "cannot raise" comments'
-                " but did have an except clause set:"
-            )
-            for fname, func in both_exc_and_no_exc:
-                error_msg.append("{}:{}".format(fname, func))
-            error_msg.extend(("", ""))
-        if missing_except:
-            error_msg.append(
-                "The following functions have fixed return types, but no except clause."
-            )
-            error_msg.append('Either add an except or append "# cannot_raise".')
-            for fname, func in missing_except:
-                error_msg.append("{}:{}".format(fname, func))
-            error_msg.extend(("", ""))
-        if error_msg:
-            self.fail("\n".join(error_msg))

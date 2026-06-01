@@ -16,9 +16,10 @@
 
 """Tests for Branch.get_rev_id."""
 
-from breezy.errors import RevnoOutOfBounds
-from breezy.revision import NULL_REVISION
 from breezy.tests import TestCaseWithTransport
+
+from ...errors import RevnoOutOfBounds
+from ...revision import NULL_REVISION
 
 
 class TestGetRevid(TestCaseWithTransport):

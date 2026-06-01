@@ -87,8 +87,8 @@ def generate_unicode_encodings(universal_encoding=None):
 class RecordingContextManager:
     """A context manager that records."""
 
-    def __init__(self):
-        self._calls = []
+    def __init__(self) -> None:
+        self._calls: list[str] = []
 
     def __enter__(self):
         self._calls.append("__enter__")

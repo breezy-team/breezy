@@ -79,7 +79,7 @@ class TestStats(tests.TestCaseInTempDir):
         path = self._temppath("pkl")
         self.stats.save(path)
         with open(path, "rb") as f:
-            data1 = pickle.load(f)
+            data1 = pickle.load(f)  # noqa: S301
             self.assertEqual(type(data1), lsprof.Stats)
 
     def test_sort(self):

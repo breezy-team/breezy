@@ -21,10 +21,11 @@ import os
 
 from testtools import content
 
+from breezy.transport import remote
+
 from .. import trace
 from ..bzr.smart import medium
 from ..controldir import ControlDir
-from ..transport import remote
 from . import TestCaseWithTransport
 
 old_format_modules = [
@@ -95,11 +96,11 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
         bad_modules = []
         for module_name in forbidden_imports:
-            if err.find("\nimport '{}' ".format(module_name)) != -1:
+            if err.find(f"\nimport '{module_name}' ") != -1:
                 bad_modules.append(module_name)
 
         if bad_modules:
-            self.fail("command loaded forbidden modules {!r}".format(bad_modules))
+            self.fail(f"command loaded forbidden modules {bad_modules!r}")
 
     def finish_brz_subprocess_with_import_check(self, process, args, forbidden_imports):
         """Finish subprocess and check specific modules have not been
@@ -156,7 +157,7 @@ class TestImportTariffs(ImportTariffTestCase):
             # breezy.foreign so it can't be blacklisted
             "breezy.gpg",
             "breezy.info",
-            "breezy.bzr.knit",
+            "bzrformats.knit",
             "breezy.merge_directive",
             "breezy.msgeditor",
             "breezy.rules",
@@ -165,9 +166,9 @@ class TestImportTariffs(ImportTariffTestCase):
             "breezy.version_info_formats.format_rio",
             "breezy.bzr.hashcache",
             "breezy.bzr.remote",
-            "breezy.bzr.smart",
             "breezy.bzr.smart.client",
             "breezy.bzr.smart.medium",
+            "breezy.bzr.smart.request",
             "breezy.bzr.smart.server",
             "breezy.bzr.xml_serializer",
             "breezy.bzr.xml8",
@@ -211,17 +212,16 @@ class TestImportTariffs(ImportTariffTestCase):
                 "breezy.rules",
                 "breezy.sign_my_commits",
                 "breezy.bzr.hashcache",
-                "breezy.bzr.knit",
+                "bzrformats.knit",
                 "breezy.bzr.remote",
-                "breezy.bzr.smart",
                 "breezy.bzr.smart.client",
                 "breezy.bzr.smart.medium",
+                "breezy.bzr.smart.request",
                 "breezy.bzr.smart.server",
                 "breezy.transform",
                 "breezy.version_info_formats.format_rio",
                 "breezy.bzr.xml_serializer",
                 "breezy.bzr.xml8",
-                "breezy.bzr.inventory",
                 "breezy.bzr.bzrdir",
                 "breezy.git.remote",
                 "breezy.git.commit",
@@ -277,9 +277,6 @@ class TestImportTariffs(ImportTariffTestCase):
                 "breezy.bugtracker",
                 "breezy.bundle.commands",
                 "breezy.cmd_version_info",
-                "breezy.bzr.dirstate",
-                "breezy.bzr._dirstate_helpers_py",
-                "breezy.bzr._dirstate_helpers_pyx",
                 "breezy.externalcommand",
                 "breezy.filters",
                 # foreign branch plugins import the foreign_vcs_registry from
@@ -293,7 +290,7 @@ class TestImportTariffs(ImportTariffTestCase):
                 "breezy.transform",
                 "breezy.version_info_formats.format_rio",
                 "breezy.bzr.hashcache",
-                "breezy.bzr.knit",
+                "bzrformats.knit",
                 "breezy.bzr.remote",
                 "breezy.bzr.smart.client",
                 "breezy.bzr.workingtree_4",

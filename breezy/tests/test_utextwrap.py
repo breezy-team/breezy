@@ -21,13 +21,13 @@ from .. import tests, utextwrap
 
 # Japanese "Good morning".
 # Each character have double width. So total 8 width on console.
-_str_D = "\u304a\u306f\u3088\u3046"
+_str_d = "\u304a\u306f\u3088\u3046"
 
-_str_S = "hello"
+_str_s = "hello"
 
 # Combine single width characters and double width characters.
-_str_SD = _str_S + _str_D
-_str_DS = _str_D + _str_S
+_str_sd = _str_s + _str_d
+_str_ds = _str_d + _str_s
 
 
 class TestUTextWrap(tests.TestCase):
@@ -40,15 +40,15 @@ class TestUTextWrap(tests.TestCase):
         )
 
     def test_width(self):
-        self.check_width(_str_D, 8)
-        self.check_width(_str_SD, 13)
+        self.check_width(_str_d, 8)
+        self.check_width(_str_sd, 13)
 
     def check_cut(self, text, width, pos):
         w = utextwrap.UTextWrapper()
         self.assertEqual((text[:pos], text[pos:]), w._cut(text, width))
 
     def test_cut(self):
-        s = _str_SD
+        s = _str_sd
         self.check_cut(s, 0, 0)
         self.check_cut(s, 1, 1)
         self.check_cut(s, 5, 5)
@@ -61,46 +61,44 @@ class TestUTextWrap(tests.TestCase):
 
     def test_split(self):
         w = utextwrap.UTextWrapper()
-        self.assertEqual(list(_str_D), w._split(_str_D))
-        self.assertEqual([_str_S] + list(_str_D), w._split(_str_SD))
-        self.assertEqual(list(_str_D) + [_str_S], w._split(_str_DS))
+        self.assertEqual(list(_str_d), w._split(_str_d))
+        self.assertEqual([_str_s] + list(_str_d), w._split(_str_sd))
+        self.assertEqual(list(_str_d) + [_str_s], w._split(_str_ds))
 
     def test_wrap(self):
-        self.assertEqual(list(_str_D), utextwrap.wrap(_str_D, 1))
-        self.assertEqual(list(_str_D), utextwrap.wrap(_str_D, 2))
-        self.assertEqual(list(_str_D), utextwrap.wrap(_str_D, 3))
+        self.assertEqual(list(_str_d), utextwrap.wrap(_str_d, 1))
+        self.assertEqual(list(_str_d), utextwrap.wrap(_str_d, 2))
+        self.assertEqual(list(_str_d), utextwrap.wrap(_str_d, 3))
         self.assertEqual(
-            list(_str_D), utextwrap.wrap(_str_D, 3, break_long_words=False)
+            list(_str_d), utextwrap.wrap(_str_d, 3, break_long_words=False)
         )
 
 
 class TestUTextFill(tests.TestCase):
     def test_fill_simple(self):
         # Test only can call fill() because it's just '\n'.join(wrap(text)).
-        self.assertEqual(
-            "{}\n{}".format(_str_D[:2], _str_D[2:]), utextwrap.fill(_str_D, 4)
-        )
+        self.assertEqual(f"{_str_d[:2]}\n{_str_d[2:]}", utextwrap.fill(_str_d, 4))
 
     def test_fill_with_breaks(self):
         # Demonstrate complicated case.
-        text = "spam ham egg spamhamegg" + _str_D + " spam" + _str_D * 2
+        text = "spam ham egg spamhamegg" + _str_d + " spam" + _str_d * 2
         self.assertEqual(
             "\n".join(
                 [
                     "spam ham",
                     "egg spam",
-                    "hamegg" + _str_D[0],
-                    _str_D[1:],
-                    "spam" + _str_D[:2],
-                    _str_D[2:] + _str_D[:2],
-                    _str_D[2:],
+                    "hamegg" + _str_d[0],
+                    _str_d[1:],
+                    "spam" + _str_d[:2],
+                    _str_d[2:] + _str_d[:2],
+                    _str_d[2:],
                 ]
             ),
             utextwrap.fill(text, 8),
         )
 
     def test_fill_without_breaks(self):
-        text = "spam ham egg spamhamegg" + _str_D + " spam" + _str_D * 2
+        text = "spam ham egg spamhamegg" + _str_d + " spam" + _str_d * 2
         self.assertEqual(
             "\n".join(
                 [
@@ -109,10 +107,10 @@ class TestUTextFill(tests.TestCase):
                     "spamhamegg",
                     # border between single width and double
                     # width.
-                    _str_D,
-                    "spam" + _str_D[:2],
-                    _str_D[2:] + _str_D[:2],
-                    _str_D[2:],
+                    _str_d,
+                    "spam" + _str_d[:2],
+                    _str_d[2:] + _str_d[:2],
+                    _str_d[2:],
                 ]
             ),
             utextwrap.fill(text, 8, break_long_words=False),
@@ -124,12 +122,12 @@ class TestUTextFill(tests.TestCase):
             "\n".join(
                 [
                     "    hell",
-                    "    o" + _str_D[0],
-                    "    " + _str_D[1:3],
-                    "    " + _str_D[3],
+                    "    o" + _str_d[0],
+                    "    " + _str_d[1:3],
+                    "    " + _str_d[3],
                 ]
             ),
-            w.fill(_str_SD),
+            w.fill(_str_sd),
         )
 
     def test_fill_indent_without_breaks(self):
@@ -139,11 +137,11 @@ class TestUTextFill(tests.TestCase):
             "\n".join(
                 [
                     "    hello",
-                    "    " + _str_D[:2],
-                    "    " + _str_D[2:],
+                    "    " + _str_d[:2],
+                    "    " + _str_d[2:],
                 ]
             ),
-            w.fill(_str_SD),
+            w.fill(_str_sd),
         )
 
     def test_fill_indent_without_breaks_with_fixed_width(self):
@@ -154,13 +152,13 @@ class TestUTextFill(tests.TestCase):
             "\n".join(
                 [
                     "    hello",
-                    "    " + _str_D[0],
-                    "    " + _str_D[1],
-                    "    " + _str_D[2],
-                    "    " + _str_D[3],
+                    "    " + _str_d[0],
+                    "    " + _str_d[1],
+                    "    " + _str_d[2],
+                    "    " + _str_d[3],
                 ]
             ),
-            w.fill(_str_SD),
+            w.fill(_str_sd),
         )
 
 

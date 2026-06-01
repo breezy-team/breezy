@@ -1,0 +1,12 @@
+[package]
+name = "patch-py"
+version = { workspace = true }
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { workspace = true, features = ["extension-module", "chrono"]}
+pyo3-filelike = { workspace = true }
+breezy-patch = { path = "../patch" }

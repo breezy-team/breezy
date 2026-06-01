@@ -20,6 +20,8 @@ These were formats present in pre-1.0 version of Bazaar.
 """
 
 # Since we are a built-in plugin we share the breezy version
+from bzrformats import serializer
+
 from ... import branch as _mod_branch
 from ... import (
     controldir,
@@ -27,7 +29,7 @@ from ... import (
 )
 from ... import repository as _mod_repository
 from ... import workingtree as _mod_workingtree
-from ...bzr import BzrProber, register_metadir, serializer
+from ...bzr import BzrProber, register_metadir
 
 # Pre-0.8 formats that don't have a disk format string (because they are
 # versioned by the matching control directory). We use the control directories
@@ -118,21 +120,31 @@ _mod_workingtree.format_registry.register_extra_lazy(
     "breezy.plugins.weave_fmt.workingtree", "WorkingTreeFormat2"
 )
 
-serializer.format_registry.register_lazy(
-    "4", "breezy.plugins.weave_fmt.xml4", "serializer_v4"
+serializer.inventory_format_registry.register_lazy(
+    "4", "bzrformats.xml4", "inventory_serializer_v4"
+)
+serializer.revision_format_registry.register_lazy(
+    "4", "bzrformats.xml4", "revision_serializer_v4"
 )
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests for the weave_fmt plugin.
+
+    Args:
+        loader: The test loader instance used to load tests.
+        basic_tests: The basic test suite to add tests to.
+        pattern: Pattern for test discovery (unused).
+
+    Returns:
+        The test suite with additional weave_fmt plugin tests loaded.
+    """
     testmod_names = [
         "test_bzrdir",
         "test_repository",
         "test_store",
         "test_workingtree",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

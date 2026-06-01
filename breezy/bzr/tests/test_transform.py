@@ -18,6 +18,8 @@ import codecs
 import os
 import time
 
+from dromedary.local import file_kind
+
 from ... import errors, filters, osutils, rules
 from ...controldir import ControlDir
 from ...tests import UnavailableFeature, features
@@ -134,7 +136,7 @@ class TestBuildTree(TestCaseWithTransport):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         build_tree(basis, b)
-        self.assertIs(os.path.isdir("b/foo"), True)
+        self.assertTrue(os.path.isdir("b/foo"))
         with open("b/foo/bar", "rb") as f:
             self.assertEqual(f.read(), b"contents")
         self.assertEqual(os.readlink("b/foo/baz"), "a/foo/bar")
@@ -239,7 +241,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.make_branch("target4/dir1/file")
         build_tree(source.basis_tree(), target)
         self.assertPathExists("target4/dir1/file")
-        self.assertEqual("directory", osutils.file_kind("target4/dir1/file"))
+        self.assertEqual("directory", file_kind("target4/dir1/file"))
         self.assertPathExists("target4/dir1/file.diverted")
         self.assertEqual(
             [
@@ -335,7 +337,7 @@ class TestBuildTree(TestCaseWithTransport):
         target.lock_write()
         self.addCleanup(target.unlock)
         state = target.current_dirstate()
-        state._cutoff_time = time.time() + 60
+        state._cutoff_time = int(time.time()) + 60
         build_tree(source.basis_tree(), target, source)
         entry = state._get_entry(0, path_utf8=b"file1")
         self.assertEqual(sha1, entry[1][0][1])
@@ -528,7 +530,7 @@ class TestBuildTree(TestCaseWithTransport):
         # We make use of the fact that DirState caches its cutoff time. So we
         # set the 'safe' time to one minute in the future.
         state = target.current_dirstate()
-        state._cutoff_time = time.time() + 60
+        state._cutoff_time = int(time.time()) + 60
         build_tree(source.basis_tree(), target)
         entry1_sha = osutils.sha_file_by_name("source/file1")
         entry2_sha = osutils.sha_file_by_name("source/dir/file2")

@@ -34,6 +34,28 @@ def strace(function, *args, **kwargs):
 
 
 def strace_detailed(function, args, kwargs, follow_children=True):
+    """Invoke strace on a function with detailed control over execution.
+
+    This function runs strace on the given function, capturing system calls
+    made during its execution. It provides more control than the basic
+    strace() function, allowing configuration of fork following behavior.
+
+    Args:
+        function: The function to trace.
+        args: Positional arguments to pass to the function.
+        kwargs: Keyword arguments to pass to the function.
+        follow_children: Whether strace should follow child processes.
+            Default is True. Set to False to work around strace bugs
+            when multiple threads are running.
+
+    Returns:
+        A tuple containing:
+            - The result of calling function(*args, **kwargs)
+            - A StraceResult object containing the strace log and error messages
+
+    Raises:
+        StraceError: If strace fails to attach to the process.
+    """
     # FIXME: strace is buggy
     # (https://bugs.launchpad.net/ubuntu/+source/strace/+bug/103133) and the
     # test suite hangs if the '-f' is given to strace *and* more than one
@@ -75,6 +97,12 @@ def strace_detailed(function, args, kwargs, follow_children=True):
 
 
 class StraceError(errors.BzrError):
+    """Error raised when strace fails to attach to a process.
+
+    This error is raised when strace cannot attach to the current process,
+    typically due to permission issues or system configuration restrictions.
+    """
+
     _fmt = "strace failed: %(err_messages)s"
 
 

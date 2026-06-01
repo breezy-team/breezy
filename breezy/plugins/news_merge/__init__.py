@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Plugin for merging NEWS-style files in Bazaar."""
+
 __doc__ = """Merge hook for bzr's NEWS file.
 
 To enable this plugin, add a section to your branch.conf or location.conf
@@ -53,6 +55,7 @@ install_lazy_named_hook(
 
 
 def test_suite():
+    """Return the test suite for the news_merge plugin."""
     from . import tests
 
     return tests.test_suite()

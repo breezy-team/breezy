@@ -18,8 +18,9 @@
 
 from io import BytesIO
 
+from bzrformats import pack
+
 from ... import tests
-from .. import pack
 
 
 class TestContainerSerialiser(tests.TestCase):
@@ -439,9 +440,7 @@ class TestBytesRecordReader(tests.TestCase):
                 pass
             else:
                 self.fail(
-                    "UnexpectedEndOfContainerError not raised when parsing {!r}".format(
-                        incomplete_record
-                    )
+                    f"UnexpectedEndOfContainerError not raised when parsing {incomplete_record!r}"
                 )
 
     def test_initial_eof(self):

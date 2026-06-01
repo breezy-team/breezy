@@ -131,8 +131,8 @@ class TestStatus(TestCaseWithTransport):
             tree,
             to_file=output,
             revision=[
-                RevisionSpec.from_string("revid:{}".format(r1_id.decode("utf-8"))),
-                RevisionSpec.from_string("revid:{}".format(r2_id.decode("utf-8"))),
+                RevisionSpec.from_string(f"revid:{r1_id.decode('utf-8')}"),
+                RevisionSpec.from_string(f"revid:{r2_id.decode('utf-8')}"),
             ],
         )
         # return does not matter as long as it did not raise.
@@ -142,8 +142,8 @@ class TestHooks(TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a StatusHooks instance has the right defaults."""
         hooks = _mod_status.StatusHooks()
-        self.assertTrue("post_status" in hooks, "post_status not in {}".format(hooks))
-        self.assertTrue("pre_status" in hooks, "pre_status not in {}".format(hooks))
+        self.assertIn("post_status", hooks, f"post_status not in {hooks}")
+        self.assertIn("pre_status", hooks, f"pre_status not in {hooks}")
 
     def test_installed_hooks_are_StatusHooks(self):
         """The installed hooks object should be a StatusHooks."""
@@ -165,8 +165,8 @@ class TestHooks(TestCaseWithTransport):
             tree,
             to_file=output,
             revision=[
-                RevisionSpec.from_string("revid:{}".format(r1_id.decode("utf-8"))),
-                RevisionSpec.from_string("revid:{}".format(r2_id.decode("utf-8"))),
+                RevisionSpec.from_string(f"revid:{r1_id.decode('utf-8')}"),
+                RevisionSpec.from_string(f"revid:{r2_id.decode('utf-8')}"),
             ],
         )
         self.assertLength(1, calls)
@@ -184,8 +184,7 @@ class TestHooks(TestCaseWithTransport):
         ]
         for a in attrs:
             self.assertTrue(
-                hasattr(params, a),
-                'Attribute "{}" not found in StatusHookParam'.format(a),
+                hasattr(params, a), f'Attribute "{a}" not found in StatusHookParam'
             )
 
     def test_pre_status_hook(self):
@@ -201,8 +200,8 @@ class TestHooks(TestCaseWithTransport):
             tree,
             to_file=output,
             revision=[
-                RevisionSpec.from_string("revid:{}".format(r1_id.decode("utf-8"))),
-                RevisionSpec.from_string("revid:{}".format(r2_id.decode("utf-8"))),
+                RevisionSpec.from_string(f"revid:{r1_id.decode('utf-8')}"),
+                RevisionSpec.from_string(f"revid:{r2_id.decode('utf-8')}"),
             ],
         )
         self.assertLength(1, calls)
@@ -220,6 +219,5 @@ class TestHooks(TestCaseWithTransport):
         ]
         for a in attrs:
             self.assertTrue(
-                hasattr(params, a),
-                'Attribute "{}" not found in StatusHookParam'.format(a),
+                hasattr(params, a), f'Attribute "{a}" not found in StatusHookParam'
             )

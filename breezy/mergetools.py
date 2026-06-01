@@ -29,12 +29,11 @@ lazy_import(
     """
 from breezy import (
     cmdline,
-    osutils,
-    trace,
 )
 """,
 )
 
+from . import osutils, trace
 
 known_merge_tools = {
     "bcompare": "bcompare {this} {other} {base} {result}",
@@ -47,6 +46,14 @@ known_merge_tools = {
 
 
 def check_availability(command_line):
+    """Check if a merge tool command is available on the system.
+
+    Args:
+        command_line: The merge tool command line string to check.
+
+    Returns:
+        True if the merge tool is available and executable, False otherwise.
+    """
     cmd_list = cmdline.split(command_line)
     exe = cmd_list[0]
     if sys.platform == "win32":
@@ -127,6 +134,16 @@ def _format_arg(arg, subst_names):
 
 
 def subprocess_invoker(executable, args, cleanup):
+    """Invoke a merge tool using subprocess and handle cleanup.
+
+    Args:
+        executable: Path to the executable to run.
+        args: List of command line arguments to pass to the executable.
+        cleanup: Cleanup function to call with the return code after execution.
+
+    Returns:
+        The return code from the subprocess execution.
+    """
     retcode = subprocess.call([executable] + args)
     cleanup(retcode)
     return retcode

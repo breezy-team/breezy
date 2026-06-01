@@ -17,8 +17,9 @@
 
 """Black-box tests for brz cat."""
 
+from dromedary import memory
+
 from ... import tests
-from ...transport import memory
 
 
 class TestCat(tests.TestCaseWithTransport):
@@ -56,7 +57,7 @@ class TestCat(tests.TestCaseWithTransport):
         self.assertEqual(
             "baz\n",
             self.run_bzr(
-                ["cat", "a", "-r", "revid:{}".format(rev_id.decode("utf-8"))],
+                ["cat", "a", "-r", f"revid:{rev_id.decode('utf-8')}"],
                 working_dir="branch",
             )[0],
         )
@@ -152,7 +153,7 @@ class TestCat(tests.TestCaseWithTransport):
         url = self.get_readonly_url() + "/README"
 
         # Test unfiltered output
-        out, err = self.run_bzr(["cat", url])
+        out, _err = self.run_bzr(["cat", url])
         self.assertEqual("contents of README\n", out)
 
         # Test --filters option is legal but has no impact if no filters

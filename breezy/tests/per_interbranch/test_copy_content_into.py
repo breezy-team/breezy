@@ -17,13 +17,14 @@
 """Tests for breezy.branch.InterBranch.copy_content_into."""
 
 from breezy import branch
-from breezy.errors import NoRoundtrippingSupport
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import (
     StubMatchingInter,
     StubWithFormat,
     TestCaseWithInterBranch,
 )
+
+from ...errors import NoRoundtrippingSupport
 
 
 class TestCopyContentInto(TestCaseWithInterBranch):
@@ -33,12 +34,10 @@ class TestCopyContentInto(TestCaseWithInterBranch):
         branch2 = self.make_to_branch("tree2")
         try:
             branch2.repository.fetch(self.tree1.branch.repository)
-        except NoRoundtrippingSupport:
+        except NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                "lossless cross-vcs fetch from {!r} to {!r} unsupported".format(
-                    self.tree1.branch, branch2
-                )
-            )
+                f"lossless cross-vcs fetch from {self.tree1.branch!r} to {branch2!r} unsupported"
+            ) from e
         self.tree1.branch.copy_content_into(branch2, revision_id=rev1)
 
     def test_inter_is_used(self):

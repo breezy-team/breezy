@@ -78,8 +78,8 @@ Here are the steps to follow:
      install Breezy in "editable" mode, meaning that any changes you make to the
      source code will be immediately reflected when you run the **brz** command.
 
-Advanced users may also wish to build the optional C extensions for greater
-speed. This can be done using ``make`` and requires ``cython`` and a C compiler.
+Advanced users may also wish to build the optional Rust extensions for greater
+speed. This can be done using ``make`` and requires a Rust toolchain.
 Please contact us on email or Matrix if you need assistance with this.
 
 

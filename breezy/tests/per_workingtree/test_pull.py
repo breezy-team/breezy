@@ -17,8 +17,9 @@
 
 
 from breezy import tests
-from breezy.revision import NULL_REVISION
 from breezy.tests import per_workingtree
+
+from ...revision import NULL_REVISION
 
 
 class TestPull(per_workingtree.TestCaseWithWorkingTree):

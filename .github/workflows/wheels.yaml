@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: "0 6 * * *" # Daily 6AM UTC build
 
+env:
+  PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
+
 jobs:
   define-matrix:
     runs-on: ubuntu-latest
@@ -53,7 +56,7 @@ jobs:
     strategy:
       matrix:
         include: ${{ fromJSON(needs.define-matrix.outputs.matrix ) }}
-      fail-fast: true
+      fail-fast: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -77,25 +80,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install setuptools wheel 'cibuildwheel>=3.0'
-      - name: Provide gpgme-config and gpg-error-config
-        if: "matrix.os == 'ubuntu-latest'"
-        run: |
-          mkdir -p "$HOME/.local/bin"
-          cp .github/gpgme-config "$HOME/.local/bin/gpgme-config"
-          cp .github/gpg-error-config "$HOME/.local/bin/gpg-error-config"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Install gpg
-        run: pip install -U gpg
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         if: "matrix.os == 'ubuntu-latest'"
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
-          CIBW_SKIP: "*musllinux*"
+          CIBW_SKIP: "*musllinux* *-win32"
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-          CIBW_BUILD: "${{ matrix.build-identifier }}*"
-          CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY="1" MACOSX_DEPLOYMENT_TARGET="10.12"'
+          CIBW_SKIP_LINUX: '*-musllinux_*'
+          CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY="1" MACOSX_DEPLOYMENT_TARGET="10.15"'
           CIBW_BEFORE_BUILD: >
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
@@ -105,6 +99,8 @@ jobs:
             yum install libatomic -y &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
             rustup show
+          CIBW_REPAIR_WHEEL_COMMAND_MACOS: >
+            MACOSX_DEPLOYMENT_TARGET=10.15 delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}
           CIBW_BEFORE_BUILD_MACOS: >
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
@@ -127,11 +123,16 @@ jobs:
       name: pypi
       url: https://pypi.org/p/breezy
     steps:
-      - name: Download distributions
+      - uses: actions/setup-python@v5
+
+      - name: Install twine
+        run: |
+          python -m pip install --upgrade pip
+          pip install twine
+      - name: Download wheels
         uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-          pattern: artifact-*
-          path: dist
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish wheels
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: twine upload artifact/*.whl

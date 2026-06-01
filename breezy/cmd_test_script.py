@@ -17,7 +17,6 @@
 """Front-end command for shell-like test scripts.
 
 See doc/developers/testing.txt for more explanations.
-This module should be importable even if testtools aren't available.
 """
 
 import os
@@ -36,9 +35,18 @@ class cmd_test_script(commands.Command):
 
     @commands.display_command
     def run(self, infile, null_output=False):
-        # local imports to defer testtools dependency
+        """Run the test script command.
+
+        Args:
+            infile: Path to the test script file to execute.
+            null_output: If True, null command outputs match any output.
+
+        Returns:
+            Number of errors and failures encountered during test execution.
+        """
         from breezy import tests
-        from breezy.tests.script import TestCaseWithTransportAndScript
+
+        from .tests.script import TestCaseWithTransportAndScript
 
         with open(infile) as f:
             script = f.read()

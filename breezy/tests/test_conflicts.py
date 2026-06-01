@@ -293,10 +293,10 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self.builder = builder
 
     def _get_actions(self, name):
-        return getattr(self, "do_{}".format(name))
+        return getattr(self, f"do_{name}")
 
     def _get_check(self, name):
-        return getattr(self, "check_{}".format(name))
+        return getattr(self, f"check_{name}")
 
     def _merge_other_into_this(self):
         b = self.builder.get_branch()
@@ -753,10 +753,7 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
     def _get_resolve_path_arg(self, wt, action):
         tpath = self._this["path"]
         opath = self._other["path"]
-        if tpath == "<deleted>":
-            path = opath
-        else:
-            path = tpath
+        path = opath if tpath == "<deleted>" else tpath
         return path
 
     def assertPathConflict(self, wt, c):
@@ -906,19 +903,23 @@ $ brz merge ../trunk
 """
 
     def test_take_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_take_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
 
 class TestResolveMissingParent(TestResolveConflicts):
@@ -947,42 +948,52 @@ $ brz merge ../trunk
 """
 
     def test_keep_them_all(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_adopt_child(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz mv -q dir/file2 file2
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_kill_them_all(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-this dir
 2>...
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-other dir
 2>...
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
 
 class TestResolveDeletingParent(TestResolveConflicts):
@@ -1010,44 +1021,54 @@ $ brz merge ../trunk
 """
 
     def test_keep_them_all(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_adopt_child(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz mv -q dir/file2 file2
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_kill_them_all(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-this dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-other dir
 2>deleted dir/file2
 2>deleted dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
 
 class TestResolveParentLoop(TestParametrizedResolveConflicts):
@@ -1206,7 +1227,8 @@ $ brz merge ../trunk
 """
 
     def test_take_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q foo.new --no-backup
 # FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
 # aside ? -- vila 090916
@@ -1214,30 +1236,37 @@ $ brz add -q foo
 $ brz resolve foo.new
 2>1 conflict resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_take_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q foo --no-backup
 $ brz mv -q foo.new foo
 $ brz resolve foo
 2>1 conflict resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-this foo.new
 2>...
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-other foo.new
 2>...
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
 
 class TestMalformedTransform(script.TestCaseWithTransportAndScript):
@@ -1271,7 +1300,8 @@ $ brz merge ../trunk
 
 class TestNoFinalPath(script.TestCaseWithTransportAndScript):
     def test_bug_805809(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz init trunk
 Created a standalone tree (format: 2a)
 $ cd trunk
@@ -1350,7 +1380,8 @@ $ brz merge ../experimental
 2>+N  not-empty
 2>Path conflict: dir / dir
 2>1 conflicts encountered.
-""")
+"""
+        )
 
 
 class TestResolveActionOption(tests.TestCase):
@@ -1372,13 +1403,13 @@ class TestResolveActionOption(tests.TestCase):
         self.assertEqual({"action": "done"}, opts)
 
     def test_take_this(self):
-        opts, args = self.parse(["--action", "take-this"])
+        opts, _args = self.parse(["--action", "take-this"])
         self.assertEqual({"action": "take_this"}, opts)
         opts, _args = self.parse(["--take-this"])
         self.assertEqual({"action": "take_this"}, opts)
 
     def test_take_other(self):
-        opts, args = self.parse(["--action", "take-other"])
+        opts, _args = self.parse(["--action", "take-other"])
         self.assertEqual({"action": "take_other"}, opts)
         opts, _args = self.parse(["--take-other"])
         self.assertEqual({"action": "take_other"}, opts)

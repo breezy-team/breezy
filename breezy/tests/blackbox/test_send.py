@@ -17,10 +17,11 @@
 
 from io import BytesIO
 
+from dromedary import memory
+
 from ... import branch, merge_directive, tests
 from ...bzr.bundle import serializer
 from ...controldir import ControlDir
-from ...transport import memory
 from .. import scenarios
 
 load_tests = scenarios.load_tests_apply_scenarios
@@ -264,7 +265,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         location = self.get_url("absentdir/")
         out, err = self.run_bzr(["send", "--from", location], retcode=3)
         self.assertEqual(out, "")
-        self.assertEqual(err, 'brz: ERROR: Not a branch: "{}".\n'.format(location))
+        self.assertEqual(err, f'brz: ERROR: Not a branch: "{location}".\n')
 
 
 class TestSendStrictMixin(TestSendMixin):
@@ -299,10 +300,7 @@ class TestSendStrictMixin(TestSendMixin):
         self.assertContainsRe(err, self._default_additional_error)
 
     def assertSendSucceeds(self, args, revs=None, with_warning=False):
-        if with_warning:
-            err_re = self._default_errors
-        else:
-            err_re = []
+        err_re = self._default_errors if with_warning else []
         if revs is None:
             revs = self._default_sent_revs or [self.local]
         out, err = self.run_send(args, err_re=err_re)

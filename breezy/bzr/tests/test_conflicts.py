@@ -57,12 +57,12 @@ class TestPerConflict(tests.TestCase):
         stanza = self.conflict.as_stanza()
         if "file_id" in stanza:
             # In Stanza form, the file_id has to be unicode.
-            self.assertStartsWith(stanza["file_id"], "\xeed")
-        self.assertStartsWith(stanza["path"], "p\xe5th")
+            self.assertStartsWith(stanza.get("file_id"), "\xeed")
+        self.assertStartsWith(stanza.get("path"), "p\xe5th")
         if "conflict_path" in stanza:
-            self.assertStartsWith(stanza["conflict_path"], "p\xe5th")
+            self.assertStartsWith(stanza.get("conflict_path"), "p\xe5th")
         if "conflict_file_id" in stanza:
-            self.assertStartsWith(stanza["conflict_file_id"], "\xeed")
+            self.assertStartsWith(stanza.get("conflict_file_id"), "\xeed")
 
 
 class TestConflicts(tests.TestCaseWithTransport):

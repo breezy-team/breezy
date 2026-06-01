@@ -16,8 +16,9 @@
 
 """Tests for breezy.bzr.tag."""
 
-from breezy.bzr.tag import BasicTags
 from breezy.tests import TestCase
+
+from ..tag import BasicTags
 
 
 class TestTagSerialization(TestCase):

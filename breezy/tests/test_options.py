@@ -105,11 +105,11 @@ class OptionTests(TestCase):
 
     def test_conversion(self):
         options = [option.Option("hello")]
-        opts, args = self.parse(options, ["--no-hello", "--hello"])
+        opts, _args = self.parse(options, ["--no-hello", "--hello"])
         self.assertEqual(True, opts.hello)
-        opts, args = self.parse(options, [])
+        opts, _args = self.parse(options, [])
         self.assertFalse(hasattr(opts, "hello"))
-        opts, args = self.parse(options, ["--hello", "--no-hello"])
+        opts, _args = self.parse(options, ["--hello", "--no-hello"])
         self.assertEqual(False, opts.hello)
         options = [option.Option("number", type=int)]
         opts, _args = self.parse(options, ["--number", "6"])
@@ -131,9 +131,9 @@ class OptionTests(TestCase):
         )
         registry.set_default("one")
         options = [option.RegistryOption("format", "", registry, str)]
-        opts, args = self.parse(options, ["--format", "one"])
+        opts, _args = self.parse(options, ["--format", "one"])
         self.assertEqual({"format": "one"}, opts)
-        opts, args = self.parse(options, ["--format", "two"])
+        opts, _args = self.parse(options, ["--format", "two"])
         self.assertEqual({"format": "two"}, opts)
         self.assertRaises(
             option.BadOptionValue, self.parse, options, ["--format", "three"]
@@ -142,9 +142,9 @@ class OptionTests(TestCase):
         options = [
             option.RegistryOption("format", "", registry, str, value_switches=True)
         ]
-        opts, args = self.parse(options, ["--two"])
+        opts, _args = self.parse(options, ["--two"])
         self.assertEqual({"format": "two"}, opts)
-        opts, args = self.parse(options, ["--two", "--one"])
+        opts, _args = self.parse(options, ["--two", "--one"])
         self.assertEqual({"format": "one"}, opts)
         opts, _args = self.parse(options, ["--two", "--one", "--format", "two"])
         self.assertEqual({"format": "two"}, opts)
@@ -158,11 +158,11 @@ class OptionTests(TestCase):
             option.Option("hello", type=str),
             option.Option("hi", type=str, param_name="hello"),
         ]
-        opts, args = self.parse(options, ["--hello", "a", "--hello", "b"])
+        opts, _args = self.parse(options, ["--hello", "a", "--hello", "b"])
         self.assertEqual("b", opts.hello)
-        opts, args = self.parse(options, ["--hello", "b", "--hello", "a"])
+        opts, _args = self.parse(options, ["--hello", "b", "--hello", "a"])
         self.assertEqual("a", opts.hello)
-        opts, args = self.parse(options, ["--hello", "a", "--hi", "b"])
+        opts, _args = self.parse(options, ["--hello", "a", "--hi", "b"])
         self.assertEqual("b", opts.hello)
         opts, _args = self.parse(options, ["--hi", "b", "--hello", "a"])
         self.assertEqual("a", opts.hello)
@@ -289,7 +289,7 @@ class OptionTests(TestCase):
         options = [option.Option("hello", custom_callback=cb)]
         _opts, _args = self.parse(options, ["--hello", "--no-hello"])
         self.assertEqual(2, len(cb_calls))
-        opt, name, value, parser = cb_calls[0]
+        _opt, name, value, _parser = cb_calls[0]
         self.assertEqual("hello", name)
         self.assertTrue(value)
         _opt, name, value, _parser = cb_calls[1]
@@ -306,7 +306,7 @@ class OptionTests(TestCase):
         options = [option.Option("hello", type=str, custom_callback=cb, short_name="h")]
         _opts, _args = self.parse(options, ["--hello", "world", "-h", "mars"])
         self.assertEqual(2, len(cb_calls))
-        opt, name, value, parser = cb_calls[0]
+        _opt, name, value, _parser = cb_calls[0]
         self.assertEqual("hello", name)
         self.assertEqual("world", value)
         _opt, name, value, _parser = cb_calls[1]
@@ -369,10 +369,10 @@ class TestListOptions(TestCase):
             options, ["--hello=world", "--hello=mars", "--hello=-"]
         )
         self.assertEqual(3, len(cb_calls))
-        opt, name, value, parser = cb_calls[0]
+        _opt, name, value, _parser = cb_calls[0]
         self.assertEqual("hello", name)
         self.assertEqual(["world"], value)
-        opt, name, value, parser = cb_calls[1]
+        _opt, name, value, _parser = cb_calls[1]
         self.assertEqual("hello", name)
         self.assertEqual(["world", "mars"], value)
         _opt, name, value, _parser = cb_calls[2]
@@ -458,7 +458,7 @@ class TestOptionMisc(TestCase):
         ropt = option.RegistryOption(
             "choice", "", reg, value_switches=True, short_value_switches={"short": "s"}
         )
-        opts, args = parse([ropt], ["--short"])
+        opts, _args = parse([ropt], ["--short"])
         self.assertEqual("ShortChoice", opts.choice)
         opts, _args = parse([ropt], ["-s"])
         self.assertEqual("ShortChoice", opts.choice)
