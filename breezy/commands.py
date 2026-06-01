@@ -282,34 +282,8 @@ def guess_command(cmd_name):
         names.add(name)
         cmd = get_cmd_object(name)
         names.update(cmd.aliases)
-    # candidate: modified levenshtein distance against cmd_name.
-    costs = {}
-    import patiencediff
-
-    for name in sorted(names):
-        matcher = patiencediff.PatienceSequenceMatcher(None, cmd_name, name)
-        distance = 0.0
-        opcodes = matcher.get_opcodes()
-        for opcode, l1, l2, r1, r2 in opcodes:
-            if opcode == "delete":
-                distance += l2 - l1
-            elif opcode == "replace":
-                distance += max(l2 - l1, r2 - l1)
-            elif opcode == "insert":
-                distance += r2 - r1
-            elif opcode == "equal":
-                # Score equal ranges lower, making similar commands of equal
-                # length closer than arbitrary same length commands.
-                distance -= 0.1 * (l2 - l1)
-        costs[name] = distance
-    costs.update(_GUESS_OVERRIDES.get(cmd_name, {}))
-    costs = sorted((costs[key], key) for key in costs)
-    if not costs:
-        return
-    if costs[0][0] > 4:
-        return
-    candidate = costs[0][1]
-    return candidate
+    overrides = list(_GUESS_OVERRIDES.get(cmd_name, {}).items())
+    return _commands_rs.guess_command(cmd_name, list(names), overrides)
 
 
 def get_cmd_object(cmd_name: str, plugins_override: bool = True) -> "Command":

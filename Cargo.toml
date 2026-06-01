@@ -49,6 +49,7 @@ textwrap = ">=0.13"
 serde_yaml = "0.9"
 serde = { version = "1", features = ["derive"]}
 encoding = "0.2.33"
+patiencediff = "0.2.1"
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true, features = ["fs"] }

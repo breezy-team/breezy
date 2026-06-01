@@ -275,6 +275,73 @@ pub fn split_help_parts(text: &str) -> (String, Vec<(Option<String>, String)>) {
     (summary, ordered)
 }
 
+/// Score how far `candidate` is from `cmd_name` using a patiencediff-based
+/// edit distance, matching the Python ``guess_command`` heuristic.
+///
+/// The two names are compared character by character. Deletions, insertions and
+/// replacements add to the distance; equal runs subtract a small amount so that
+/// similarly-shaped names of equal length sort ahead of arbitrary ones.
+fn guess_distance(cmd_name: &[char], candidate: &[char]) -> f64 {
+    let mut matcher = patiencediff::SequenceMatcher::new(cmd_name, candidate);
+    let mut distance = 0.0f64;
+    for opcode in matcher.get_opcodes() {
+        // Python unpacks (opcode, l1, l2, r1, r2): l = a-range (cmd_name),
+        // r = b-range (candidate).
+        let l1 = opcode.a_start() as i64;
+        let l2 = opcode.a_end() as i64;
+        let r1 = opcode.b_start() as i64;
+        let r2 = opcode.b_end() as i64;
+        match opcode {
+            patiencediff::Opcode::Delete(..) => distance += (l2 - l1) as f64,
+            // Note the second term is ``r2 - l1`` in the original Python; it is
+            // reproduced verbatim rather than "corrected".
+            patiencediff::Opcode::Replace(..) => distance += (l2 - l1).max(r2 - l1) as f64,
+            patiencediff::Opcode::Insert(..) => distance += (r2 - r1) as f64,
+            patiencediff::Opcode::Equal(..) => distance -= 0.1 * (l2 - l1) as f64,
+        }
+    }
+    distance
+}
+
+/// Guess which command a user meant when `cmd_name` was not found.
+///
+/// A port of the Python ``guess_command`` scoring. `candidates` is the full set
+/// of known command names and aliases (gathered by the caller, which needs the
+/// registries). `overrides` are the hard-coded cost overrides for this
+/// `cmd_name` (``_GUESS_OVERRIDES``); they replace or add costs before the
+/// final selection. Returns the closest candidate, or `None` if nothing scores
+/// at or below the cutoff of 4.
+pub fn guess_command(
+    cmd_name: &str,
+    candidates: &[String],
+    overrides: &[(String, f64)],
+) -> Option<String> {
+    let cmd_chars: Vec<char> = cmd_name.chars().collect();
+    let mut costs: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    for name in candidates {
+        let name_chars: Vec<char> = name.chars().collect();
+        costs.insert(name.clone(), guess_distance(&cmd_chars, &name_chars));
+    }
+    // ``costs.update(_GUESS_OVERRIDES.get(cmd_name, {}))`` -- replace or add.
+    for (key, value) in overrides {
+        costs.insert(key.clone(), *value);
+    }
+
+    // ``sorted((costs[key], key) for key in costs)`` then take the first.
+    let mut entries: Vec<(f64, String)> = costs.into_iter().map(|(k, v)| (v, k)).collect();
+    entries.sort_by(|a, b| {
+        a.0.partial_cmp(&b.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.1.cmp(&b.1))
+    });
+
+    let (cost, candidate) = entries.into_iter().next()?;
+    if cost > 4.0 {
+        return None;
+    }
+    Some(candidate)
+}
+
 /// The abstract interface implemented by every breezy command.
 ///
 /// Each method mirrors an attribute or method of the Python `Command` class.
@@ -540,5 +607,45 @@ mod tests {
             sections,
             vec![(Some("Note".to_string()), "  first\n\n  second".to_string())]
         );
+    }
+
+    #[test]
+    fn guess_finds_close_match() {
+        let candidates = specs(&["status", "commit", "branch", "checkout", "diff"]);
+        assert_eq!(
+            guess_command("statue", &candidates, &[]),
+            Some("status".to_string())
+        );
+    }
+
+    #[test]
+    fn guess_no_match_returns_none() {
+        let candidates = specs(&["status", "commit", "branch"]);
+        assert_eq!(guess_command("nothingisevenclose", &candidates, &[]), None);
+    }
+
+    #[test]
+    fn guess_override_wins() {
+        // Without the override the heuristic prefers something else; the
+        // override forces ``ci`` to cost 0.
+        let candidates = specs(&["ci", "nick", "commit"]);
+        let overrides = vec![("ci".to_string(), 0.0)];
+        assert_eq!(
+            guess_command("ic", &candidates, &overrides),
+            Some("ci".to_string())
+        );
+    }
+
+    #[test]
+    fn guess_empty_candidates_returns_none() {
+        assert_eq!(guess_command("status", &[], &[]), None);
+    }
+
+    #[test]
+    fn guess_ties_break_on_name() {
+        // Two equally-distant single-char candidates: the lexicographically
+        // smaller name wins, matching Python's ``sorted((cost, key))``.
+        let candidates = specs(&["b", "a"]);
+        assert_eq!(guess_command("z", &candidates, &[]), Some("a".to_string()));
     }
 }

@@ -651,6 +651,21 @@ fn get_help_parts<'py>(
     Ok((summary, sections, order))
 }
 
+/// Guess which command was meant, scoring `candidates` against `cmd_name`.
+///
+/// `candidates` is the set of known command names and aliases; `overrides` are
+/// the hard-coded ``(name, cost)`` pairs for `cmd_name`. Returns the closest
+/// candidate, or `None` if nothing scores within the cutoff.
+#[pyfunction]
+#[pyo3(signature = (cmd_name, candidates, overrides))]
+fn guess_command(
+    cmd_name: &str,
+    candidates: Vec<String>,
+    overrides: Vec<(String, f64)>,
+) -> Option<String> {
+    breezy::command::guess_command(cmd_name, &candidates, &overrides)
+}
+
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
 
@@ -883,6 +898,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     commandsm.add_function(wrap_pyfunction!(squish_command_name, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(usage, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(get_help_parts, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(guess_command, &commandsm)?)?;
     m.add_submodule(&commandsm)?;
 
     m.add_class::<TreeBuilder>()?;
