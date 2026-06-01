@@ -573,18 +573,7 @@ class Command:
 
         Only describes arguments, not options.
         """
-        s = "brz " + self.name() + " "
-        for aname in self.takes_args:
-            aname = aname.upper()
-            if aname[-1] in ["$", "+"]:
-                aname = aname[:-1] + "..."
-            elif aname[-1] == "?":
-                aname = "[" + aname[:-1] + "]"
-            elif aname[-1] == "*":
-                aname = "[" + aname[:-1] + "...]"
-            s += aname + " "
-        s = s[:-1]  # remove last space
-        return s
+        return _commands_rs.usage(self.name(), list(self.takes_args))
 
     def get_help_text(
         self,
@@ -721,34 +710,7 @@ class Command:
             All text found outside a named section is assigned to the
             default section which is given the key of None.
         """
-
-        def save_section(sections, order, label, section):
-            if len(section) > 0:
-                if label in sections:
-                    sections[label] += "\n" + section
-                else:
-                    order.append(label)
-                    sections[label] = section
-
-        lines = text.rstrip().splitlines()
-        summary = lines.pop(0)
-        sections = {}
-        order = []
-        label, section = None, ""
-        for line in lines:
-            if line.startswith(":") and line.endswith(":") and len(line) > 2:
-                save_section(sections, order, label, section)
-                label, section = line[1:-1], ""
-            elif label is not None and len(line) > 1 and not line[0].isspace():
-                save_section(sections, order, label, section)
-                label, section = None, line
-            else:
-                if len(section) > 0:
-                    section += "\n" + line
-                else:
-                    section = line
-        save_section(sections, order, label, section)
-        return summary, sections, order
+        return _commands_rs.get_help_parts(text)
 
     def get_help_topic(self):
         """Return the commands help topic - its name."""

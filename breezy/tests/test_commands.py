@@ -583,3 +583,67 @@ class TestMatchArgform(tests.TestCase):
             errors.CommandError, commands._match_argform, "cmd", ["a"], ["x", "y"]
         )
         self.assertEqual("extra argument to command cmd: y", str(e))
+
+
+class TestUsage(tests.TestCase):
+    """The Rust port of ``Command._usage``."""
+
+    def _usage(self, takes_args):
+        class cmd_sample(commands.Command):
+            __doc__ = """Sample."""
+
+        cmd = cmd_sample()
+        cmd.takes_args = takes_args
+        return cmd._usage()
+
+    def test_no_args(self):
+        self.assertEqual("brz sample", self._usage([]))
+
+    def test_each_specifier(self):
+        self.assertEqual("brz sample LOC", self._usage(["loc"]))
+        self.assertEqual("brz sample [LOC]", self._usage(["loc?"]))
+        self.assertEqual("brz sample [FILE...]", self._usage(["file*"]))
+        self.assertEqual("brz sample FILE...", self._usage(["file+"]))
+        self.assertEqual("brz sample NAMES...", self._usage(["names$"]))
+
+    def test_multiple_args(self):
+        self.assertEqual(
+            "brz sample FROM [TO] [FILE...]",
+            self._usage(["from", "to?", "file*"]),
+        )
+
+
+class TestGetHelpParts(tests.TestCase):
+    """The Rust port of ``Command._get_help_parts``."""
+
+    def test_summary_only(self):
+        summary, sections, order = commands.Command._get_help_parts("One line.")
+        self.assertEqual("One line.", summary)
+        self.assertEqual({}, sections)
+        self.assertEqual([], order)
+
+    def test_default_section(self):
+        summary, sections, order = commands.Command._get_help_parts(
+            "Summary.\n\nMore detail.\nSecond line."
+        )
+        self.assertEqual("Summary.", summary)
+        self.assertEqual({None: "More detail.\nSecond line."}, sections)
+        self.assertEqual([None], order)
+
+    def test_named_sections_in_order(self):
+        text = "Summary.\n\nBody.\n\n:Examples:\n  thing\n\n:See also: status"
+        summary, sections, order = commands.Command._get_help_parts(text)
+        self.assertEqual("Summary.", summary)
+        # ":See also: status" is not a heading, so it stays in the default
+        # section.
+        self.assertEqual(
+            {None: "Body.\n\n:See also: status", "Examples": "  thing\n"},
+            sections,
+        )
+        self.assertEqual([None, "Examples"], order)
+
+    def test_repeated_label_merges(self):
+        text = "Summary.\n\n:Note:\n  first\n\n:Note:\n  second"
+        _summary, sections, order = commands.Command._get_help_parts(text)
+        self.assertEqual({"Note": "  first\n\n  second"}, sections)
+        self.assertEqual(["Note"], order)

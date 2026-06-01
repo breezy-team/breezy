@@ -617,6 +617,40 @@ fn squish_command_name(name: &str) -> String {
     breezy::command::squish_command_name(name)
 }
 
+/// Build a command's single-line usage grammar from its name and ``takes_args``.
+#[pyfunction]
+fn usage(name: &str, takes_args: Vec<String>) -> String {
+    breezy::command::usage(name, &takes_args)
+}
+
+/// Split help text into ``(summary, sections, order)``.
+///
+/// `sections` is a dict keyed by section label (with `None` for the default
+/// section) and `order` is the list of labels in first-appearance order,
+/// matching the Python ``Command._get_help_parts`` return value.
+#[pyfunction]
+fn get_help_parts<'py>(
+    py: Python<'py>,
+    text: &str,
+) -> PyResult<(
+    String,
+    Bound<'py, pyo3::types::PyDict>,
+    Bound<'py, pyo3::types::PyList>,
+)> {
+    let (summary, ordered) = breezy::command::split_help_parts(text);
+    let sections = pyo3::types::PyDict::new(py);
+    let order = pyo3::types::PyList::empty(py);
+    for (label, body) in ordered {
+        let key = match label {
+            Some(ref s) => s.into_pyobject(py)?.into_any(),
+            None => py.None().into_bound(py),
+        };
+        sections.set_item(&key, body)?;
+        order.append(&key)?;
+    }
+    Ok((summary, sections, order))
+}
+
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
 
@@ -847,6 +881,8 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     commandsm.add_function(wrap_pyfunction!(match_argform, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(unsquish_command_name, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(squish_command_name, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(usage, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(get_help_parts, &commandsm)?)?;
     m.add_submodule(&commandsm)?;
 
     m.add_class::<TreeBuilder>()?;
