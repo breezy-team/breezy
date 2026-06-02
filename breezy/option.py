@@ -602,6 +602,9 @@ class RustOptionParser:
         """Build a parser for the given breezy ``Option`` objects."""
         self._options = options
         self.values = OptionValues()
+        # A real optparse parser, built on demand for the completion plugins'
+        # add_option/add_option_group introspection (see _optparse).
+        self._optparse_parser = None
         # Each spec entry is (key, long, short, negation, takes_value); each key
         # maps to an applier callable invoked with (opt_str, value, flag_value).
         self._specs = []
@@ -617,6 +620,27 @@ class RustOptionParser:
     def error(self, message):
         """Raise a CommandError instead of exiting, like the old parser."""
         raise errors.CommandError(message)
+
+    def _optparse(self):
+        """Lazily build a real ``optparse.OptionParser`` for introspection.
+
+        The Rust parser does its own tokenizing, but the bash/zsh completion
+        plugins drive options through optparse's ``add_option`` /
+        ``add_option_group`` protocol to enumerate switches. We delegate those
+        calls to a genuine optparse parser so the plugins keep working.
+        """
+        if self._optparse_parser is None:
+            self._optparse_parser = optparse.OptionParser()
+            self._optparse_parser.remove_option("--help")
+        return self._optparse_parser
+
+    def add_option(self, *args, **kwargs):
+        """Add an option to the introspection parser (optparse protocol)."""
+        return self._optparse().add_option(*args, **kwargs)
+
+    def add_option_group(self, *args, **kwargs):
+        """Add an option group to the introspection parser (optparse protocol)."""
+        return self._optparse().add_option_group(*args, **kwargs)
 
     def _add_spec(self, key, long, short, negation, takes_value, applier):
         self._specs.append((key, long, short, negation, takes_value))
