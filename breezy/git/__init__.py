@@ -334,9 +334,20 @@ register_transport_proto("git://", help="Access using the Git smart server proto
 register_transport_proto(
     "git+ssh://", help="Access using the Git smart server protocol over SSH."
 )
+register_transport_proto(
+    "git+http://", help="Access using the Git smart server protocol over HTTP."
+)
+register_transport_proto(
+    "git+https://", help="Access using the Git smart server protocol over HTTPS."
+)
 
 register_lazy_transport("git://", __name__ + ".remote", "TCPGitSmartTransport")
 register_lazy_transport("git+ssh://", __name__ + ".remote", "SSHGitSmartTransport")
+# git+http(s) reuse the plain HTTP transport; the dromedary HTTP transport
+# accepts the git+ scheme prefix and normalises it to http/https. The git
+# prober wraps the resulting transport in a BzrGitHttpClient.
+register_lazy_transport("git+http://", "dromedary.http.urllib", "HttpTransport")
+register_lazy_transport("git+https://", "dromedary.http.urllib", "HttpTransport")
 
 
 plugin_cmds.register_lazy("cmd_git_import", [], __name__ + ".commands")
