@@ -16,14 +16,16 @@
 
 """Test operations that check the repository for corruption."""
 
-from breezy import errors
+from bzrformats.errors import BzrCheckError
+
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
-from breezy.bzr.tests.per_repository_vf.helpers import TestCaseWithBrokenRevisionIndex
 from breezy.tests import TestNotApplicable
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....tests.scenarios import load_tests_apply_scenarios
+from .helpers import TestCaseWithBrokenRevisionIndex
 
 load_tests = load_tests_apply_scenarios
 
@@ -46,9 +48,7 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         there are any revisions with inconsistent parents.
         """
         repo = self.make_repo_with_extra_ghost_index()
-        self.assertRaises(
-            errors.BzrCheckError, repo._check_for_inconsistent_revision_parents
-        )
+        self.assertRaises(BzrCheckError, repo._check_for_inconsistent_revision_parents)
 
     def test__check_for_inconsistent_revision_parents_on_clean_repo(self):
         """_check_for_inconsistent_revision_parents does nothing if there are
@@ -56,9 +56,7 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         """
         repo = self.make_repository("empty-repo")
         if not repo._format.revision_graph_can_have_wrong_parents:
-            raise TestNotApplicable(
-                "{!r} cannot have corrupt revision index.".format(repo)
-            )
+            raise TestNotApplicable(f"{repo!r} cannot have corrupt revision index.")
         with repo.lock_read():
             repo._check_for_inconsistent_revision_parents()  # nothing happens
 

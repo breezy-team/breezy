@@ -104,7 +104,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration, checkout = self.prepare_lightweight_checkout_to_checkout()
         reconfiguration.apply()
         checkout_branch = checkout.controldir.open_branch()
-        self.assertIsNot(checkout_branch.get_bound_location(), None)
+        self.assertIsNotNone(checkout_branch.get_bound_location())
 
     def test_lightweight_checkout_to_checkout_tags(self):
         reconfiguration, checkout = self.prepare_lightweight_checkout_to_checkout()

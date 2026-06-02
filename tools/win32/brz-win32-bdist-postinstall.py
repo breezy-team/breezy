@@ -1,3 +1,9 @@
+"""Post-installation script for Windows Breezy package.
+
+This script will be executed after installation of breezy package
+and before installer exits.
+(c) Canonical Ltd, 2006, written by Alexander Belchenko for brz project.
+"""
 # (c) Canonical Ltd, 2006
 # written by Alexander Belchenko for brz project
 #
@@ -44,7 +50,7 @@ if "-install" in sys.argv[1:]:
     # try to detect version number automatically
     try:
         import breezy
-    except ImportError:
+    except ModuleNotFoundError:
         ver = ""
     else:
         ver = breezy.__version__
@@ -52,11 +58,11 @@ if "-install" in sys.argv[1:]:
     ##
     # XXX change message for something more appropriate
     print(
-        """Breezy {}
+        f"""Breezy {ver}
 
 Congratulation! Brz successfully installed.
 
-""".format(ver)
+"""
     )
 
     batch_path = "brz.bat"
@@ -68,7 +74,7 @@ Congratulation! Brz successfully installed.
         script_path = _quoted_path(os.path.join(scripts_dir, "brz"))
         python_path = _quoted_path(os.path.join(prefix, "python.exe"))
         args = _win_batch_args()
-        batch_str = "@{} {} {}".format(python_path, script_path, args)
+        batch_str = f"@{python_path} {script_path} {args}"
         # support of win98
         # if there is no HOME for brz then set it for Breezy manually
         base = os.environ.get("BRZ_HOME", None)
@@ -90,7 +96,7 @@ Congratulation! Brz successfully installed.
         print("Created:", batch_path)
         print("Use this batch file to run brz")
     except Exception as e:
-        print("ERROR: Unable to create {}: {}".format(batch_path, e))
+        print(f"ERROR: Unable to create {batch_path}: {e}")
 
     ## this hunk borrowed from pywin32_postinstall.py
     # use bdist_wininst builtins to create a shortcut.

@@ -16,7 +16,9 @@
 
 """Walk multiple trees simultaneously."""
 
-from . import errors, osutils
+from bzrformats.inventory import NoSuchId
+
+from . import osutils
 
 
 class MultiWalker:
@@ -85,15 +87,11 @@ class MultiWalker:
         # optimized versions, or maybe writing optimized unicode versions.
         if not isinstance(path1, str):
             raise TypeError(
-                "'path1' must be a unicode string, not {}: {!r}".format(
-                    type(path1), path1
-                )
+                f"'path1' must be a unicode string, not {type(path1)}: {path1!r}"
             )
         if not isinstance(path2, str):
             raise TypeError(
-                "'path2' must be a unicode string, not {}: {!r}".format(
-                    type(path2), path2
-                )
+                f"'path2' must be a unicode string, not {type(path2)}: {path2!r}"
             )
         return MultiWalker._path_to_key(path1) < MultiWalker._path_to_key(path2)
 
@@ -128,7 +126,7 @@ class MultiWalker:
             return extra_entries.pop(file_id)
         try:
             cur_path = other_tree.id2path(file_id)
-        except errors.NoSuchId:
+        except NoSuchId:
             cur_path = None
         if cur_path is None:
             return (None, None)

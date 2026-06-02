@@ -21,17 +21,35 @@
 
 # TODO: `help commands --all` should show hidden commands
 
+"""Help system for Breezy commands and topics.
+
+This module provides functionality to display help information for Breezy
+commands, topics, and plugins. It includes support for searching help topics
+across multiple indices and formatting help text for display.
+"""
+
 from . import commands as _mod_commands
 from . import errors, help_topics, osutils, plugin, ui, utextwrap
 
 
 class NoHelpTopic(errors.BzrError):
+    """Error raised when a help topic cannot be found.
+
+    This exception is raised when a user requests help for a topic that
+    doesn't exist in any of the available help indices.
+    """
+
     _fmt = (
         "No help could be found for '%(topic)s'. "
         "Please use 'brz help topics' to obtain a list of topics."
     )
 
     def __init__(self, topic):
+        """Initialize NoHelpTopic exception.
+
+        Args:
+            topic: The help topic that could not be found.
+        """
         self.topic = topic
 
 
@@ -47,9 +65,7 @@ def help(topic=None, outfile=None):
         topics = indices.search(topic)
         shadowed_terms = []
         for index, topic_obj in topics[1:]:
-            shadowed_terms.append(
-                "{}{}".format(index.prefix, topic_obj.get_help_topic())
-            )
+            shadowed_terms.append(f"{index.prefix}{topic_obj.get_help_topic()}")
         source = topics[0][1]
         outfile.write(source.get_help_text(shadowed_terms))
     except NoHelpTopic:
@@ -57,9 +73,7 @@ def help(topic=None, outfile=None):
             raise
 
     if alias is not None:
-        outfile.write(
-            "'brz {}' is an alias for 'brz {}'.\n".format(topic, " ".join(alias))
-        )
+        outfile.write(f"'brz {topic}' is an alias for 'brz {' '.join(alias)}'.\n")
 
 
 def help_commands(outfile=None):
@@ -72,10 +86,7 @@ def help_commands(outfile=None):
 def _help_commands_to_text(topic):
     """Generate the help text for the list of commands."""
     out = []
-    if topic == "hidden-commands":
-        hidden = True
-    else:
-        hidden = False
+    hidden = topic == "hidden-commands"
     names = list(_mod_commands.all_command_names())
     commands = ((n, _mod_commands.get_cmd_object(n)) for n in names)
     shown_commands = [(n, o) for n, o in commands if o.hidden == hidden]
@@ -89,16 +100,10 @@ def _help_commands_to_text(topic):
 
     for cmd_name, cmd_object in sorted(shown_commands):
         plugin_name = cmd_object.plugin_name()
-        if plugin_name is None:
-            plugin_name = ""
-        else:
-            plugin_name = " [{}]".format(plugin_name)
+        plugin_name = "" if plugin_name is None else f" [{plugin_name}]"
 
         cmd_help = cmd_object.help()
-        if cmd_help:
-            firstline = cmd_help.split("\n", 1)[0]
-        else:
-            firstline = ""
+        firstline = cmd_help.split("\n", 1)[0] if cmd_help else ""
         helpstring = "%-*s %s%s" % (max_name, cmd_name, firstline, plugin_name)
         lines = utextwrap.wrap(
             helpstring, subsequent_indent=indent, width=width, break_long_words=False
@@ -138,6 +143,11 @@ class HelpIndices:
     """
 
     def __init__(self):
+        """Initialize HelpIndices with default search path.
+
+        Sets up the search path with indices for help topics, commands,
+        plugins, and configuration options.
+        """
         self.search_path = [
             help_topics.HelpTopicIndex(),
             _mod_commands.HelpCommandIndex(),

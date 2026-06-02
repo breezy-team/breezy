@@ -33,7 +33,7 @@ class BranchBuilder:
 
     For instance:
 
-    >>> from breezy.transport.memory import MemoryTransport
+    >>> from dromedary.memory import MemoryTransport
     >>> builder = BranchBuilder(MemoryTransport("memory:///"))
     >>> builder.start_series()
     >>> builder.build_snapshot(None, [
@@ -98,10 +98,7 @@ class BranchBuilder:
              timestamp.
         """
         if parent_ids is not None:
-            if len(parent_ids) == 0:
-                base_id = revision.NULL_REVISION
-            else:
-                base_id = parent_ids[0]
+            base_id = revision.NULL_REVISION if len(parent_ids) == 0 else parent_ids[0]
             if base_id != self._branch.last_revision():
                 self._move_branch_pointer(
                     base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost
@@ -118,7 +115,7 @@ class BranchBuilder:
     def _do_commit(self, tree, message=None, message_callback=None, **kwargs):
         reporter = commit.NullCommitReporter()
         if message is None and message_callback is None:
-            message = f"commit {self._branch.revno() + 1}"
+            message = "commit %d" % (self._branch.revno() + 1,)
         return tree.commit(
             message, message_callback=message_callback, reporter=reporter, **kwargs
         )
@@ -213,10 +210,7 @@ class BranchBuilder:
         :return: The revision_id of the new commit
         """
         if parent_ids is not None:
-            if len(parent_ids) == 0:
-                base_id = revision.NULL_REVISION
-            else:
-                base_id = parent_ids[0]
+            base_id = revision.NULL_REVISION if len(parent_ids) == 0 else parent_ids[0]
             if base_id != self._branch.last_revision():
                 self._move_branch_pointer(
                     base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost
@@ -259,7 +253,7 @@ class BranchBuilder:
                     self._flush_pending(tree, pending)
                     pending = _PendingActions()
                 else:
-                    raise ValueError('Unknown build action: "{}"'.format(action))
+                    raise ValueError(f'Unknown build action: "{action}"')
             self._flush_pending(tree, pending)
             return self._do_commit(
                 tree,

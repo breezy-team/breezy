@@ -17,6 +17,7 @@
 """Commit message editor support."""
 
 import codecs
+import contextlib
 import os
 import sys
 from io import BytesIO, StringIO
@@ -28,6 +29,12 @@ from .hooks import Hooks
 
 
 class BadCommitMessageEncoding(BzrError):
+    """Exception raised when commit message contains unsupported characters.
+
+    This error occurs when the commit message contains characters that cannot
+    be encoded using the current system's encoding.
+    """
+
     _fmt = (
         "The specified commit message contains characters unsupported by "
         "the current encoding."
@@ -36,10 +43,8 @@ class BadCommitMessageEncoding(BzrError):
 
 def _get_editor():
     """Return sequence of possible editor binaries for the current platform."""
-    try:
+    with contextlib.suppress(KeyError):
         yield os.environ["BRZ_EDITOR"], "$BRZ_EDITOR"
-    except KeyError:
-        pass
 
     e = config.GlobalStack().get("editor")
     if e is not None:
@@ -69,9 +74,7 @@ def _run_editor(filename):
                 # environment variable or config file) said to try it.  Let
                 # the user know their configuration is broken.
                 trace.warning(
-                    'Could not start editor "{}" (specified by {}): {}\n'.format(
-                        candidate, candidate_source, str(e)
-                    )
+                    f'Could not start editor "{candidate}" (specified by {candidate_source}): {e!s}\n'
                 )
             continue
             raise
@@ -89,8 +92,7 @@ def _run_editor(filename):
 
 
 DEFAULT_IGNORE_LINE = "{bar} {msg} {bar}".format(
-    bar="-" * 14,
-    msg="This line and the following will be ignored",
+    bar="-" * 14, msg="This line and the following will be ignored"
 )
 
 
@@ -153,16 +155,15 @@ def edit_commit_message_encoded(
         if not _run_editor(msgfilename):
             return None
         edited_content = msg_transport.get_bytes(basename)
-        if edited_content == reference_content:
-            if not ui.ui_factory.confirm_action(
-                "Commit message was not edited, use anyway",
-                "breezy.msgeditor.unchanged",
-                {},
-            ):
-                # Returning "" makes cmd_commit raise 'empty commit message
-                # specified' which is a reasonable error, given the user has
-                # rejected using the unedited template.
-                return ""
+        if edited_content == reference_content and not ui.ui_factory.confirm_action(
+            "Commit message was not edited, use anyway",
+            "breezy.msgeditor.unchanged",
+            {},
+        ):
+            # Returning "" makes cmd_commit raise 'empty commit message
+            # specified' which is a reasonable error, given the user has
+            # rejected using the unedited template.
+            return ""
         started = False
         msg = []
         lastline, nlines = 0, 0
@@ -187,8 +188,8 @@ def edit_commit_message_encoded(
                     if stripped_line != "":
                         lastline = nlines
                     msg.append(line)
-            except UnicodeDecodeError:
-                raise BadCommitMessageEncoding()
+            except UnicodeDecodeError as e:
+                raise BadCommitMessageEncoding() from e
 
         if len(msg) == 0:
             return ""
@@ -196,7 +197,7 @@ def edit_commit_message_encoded(
         del msg[lastline:]
         # add a newline at the end, if needed
         if not msg[-1].endswith("\n"):
-            return "{}{}".format("".join(msg), "\n")
+            return f"{''.join(msg)}\n"
         else:
             return "".join(msg)
     finally:
@@ -296,8 +297,7 @@ def make_commit_message_template_encoded(
 
 
 class MessageEditorHooks(Hooks):
-    """A dictionary mapping hook name to a list of callables for message editor
-    hooks.
+    """A dictionary mapping hook name to a list of callables for message editor hooks.
 
     e.g. ['commit_message_template'] is the list of items to be called to
     generate a commit message template
@@ -338,6 +338,7 @@ hooks = MessageEditorHooks()
 
 def set_commit_message(commit, start_message=None):
     """Sets the commit message.
+
     :param commit: Commit object for the active commit.
     :return: The commit message or None to continue using the message editor.
     """

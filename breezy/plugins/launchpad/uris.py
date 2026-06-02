@@ -30,9 +30,7 @@ LAUNCHPAD_DOMAINS = {
     "test": "launchpad.test",
 }
 
-LAUNCHPAD_BAZAAR_DOMAINS = [
-    "bazaar.{}".format(domain) for domain in LAUNCHPAD_DOMAINS.values()
-]
+LAUNCHPAD_BAZAAR_DOMAINS = [f"bazaar.{domain}" for domain in LAUNCHPAD_DOMAINS.values()]
 
 LPNET_SERVICE_ROOT = "https://api.launchpad.net/"
 QASTAGING_SERVICE_ROOT = "https://api.qastaging.launchpad.net/"
@@ -68,9 +66,7 @@ def lookup_service_root(root):
         return root
 
     # It's not an alias or a valid URL.
-    raise ValueError(
-        "{} is not a valid URL or an alias for any Launchpad server".format(root)
-    )
+    raise ValueError(f"{root} is not a valid URL or an alias for any Launchpad server")
 
 
 def web_root_for_service_root(service_root):

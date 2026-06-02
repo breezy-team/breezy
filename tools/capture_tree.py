@@ -18,16 +18,23 @@ from breezy.selftest.treeshape import capture_tree_contents
 
 
 def main(argv):
+    """Main entry point for tree capture utility.
+
+    Args:
+        argv: Command line arguments.
+    """
     # a lame reimplementation of pformat that splits multi-line
     # strings into concatenated string literals.
     print("[")
     for tt in capture_tree_contents("."):
-        assert isinstance(tt, tuple)
+        if not isinstance(tt, tuple):
+            raise AssertionError(f"Unexpected type: {tt!r}")
         print("    (", repr(tt[0]) + ",", end=" ")
         if len(tt) == 1:
             print("),")
         else:
-            assert len(tt) == 2
+            if len(tt) != 2:
+                raise AssertionError(f"Unexpected tuple length: {tt!r}")
             val = tt[1]
             print()
             if val == "":

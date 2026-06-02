@@ -16,8 +16,10 @@
 
 """Tests for interface conformance of 'WorkingTree.add'."""
 
-from breezy import errors, tests
-from breezy.bzr import inventory
+from bzrformats import errors as bzrformats_errors
+from bzrformats import inventory
+
+from breezy import tests
 from breezy.tests.matchers import HasLayout, HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -82,8 +84,8 @@ class TestAdd(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(".")
         try:
             self.build_tree(["f\xf6"])
-        except UnicodeError:
-            raise tests.TestSkipped("Filesystem does not support filename.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Filesystem does not support filename.") from err
         tree.add(["f\xf6"])
 
         self.assertTreeLayout(["", "f\xf6"], tree)
@@ -156,7 +158,7 @@ class TestAdd(TestCaseWithWorkingTree):
             )
         self.build_tree(["dir/", "dir/subdir/", "dir/subdir/foo"])
 
-        self.assertRaises(errors.NotVersionedError, tree.add, ["dir/subdir"])
+        self.assertRaises(bzrformats_errors.NotVersionedError, tree.add, ["dir/subdir"])
         self.assertTreeLayout([""], tree)
 
     def test_add_after_remove(self):
@@ -169,7 +171,9 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.add(["dir"])
         tree.commit("dir")
         tree.unversion(["dir"])
-        self.assertRaises(errors.NotVersionedError, tree.add, ["dir/subdir/foo"])
+        self.assertRaises(
+            bzrformats_errors.NotVersionedError, tree.add, ["dir/subdir/foo"]
+        )
 
     def test_add_root(self):
         # adding the root should be a no-op, or at least not

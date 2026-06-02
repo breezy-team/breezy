@@ -16,11 +16,19 @@
 
 """Basic push implementation."""
 
+from dulwich.objects import ObjectID
+
 from ..push import PushResult
 from .errors import GitSmartRemoteNotSupported
 
 
 class GitPushResult(PushResult):
+    """Push result for Git repositories.
+
+    Extends the base PushResult class with Git-specific functionality
+    for looking up revision numbers.
+    """
+
     def _lookup_revno(self, revid):
         from .branch import _quick_lookup_revno
 
@@ -31,10 +39,20 @@ class GitPushResult(PushResult):
 
     @property
     def old_revno(self):
+        """Get the old revision number.
+
+        Returns:
+            The revision number of the old revision, or None if not available.
+        """
         return self._lookup_revno(self.old_revid)
 
     @property
     def new_revno(self):
+        """Get the new revision number.
+
+        Returns:
+            The revision number of the new revision, or None if not available.
+        """
         return self._lookup_revno(self.new_revid)
 
 
@@ -74,23 +92,38 @@ class MissingObjectsIterator:
                 commit = obj
             self._pending.append((obj, path))
         if commit is None:
-            raise AssertionError(
-                "no commit object generated for revision {}".format(revid)
-            )
+            raise AssertionError(f"no commit object generated for revision {revid}")
         return commit.id
 
     def __len__(self):
+        """Return the number of pending objects."""
         return len(self._pending)
 
     def __iter__(self):
+        """Return an iterator over pending objects."""
         return iter(self._pending)
 
 
 class ObjectStoreParentsProvider:
+    """Provides parent information for Git objects in a store."""
+
     def __init__(self, store):
+        """Initialize the ObjectStoreParentsProvider.
+
+        Args:
+            store: Git object store to query for parent information.
+        """
         self._store = store
 
     def get_parent_map(self, shas):
+        """Get parent information for the specified SHAs.
+
+        Args:
+            shas: Sequence of Git object SHAs to get parents for.
+
+        Returns:
+            Dictionary mapping each SHA to its parent SHAs.
+        """
         ret = {}
         for sha in shas:
             if sha is None:
@@ -104,7 +137,20 @@ class ObjectStoreParentsProvider:
         return ret
 
 
-def remote_divergence(old_sha, new_sha, store):
+def remote_divergence(old_sha: ObjectID, new_sha: ObjectID, store):
+    """Check if the remote branch has diverged.
+
+    Args:
+        old_sha: The old SHA (can be None).
+        new_sha: The new SHA.
+        store: Git object store.
+
+    Returns:
+        True if the remote has diverged, False otherwise.
+
+    Raises:
+        TypeError: If SHA arguments are not bytes or None.
+    """
     if old_sha is None:
         return False
     if not isinstance(old_sha, bytes):

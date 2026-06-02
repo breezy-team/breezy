@@ -21,6 +21,12 @@ from ...commands import Command
 
 
 class cmd_github_login(Command):
+    """Log into GitHub.
+
+    When communicating with GitHub, some commands need to authenticate to
+    GitHub.
+    """
+
     __doc__ = """Log into GitHub.
 
     When communicating with GitHub, some commands need to authenticate to
@@ -30,9 +36,17 @@ class cmd_github_login(Command):
     takes_args = ["username?"]
 
     def run(self, username=None):
+        """Execute the github-login command.
+
+        Args:
+            username: Optional GitHub username to log in with.
+
+        Raises:
+            CommandError: If authentication fails or token already exists.
+        """
         from github import Github, GithubException
 
-        from breezy.config import AuthenticationConfig
+        from ...config import AuthenticationConfig
 
         authconfig = AuthenticationConfig()
         if username is None:
@@ -53,8 +67,8 @@ class cmd_github_login(Command):
             if errs:
                 err_code = errs[0].get("code")
                 if err_code == "already_exists":
-                    raise errors.CommandError("token already exists")
-            raise errors.CommandError(e.data["message"])
+                    raise errors.CommandError("token already exists") from e
+            raise errors.CommandError(e.data["message"]) from e
         from .forge import store_github_token
 
         store_github_token(token=authorization.token)

@@ -31,11 +31,11 @@ class TestLocationToUrl(tests.TestCase):
     def get_base_location(self):
         path = osutils.abspath("/foo/bar")
         if path.startswith("/"):
-            url = "file://{}".format(path)
+            url = f"file://{path}"
         else:
             # On Windows, abspaths start with the drive letter, so we have to
             # add in the extra '/'
-            url = "file:///{}".format(path)
+            url = f"file:///{path}"
         return path, url
 
     def test_regular_url(self):
@@ -76,8 +76,8 @@ class TestLocationToUrl(tests.TestCase):
                 ":pserver:anonymous@odessa.cvs.sourceforge.net:/cvsroot/odess"
             ),
         )
-        self.assertRaises(urlutils.InvalidURL, location_to_url, ":pserver:blah")
-        self.assertRaises(urlutils.InvalidURL, location_to_url, ":pserver:blah:bloe")
+        self.assertRaises(ValueError, location_to_url, ":pserver:blah")
+        self.assertRaises(ValueError, location_to_url, ":pserver:blah:bloe")
 
     def test_extssh(self):
         self.assertEqual(

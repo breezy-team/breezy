@@ -19,6 +19,10 @@
 
 import re
 
+from dromedary import errors as transport_errors
+from dromedary import memory
+from dromedary.tests import http_server
+
 from breezy import (
     branch,
     controldir,
@@ -32,8 +36,7 @@ from breezy import (
     workingtree,
 )
 from breezy.bzr import bzrdir, knitrepo
-from breezy.tests import http_server, scenarios, script, test_foreign
-from breezy.transport import memory
+from breezy.tests import scenarios, script, test_foreign
 
 load_tests = scenarios.load_tests_apply_scenarios
 
@@ -582,7 +585,7 @@ class TestPush(tests.TestCaseWithTransport):
         # stack on trunk.
         self.make_controldir(".").get_config().set_default_stack_on("trunk")
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
-        out, err = self.run_bzr("push -d repo/local remote -r 2")
+        _out, err = self.run_bzr("push -d repo/local remote -r 2")
         self.assertContainsRe(err, "Using default stacking branch trunk at .*")
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.
@@ -591,7 +594,7 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_verbose_shows_log(self):
         tree = self.make_branch_and_tree("source")
         tree.commit("rev1")
-        out, err = self.run_bzr("push -v -d source target")
+        out, _err = self.run_bzr("push -v -d source target")
         # initial push contains log
         self.assertContainsRe(out, "rev1")
         tree.commit("rev2")
@@ -630,11 +633,11 @@ class TestPush(tests.TestCaseWithTransport):
 class RedirectingMemoryTransport(memory.MemoryTransport):
     def mkdir(self, relpath, mode=None):
         if self._cwd == "/source/":
-            raise errors.RedirectRequested(
+            raise transport_errors.RedirectRequested(
                 self.abspath(relpath), self.abspath("../target"), is_permanent=True
             )
         elif self._cwd == "/infinite-loop/":
-            raise errors.RedirectRequested(
+            raise transport_errors.RedirectRequested(
                 self.abspath(relpath),
                 self.abspath("../infinite-loop"),
                 is_permanent=True,
@@ -644,7 +647,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
 
     def get(self, relpath):
         if self.clone(relpath)._cwd == "/infinite-loop/":
-            raise errors.RedirectRequested(
+            raise transport_errors.RedirectRequested(
                 self.abspath(relpath),
                 self.abspath("../infinite-loop"),
                 is_permanent=True,
@@ -659,18 +662,14 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
 
 class RedirectingMemoryServer(memory.MemoryServer):
     def start_server(self):
-        self._dirs = {"/": None}
-        self._files = {}
-        self._locks = {}
-        self._scheme = "redirecting-memory+{}:///".format(id(self))
+        from dromedary.memory import MemoryStoreHandle
+
+        self._store = MemoryStoreHandle()
+        self._scheme = f"redirecting-memory+{id(self)}:///"
         transport.register_transport(self._scheme, self._memory_factory)
 
     def _memory_factory(self, url):
-        result = RedirectingMemoryTransport(url)
-        result._dirs = self._dirs
-        result._files = self._files
-        result._locks = self._locks
-        return result
+        return RedirectingMemoryTransport(url, _shared_store=self._store)
 
     def stop_server(self):
         transport.unregister_transport(self._scheme, self._memory_factory)
@@ -708,11 +707,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
         """
         destination_url = self.memory_server.get_url() + "infinite-loop"
         out, _err = self.run_bzr_error(
-            [
-                "Too many redirections trying to make {}\\.\n".format(
-                    re.escape(destination_url)
-                )
-            ],
+            [f"Too many redirections trying to make {re.escape(destination_url)}\\.\n"],
             ["push", "-d", "tree", destination_url],
             retcode=3,
         )
@@ -750,10 +745,7 @@ class TestPushStrictMixin:
         self.assertContainsRe(err, self._default_additional_error)
 
     def assertPushSucceeds(self, args, with_warning=False, revid_to_push=None):
-        if with_warning:
-            error_regexes = self._default_errors
-        else:
-            error_regexes = []
+        error_regexes = self._default_errors if with_warning else []
         _out, err = self.run_bzr(
             self._default_command + args,
             working_dir=self._default_wd,
@@ -905,7 +897,8 @@ class TestPushForeign(tests.TestCaseWithTransport):
 
 class TestPushOutput(script.TestCaseWithTransportAndScript):
     def test_push_log_format(self):
-        self.run_script("""
+        self.run_script(
+            """
             $ brz init trunk
             Created a standalone tree (format: 2a)
             $ cd trunk
@@ -923,10 +916,12 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
             1: jrandom@example.com ...we need some foo
             2>All changes applied successfully.
             2>Pushed up to revision 1.
-            """)
+            """
+        )
 
     def test_push_with_revspec(self):
-        self.run_script("""
+        self.run_script(
+            """
             $ brz init-shared-repo .
             Shared repository with trees (format: 2a)
             Location:
@@ -948,4 +943,5 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
             $ brz push -r 1 ../other
             2>Created new branch.
             $ brz st ../other # checking that file is not created (#484516)
-            """)
+            """
+        )

@@ -21,28 +21,22 @@
 # TODO: might be nice to create a versionedfile with some type of corruption
 # considered typical and check that it can be detected/corrected.
 
+import contextlib
 import itertools
 from gzip import GzipFile
 from io import BytesIO
 
-import vcsgraph
-
-from ... import errors, osutils, progress, transport, ui
-from ...errors import RevisionAlreadyPresent, RevisionNotPresent
-from ...tests import (
-    TestCase,
-    TestCaseWithMemoryTransport,
-    TestNotApplicable,
-    TestSkipped,
+from bzrformats import groupcompress, versionedfile
+from bzrformats import knit as _mod_knit
+from bzrformats.errors import (
+    OutSideTransaction,
+    ReadOnlyError,
+    ReservedId,
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
 )
-from ...tests.http_utils import TestCaseWithWebserver
-from ...tests.scenarios import load_tests_apply_scenarios
-from ...transport.memory import MemoryTransport
-from .. import groupcompress
-from .. import knit as _mod_knit
-from .. import versionedfile as versionedfile
-from ..knit import cleanup_pack_knit, make_file_factory, make_pack_factory
-from ..versionedfile import (
+from bzrformats.knit import cleanup_pack_knit, make_file_factory, make_pack_factory
+from bzrformats.versionedfile import (
     ChunkedContentFactory,
     ConstantMapper,
     ExistingContent,
@@ -52,8 +46,20 @@ from ..versionedfile import (
     VirtualVersionedFiles,
     make_versioned_files_factory,
 )
-from ..weave import WeaveFile, WeaveInvalidChecksum
-from ..weavefile import write_weave
+from bzrformats.weave import WeaveFile, WeaveInvalidChecksum
+from bzrformats.weavefile import write_weave
+from dromedary.memory import MemoryTransport
+from vcsgraph import known_graph as _mod_known_graph
+
+from ... import errors, osutils, progress, transport, ui
+from ...tests import (
+    TestCase,
+    TestCaseWithMemoryTransport,
+    TestNotApplicable,
+    TestSkipped,
+)
+from ...tests.http_utils import TestCaseWithWebserver
+from ...tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -71,10 +77,7 @@ def get_diamond_vf(f, trailing_eol=True, left_only=False):
         b"merged": ((b"left",), (b"right",)),
     }
     # insert a diamond graph to exercise deltas and merges.
-    if trailing_eol:
-        last_char = b"\n"
-    else:
-        last_char = b""
+    last_char = b"\n" if trailing_eol else b""
     f.add_lines(b"origin", [], [b"origin" + last_char])
     f.add_lines(b"base", [b"origin"], [b"base" + last_char])
     f.add_lines(b"left", [b"base"], [b"base\n", b"left" + last_char])
@@ -109,15 +112,9 @@ def get_diamond_files(
     """
     if nokeys:
         nograph = True
-    if key_length == 1:
-        prefixes = [()]
-    else:
-        prefixes = [(b"FileA",), (b"FileB",)]
+    prefixes = [()] if key_length == 1 else [(b"FileA",), (b"FileB",)]
     # insert a diamond graph to exercise deltas and merges.
-    if trailing_eol:
-        last_char = b"\n"
-    else:
-        last_char = b""
+    last_char = b"\n" if trailing_eol else b""
     result = []
 
     def get_parents(suffix_list):
@@ -253,14 +250,14 @@ class VersionedFileTestMixIn:
         # versioned files version sequences of bytes only.
         vf = self.get_file()
         self.assertRaises(
-            errors.BzrBadParameterUnicode,
+            (errors.BzrBadParameterUnicode, TypeError),
             vf.add_lines,
             b"a",
             [],
             [b"a\n", "b\n", b"c\n"],
         )
         self.assertRaises(
-            (errors.BzrBadParameterUnicode, NotImplementedError),
+            (errors.BzrBadParameterUnicode, TypeError, NotImplementedError),
             vf.add_lines_with_ghosts,
             b"a",
             [],
@@ -296,10 +293,14 @@ class VersionedFileTestMixIn:
         # \r characters are not permitted in lines being added
         vf = self.get_file()
         self.assertRaises(
-            errors.BzrBadParameterContainsNewline, vf.add_lines, b"a", [], [b"a\n\n"]
+            (errors.BzrBadParameterContainsNewline, ValueError),
+            vf.add_lines,
+            b"a",
+            [],
+            [b"a\n\n"],
         )
         self.assertRaises(
-            (errors.BzrBadParameterContainsNewline, NotImplementedError),
+            (errors.BzrBadParameterContainsNewline, ValueError, NotImplementedError),
             vf.add_lines_with_ghosts,
             b"a",
             [],
@@ -307,16 +308,12 @@ class VersionedFileTestMixIn:
         )
         # but inline CR's are allowed
         vf.add_lines(b"a", [], [b"a\r\n"])
-        try:
+        with contextlib.suppress(NotImplementedError):
             vf.add_lines_with_ghosts(b"b", [], [b"a\r\n"])
-        except NotImplementedError:
-            pass
 
     def test_add_reserved(self):
         vf = self.get_file()
-        self.assertRaises(
-            errors.ReservedId, vf.add_lines, b"a:", [], [b"a\n", b"b\n", b"c\n"]
-        )
+        self.assertRaises(ReservedId, vf.add_lines, b"a:", [], [b"a\n", b"b\n", b"c\n"])
 
     def test_add_lines_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
@@ -341,7 +338,7 @@ class VersionedFileTestMixIn:
                 nostore_sha=sha,
             )
             # and no new version should have been added.
-            self.assertRaises(errors.RevisionNotPresent, vf.get_lines, version + b"2")
+            self.assertRaises(RevisionNotPresent, vf.get_lines, version + b"2")
 
     def test_add_lines_with_ghosts_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
@@ -371,7 +368,7 @@ class VersionedFileTestMixIn:
                 nostore_sha=sha,
             )
             # and no new version should have been added.
-            self.assertRaises(errors.RevisionNotPresent, vf.get_lines, version + b"2")
+            self.assertRaises(RevisionNotPresent, vf.get_lines, version + b"2")
 
     def test_add_lines_return_value(self):
         # add_lines should return the sha1 and the text size.
@@ -398,9 +395,9 @@ class VersionedFileTestMixIn:
 
     def test_get_reserved(self):
         vf = self.get_file()
-        self.assertRaises(errors.ReservedId, vf.get_texts, [b"b:"])
-        self.assertRaises(errors.ReservedId, vf.get_lines, b"b:")
-        self.assertRaises(errors.ReservedId, vf.get_text, b"b:")
+        self.assertRaises(ReservedId, vf.get_texts, [b"b:"])
+        self.assertRaises(ReservedId, vf.get_lines, b"b:")
+        self.assertRaises(ReservedId, vf.get_text, b"b:")
 
     def test_add_unchanged_last_line_noeol_snapshot(self):
         """Add a text with an unchanged last line with no eol should work."""
@@ -414,7 +411,7 @@ class VersionedFileTestMixIn:
         # happens).
         for length in range(20):
             version_lines = {}
-            vf = self.get_file(f"case-%{length}")
+            vf = self.get_file("case-%d" % length)
             prefix = b"step-%d"
             parents = []
             for step in range(length):
@@ -437,10 +434,7 @@ class VersionedFileTestMixIn:
         parents = []
         for i in range(4):
             version = b"v%d" % i
-            if i % 2:
-                lines = sample_text_nl
-            else:
-                lines = sample_text_no_nl
+            lines = sample_text_nl if i % 2 else sample_text_no_nl
             # left_matching blocks is an internal api; it operates on the
             # *internal* representation for a knit, which is with *all* lines
             # being normalised to end with \n - even the final line in a no_nl
@@ -484,7 +478,7 @@ class VersionedFileTestMixIn:
         self.assertEqualDiff(b"newline\nline", vf.get_text(b"noeol2"))
 
     def test_make_mpdiffs(self):
-        from breezy import multiparent
+        from breezy.bzr import multiparent
 
         vf = self.get_file("foo")
         self._setup_for_deltas(vf)
@@ -510,7 +504,7 @@ class VersionedFileTestMixIn:
         except NotImplementedError:
             # old Weave formats do not allow ghosts
             return
-        self.assertRaises(errors.RevisionNotPresent, vf.make_mpdiffs, [b"ghost"])
+        self.assertRaises(RevisionNotPresent, vf.make_mpdiffs, [b"ghost"])
 
     def _setup_for_deltas(self, f):
         self.assertFalse(f.has_version("base"))
@@ -602,10 +596,8 @@ class VersionedFileTestMixIn:
         self._transaction = "before"
         f = self.get_file()
         self._transaction = "after"
-        self.assertRaises(errors.OutSideTransaction, f.add_lines, b"", [], [])
-        self.assertRaises(
-            errors.OutSideTransaction, f.add_lines_with_ghosts, b"", [], []
-        )
+        self.assertRaises(OutSideTransaction, f.add_lines, b"", [], [])
+        self.assertRaises(OutSideTransaction, f.add_lines_with_ghosts, b"", [], [])
 
     def test_copy_to(self):
         f = self.get_file()
@@ -631,7 +623,7 @@ class VersionedFileTestMixIn:
         f.add_lines(b"r3", [], [b"a\n", b"b\n"])
         f.add_lines(b"m", [b"r0", b"r1", b"r2", b"r3"], [b"a\n", b"b\n"])
         self.assertEqual({b"m": (b"r0", b"r1", b"r2", b"r3")}, f.get_parent_map([b"m"]))
-        self.assertEqual({}, f.get_parent_map(b"y"))
+        self.assertEqual({}, f.get_parent_map([b"y"]))
         self.assertEqual(
             {b"r0": (), b"r1": (b"r0",)}, f.get_parent_map([b"r0", b"y", b"r1"])
         )
@@ -823,10 +815,8 @@ class VersionedFileTestMixIn:
         factory = self.get_factory()
         vf = factory("id", t, 0o777, create=True, access_mode="w")
         vf = factory("id", t, access_mode="r")
-        self.assertRaises(errors.ReadOnlyError, vf.add_lines, b"base", [], [])
-        self.assertRaises(
-            errors.ReadOnlyError, vf.add_lines_with_ghosts, b"base", [], []
-        )
+        self.assertRaises(ReadOnlyError, vf.add_lines, b"base", [], [])
+        self.assertRaises(ReadOnlyError, vf.add_lines_with_ghosts, b"base", [], [])
 
     def test_get_sha1s(self):
         # check the sha1 data is available
@@ -845,67 +835,6 @@ class VersionedFileTestMixIn:
             },
             vf.get_sha1s([b"a", b"c", b"b"]),
         )
-
-
-class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
-    def get_file(self, name="foo"):
-        return WeaveFile(
-            name, self.get_transport(), create=True, get_scope=self.get_transaction
-        )
-
-    def get_file_corrupted_text(self):
-        w = WeaveFile(
-            "foo", self.get_transport(), create=True, get_scope=self.get_transaction
-        )
-        w.add_lines(b"v1", [], [b"hello\n"])
-        w.add_lines(b"v2", [b"v1"], [b"hello\n", b"there\n"])
-
-        # We are going to invasively corrupt the text
-        # Make sure the internals of weave are the same
-        self.assertEqual(
-            [(b"{", 0), b"hello\n", (b"}", None), (b"{", 1), b"there\n", (b"}", None)],
-            w._weave,
-        )
-
-        self.assertEqual(
-            [
-                b"f572d396fae9206628714fb2ce00f72e94f2258f",
-                b"90f265c6e75f1c8f9ab76dcf85528352c5f215ef",
-            ],
-            w._sha1s,
-        )
-        w.check()
-
-        # Corrupted
-        w._weave[4] = b"There\n"
-        return w
-
-    def get_file_corrupted_checksum(self):
-        w = self.get_file_corrupted_text()
-        # Corrected
-        w._weave[4] = b"there\n"
-        self.assertEqual(b"hello\nthere\n", w.get_text(b"v2"))
-
-        # Invalid checksum, first digit changed
-        w._sha1s[1] = b"f0f265c6e75f1c8f9ab76dcf85528352c5f215ef"
-        return w
-
-    def reopen_file(self, name="foo", create=False):
-        return WeaveFile(
-            name, self.get_transport(), create=create, get_scope=self.get_transaction
-        )
-
-    def test_no_implicit_create(self):
-        self.assertRaises(
-            transport.NoSuchFile,
-            WeaveFile,
-            "foo",
-            self.get_transport(),
-            get_scope=self.get_transaction,
-        )
-
-    def get_factory(self):
-        return WeaveFile
 
 
 class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
@@ -979,7 +908,7 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
         self.assertEqual(b"a", b"".join(get_record(b"A").iter_bytes_as("chunked")))
         self.assertEqual(b"c", get_record(b"C").get_bytes_as("fulltext"))
         self.assertEqual(b"e", get_record(b"E:").get_bytes_as("fulltext"))
-        self.assertEqual("absent", get_record("F").storage_kind)
+        self.assertEqual("absent", get_record(b"F").storage_kind)
 
 
 class TestReadonlyHttpMixin:
@@ -1036,7 +965,7 @@ class MergeCasesMixin:
         p = list(w.plan_merge(b"text1", b"text2"))
         for state, line in p:
             if line:
-                self.log(f"{state:12} | {line[:-1]}")
+                self.log("%12s | %s" % (state, line[:-1]))
 
         self.log("merge:")
         mt = BytesIO()
@@ -1066,14 +995,14 @@ class MergeCasesMixin:
             [b"aaa", b"xxx", b"bbb", b"yyy", b"ccc"],
         )
 
-    overlappedInsertExpected = [b"aaa", b"xxx", b"yyy", b"bbb"]
+    overlapped_insert_expected = [b"aaa", b"xxx", b"yyy", b"bbb"]
 
     def testOverlappedInsert(self):
         self.doMerge(
             [b"aaa", b"bbb"],
             [b"aaa", b"xxx", b"yyy", b"bbb"],
             [b"aaa", b"xxx", b"bbb"],
-            self.overlappedInsertExpected,
+            self.overlapped_insert_expected,
         )
 
         # really it ought to reduce this to
@@ -1124,7 +1053,7 @@ class MergeCasesMixin:
         p = list(w.plan_merge(b"text1", b"text2"))
         for state, line in p:
             if line:
-                self.log(f"{state:12} | {line[:-1]}")
+                self.log("%12s | %s" % (state, line[:-1]))
         self.log("merge result:")
         result_text = b"".join(w.weave_merge(p))
         self.log(result_text)
@@ -1149,13 +1078,14 @@ class MergeCasesMixin:
         b = b"""\
             line 1
             """
-        result = b"""\
-            line 1
-<<<<<<<\x20
-            line 2
-=======
->>>>>>>\x20
-            """
+        result = (
+            b"            line 1\n"
+            b"<<<<<<< \n"
+            b"            line 2\n"
+            b"=======\n"
+            b">>>>>>> \n"
+            b"            "
+        )
         self._test_merge_from_strings(base, a, b, result)
 
     def test_deletion_overlap(self):
@@ -1181,15 +1111,16 @@ class MergeCasesMixin:
             int c() {}
             end context
             """
-        result = b"""\
-            start context
-<<<<<<<\x20
-            int a() {}
-=======
-            int c() {}
->>>>>>>\x20
-            end context
-            """
+        result = (
+            b"            start context\n"
+            b"<<<<<<< \n"
+            b"            int a() {}\n"
+            b"=======\n"
+            b"            int c() {}\n"
+            b">>>>>>> \n"
+            b"            end context\n"
+            b"            "
+        )
         self._test_merge_from_strings(base, a, b, result)
 
     def test_agreement_deletion(self):
@@ -1245,17 +1176,18 @@ class MergeCasesMixin:
             both lines
             end context
             """
-        result = b"""\
-            start context
-<<<<<<<\x20
-            base line 1
-            a's replacement line 2
-=======
-            b replaces
-            both lines
->>>>>>>\x20
-            end context
-            """
+        result = (
+            b"            start context\n"
+            b"<<<<<<< \n"
+            b"            base line 1\n"
+            b"            a's replacement line 2\n"
+            b"=======\n"
+            b"            b replaces\n"
+            b"            both lines\n"
+            b">>>>>>> \n"
+            b"            end context\n"
+            b"            "
+        )
         self._test_merge_from_strings(base, a, b, result)
 
 
@@ -1269,7 +1201,7 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
         write_weave(w, tmpf)
         self.log(tmpf.getvalue())
 
-    overlappedInsertExpected = [
+    overlapped_insert_expected = [
         b"aaa",
         b"<<<<<<< ",
         b"xxx",
@@ -1640,9 +1572,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def test_add_fallback_implies_without_fallbacks(self):
         f = self.get_versionedfiles("files")
         if getattr(f, "add_fallback_versioned_files", None) is None:
-            raise TestNotApplicable(
-                "{} doesn't support fallbacks".format(f.__class__.__name__)
-            )
+            raise TestNotApplicable(f"{f.__class__.__name__} doesn't support fallbacks")
         g = self.get_versionedfiles("fallback")
         key_a = self.get_simple_key(b"a")
         g.add_lines(key_a, [], [b"\n"])
@@ -1700,10 +1630,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def test_annotate(self):
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
-        if self.key_length == 1:
-            prefix = ()
-        else:
-            prefix = (b"FileA",)
+        prefix = () if self.key_length == 1 else (b"FileA",)
         # introduced full text
         origins = files.annotate(prefix + (b"origin",))
         self.assertEqual([(prefix + (b"origin",), b"origin\n")], origins)
@@ -1733,7 +1660,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ],
                 origins,
             )
-        self.assertRaises(RevisionNotPresent, files.annotate, prefix + ("missing-key",))
+        self.assertRaises(
+            RevisionNotPresent, files.annotate, prefix + (b"missing-key",)
+        )
 
     def test_check_no_parameters(self):
         self.get_versionedfiles()
@@ -1965,7 +1894,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         f.add_lines(key_b, [key_a], [b"\n"])
         f.add_lines(key_c, [key_a, key_b], [b"\n"])
         kg = f.get_known_graph_ancestry([key_c])
-        self.assertIsInstance(kg, vcsgraph.KnownGraph)
+        self.assertIsInstance(kg, _mod_known_graph.KnownGraph)
         self.assertEqual([key_a, key_b, key_c], list(kg.topo_sort()))
 
     def test_known_graph_with_fallbacks(self):
@@ -1973,9 +1902,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         if not self.graph:
             raise TestNotApplicable("ancestry info only relevant with graph.")
         if getattr(f, "add_fallback_versioned_files", None) is None:
-            raise TestNotApplicable(
-                "{} doesn't support fallbacks".format(f.__class__.__name__)
-            )
+            raise TestNotApplicable(f"{f.__class__.__name__} doesn't support fallbacks")
         key_a = self.get_simple_key(b"a")
         key_b = self.get_simple_key(b"b")
         key_c = self.get_simple_key(b"c")
@@ -2149,10 +2076,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def assertStreamOrder(self, sort_order, seen, keys):
         self.assertEqual(len(set(seen)), len(keys))
-        if self.key_length == 1:
-            lows = {(): 0}
-        else:
-            lows = {(b"FileA",): 0, (b"FileB",): 0}
+        lows = {(): 0} if self.key_length == 1 else {(b"FileA",): 0, (b"FileB",): 0}
         if not self.graph:
             self.assertEqual(set(keys), set(seen))
         else:
@@ -2160,7 +2084,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 sort_pos = sort_order[key]
                 self.assertTrue(
                     sort_pos >= lows[key[:-1]],
-                    "Out of order in sorted stream: {!r}, {!r}".format(key, seen),
+                    f"Out of order in sorted stream: {key!r}, {seen!r}",
                 )
                 lows[key[:-1]] = sort_pos
 
@@ -2294,10 +2218,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         key = self.get_simple_key(b"ft")
         key_delta = self.get_simple_key(b"delta")
         files.add_lines(key, (), [b"my text\n", b"content"])
-        if self.graph:
-            delta_parents = (key,)
-        else:
-            delta_parents = ()
+        delta_parents = (key,) if self.graph else ()
         files.add_lines(key_delta, delta_parents, [b"different\n", b"content\n"])
         local = files.get_record_stream([key, key_delta], "unordered", False)
         ref = files.get_record_stream([key, key_delta], "unordered", False)
@@ -2330,10 +2251,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         key = self.get_simple_key(b"ft")
         key_delta = self.get_simple_key(b"delta")
         files.add_lines(key, (), [b"my text\n", b"content"])
-        if self.graph:
-            delta_parents = (key,)
-        else:
-            delta_parents = ()
+        delta_parents = (key,) if self.graph else ()
         files.add_lines(key_delta, delta_parents, [b"different\n", b"content\n"])
         # Copy the basis text across so we can reconstruct the delta during
         # insertion into target.
@@ -2369,10 +2287,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         key = self.get_simple_key(b"ft")
         key_delta = self.get_simple_key(b"delta")
         files.add_lines(key, (), [b"my text\n", b"content"])
-        if self.graph:
-            delta_parents = (key,)
-        else:
-            delta_parents = ()
+        delta_parents = (key,) if self.graph else ()
         files.add_lines(key_delta, delta_parents, [b"different\n", b"content\n"])
         local = files.get_record_stream([key_delta], "unordered", True)
         ref = files.get_record_stream([key_delta], "unordered", True)
@@ -2678,7 +2593,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         stream = source.get_record_stream(
             [(b"missing",) * self.key_length], "topological", False
         )
-        self.assertRaises(errors.RevisionNotPresent, files.insert_record_stream, stream)
+        self.assertRaises(RevisionNotPresent, files.insert_record_stream, stream)
 
     def test_insert_record_stream_out_of_order(self):
         """An out of order stream can either error or work."""
@@ -2807,9 +2722,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.assertEqual({self.get_simple_key(b"left")}, set(missing_bases))
             self.assertEqual(set(keys), set(files.get_parent_map(keys)))
         else:
-            self.assertRaises(
-                errors.RevisionNotPresent, files.insert_record_stream, entries
-            )
+            self.assertRaises(RevisionNotPresent, files.insert_record_stream, entries)
             files.check()
 
     def test_insert_record_stream_delta_missing_basis_can_be_added_later(self):
@@ -2934,7 +2847,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         )
 
     def test_make_mpdiffs(self):
-        from breezy import multiparent
+        from breezy.bzr import multiparent
 
         files = self.get_versionedfiles("source")
         # add texts that should trip the knit maximum delta chain threshold
@@ -3025,13 +2938,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # bzr.
         files = self.get_versionedfiles()
         self.assertEqual(set(), set(files.keys()))
-        if self.key_length == 1:
-            key = (b"foo",)
-        else:
-            key = (
-                b"foo",
-                b"bar",
-            )
+        key = (b"foo",) if self.key_length == 1 else (b"foo", b"bar")
         files.add_lines(key, (), [])
         self.assertEqual({key}, set(files.keys()))
 

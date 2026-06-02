@@ -61,7 +61,7 @@ class TestAdded(TestCaseWithTransport):
         check_added(output, null)
 
         # after commit, now no longer listed
-        tree.commit(message='add "{}"'.format(name))
+        tree.commit(message=f'add "{name}"')
         check_added("")
 
     def test_added_directory(self):

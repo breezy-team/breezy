@@ -40,7 +40,7 @@ class TestRevProps(TestCaseWithRepository):
         )
         rev = b.repository.get_revision(rev1)
         if b.repository._format.supports_custom_revision_properties:
-            self.assertTrue("flavor" in rev.properties)
+            self.assertIn("flavor", rev.properties)
             self.assertEqual(rev.properties["flavor"], "choc-mint")
             expected_revprops = {
                 "condiment": "orange\n  mint\n\tcandy",

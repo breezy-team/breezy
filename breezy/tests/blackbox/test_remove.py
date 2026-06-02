@@ -26,7 +26,8 @@ from breezy.tests import (
     features,
     script,
 )
-from breezy.workingtree import WorkingTree
+
+from ...workingtree import WorkingTree
 
 _id = b"-id"
 a = "a"

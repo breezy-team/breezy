@@ -50,4 +50,7 @@ def test_suite():
         ]
     ]
     loader = TestLoader()
-    return loader.loadTestsFromModuleNames(module_names)
+    suite = loader.suiteClass()
+    for module_name in module_names:
+        suite.addTest(loader.loadTestsFromName(module_name))
+    return suite

@@ -17,16 +17,7 @@
 import os
 from io import StringIO
 
-from .. import (
-    branchbuilder,
-    errors,
-    gpg,
-    log,
-    registry,
-    revision,
-    revisionspec,
-    tests,
-)
+from .. import branchbuilder, errors, gpg, log, registry, revision, revisionspec, tests
 from . import features
 
 
@@ -234,9 +225,9 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.revisions[0].rev.message
-        if wt.branch.repository._serializer.squashes_xml_invalid_characters:
+        if wt.branch.repository._revision_serializer.squashes_xml_invalid_characters:
             self.assertNotEqual(msg, committed_msg)
-            self.assertTrue(len(committed_msg) > len(msg))
+            self.assertGreater(len(committed_msg), len(msg))
         else:
             self.assertEqual(msg, committed_msg)
 
@@ -292,6 +283,8 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.assertEqual("add file1 and file2", logentry.rev.message)
         self.checkDelta(logentry.delta, added=["file1", "file2"])
 
+    # bug #842695
+    @tests.expectedFailure
     def test_bug_842695_log_restricted_to_dir(self):
         # Comments here indicate revision numbers in trunk  # VVVVV
         trunk = self.make_branch_and_tree("this")
@@ -320,10 +313,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         lf.supports_merge_revisions = True
         log.show_log(trunk.branch, lf, file_id)
-        try:
-            self.assertEqual(["2", "1.1.1"], [r.revno for r in lf.revisions])
-        except AssertionError:
-            raise tests.KnownFailure("bug #842695")
+        self.assertEqual(["2", "1.1.1"], [r.revno for r in lf.revisions])
 
 
 class TestFormatSignatureValidity(tests.TestCaseWithTransport):
@@ -1172,12 +1162,30 @@ class TestShowChangedRevisions(tests.TestCaseWithTransport):
 class TestLogFormatter(tests.TestCase):
     def setUp(self):
         super().setUp()
-        self.rev = revision.Revision(b"a-id")
+        self.rev = revision.Revision(
+            b"a-id",
+            parent_ids=[],
+            properties={},
+            message="",
+            committer="",
+            timestamp=0,
+            timezone=0,
+            inventory_sha1=None,
+        )
         self.lf = log.LogFormatter(None)
 
     def test_short_committer(self):
         def assertCommitter(expected, committer):
-            self.rev.committer = committer
+            self.rev = revision.Revision(
+                b"a-id",
+                parent_ids=[],
+                properties={},
+                message="",
+                committer=committer,
+                timestamp=0,
+                timezone=0,
+                inventory_sha1=None,
+            )
             self.assertEqual(expected, self.lf.short_committer(self.rev))
 
         assertCommitter("John Doe", "John Doe <jdoe@example.com>")
@@ -1189,7 +1197,16 @@ class TestLogFormatter(tests.TestCase):
 
     def test_short_author(self):
         def assertAuthor(expected, author):
-            self.rev.properties["author"] = author
+            self.rev = revision.Revision(
+                b"a-id",
+                parent_ids=[],
+                properties={"author": author},
+                message="",
+                committer="",
+                timestamp=0,
+                timezone=0,
+                inventory_sha1=None,
+            )
             self.assertEqual(expected, self.lf.short_author(self.rev))
 
         assertAuthor("John Smith", "John Smith <jsmith@example.com>")
@@ -1199,12 +1216,30 @@ class TestLogFormatter(tests.TestCase):
         assertAuthor("John Smith", "John Smith jsmith@example.com")
 
     def test_short_author_from_committer(self):
-        self.rev.committer = "John Doe <jdoe@example.com>"
+        self.rev = revision.Revision(
+            b"a-id",
+            parent_ids=[],
+            properties={},
+            message="",
+            committer="John Doe <jdoe@example.com>",
+            timestamp=0,
+            timezone=0,
+            inventory_sha1=None,
+        )
         self.assertEqual("John Doe", self.lf.short_author(self.rev))
 
     def test_short_author_from_authors(self):
-        self.rev.properties["authors"] = (
-            "John Smith <jsmith@example.com>\nJane Rey <jrey@example.com>"
+        self.rev = revision.Revision(
+            b"a-id",
+            parent_ids=[],
+            properties={
+                "authors": "John Smith <jsmith@example.com>\nJane Rey <jrey@example.com>"
+            },
+            message="",
+            committer="",
+            timestamp=0,
+            timezone=0,
+            inventory_sha1=None,
         )
         self.assertEqual("John Smith", self.lf.short_author(self.rev))
 

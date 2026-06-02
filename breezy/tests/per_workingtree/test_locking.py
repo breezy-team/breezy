@@ -20,8 +20,9 @@ import sys
 
 from breezy import branch, errors
 from breezy.tests import TestSkipped
-from breezy.tests.matchers import *
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ..matchers import *  # noqa: F403
 
 
 class TestWorkingTreeLocking(TestCaseWithWorkingTree):
@@ -92,7 +93,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         try:
             wt.lock_tree_write()
         except errors.ReadOnlyError:
-            # When ReadOnlyError is raised, it indicates that the
+            # When errors.ReadOnlyError is raised, it indicates that the
             # workingtree shares its lock with the branch, which is what
             # the git/hg/bzr0.6 formats do.
             # in this case, no lock should have been taken - but the tree

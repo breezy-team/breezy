@@ -17,19 +17,34 @@
 
 """Tests for the revision/inventory Serializers."""
 
-from .. import chk_serializer, serializer, xml5, xml6, xml7, xml8
+from bzrformats import chk_serializer, xml5, xml6, xml7, xml8
+from bzrformats.serializer import inventory_format_registry, revision_format_registry
+
 from . import TestCase
 
 
 class TestSerializer(TestCase):
     """Test serializer."""
 
-    def test_registry(self):
-        self.assertIs(xml5.serializer_v5, serializer.format_registry.get("5"))
-        self.assertIs(xml6.serializer_v6, serializer.format_registry.get("6"))
-        self.assertIs(xml7.serializer_v7, serializer.format_registry.get("7"))
-        self.assertIs(xml8.serializer_v8, serializer.format_registry.get("8"))
+    def test_inventory_registry(self):
+        self.assertIs(xml5.inventory_serializer_v5, inventory_format_registry.get("5"))
+        self.assertIs(xml6.inventory_serializer_v6, inventory_format_registry.get("6"))
+        self.assertIs(xml7.inventory_serializer_v7, inventory_format_registry.get("7"))
+        self.assertIs(xml8.inventory_serializer_v8, inventory_format_registry.get("8"))
         self.assertIs(
-            chk_serializer.chk_serializer_255_bigpage,
-            serializer.format_registry.get("9"),
+            chk_serializer.inventory_chk_serializer_255_bigpage_9,
+            inventory_format_registry.get("9"),
         )
+        self.assertIs(
+            chk_serializer.inventory_chk_serializer_255_bigpage_10,
+            inventory_format_registry.get("10"),
+        )
+
+    def test_revision_registry(self):
+        from bzrformats._bzr_rs import (
+            revision_serializer_v5,
+            revision_serializer_v8,
+        )
+
+        self.assertIs(revision_serializer_v5, revision_format_registry.get("5"))
+        self.assertIs(revision_serializer_v8, revision_format_registry.get("8"))

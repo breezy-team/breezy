@@ -4,7 +4,7 @@ include BRANCH.TODO INSTALL Makefile MANIFEST.in NEWS profile_imports.py .rsynce
 # bzr export still create some empty dirs that need to be removed
 # breezy/plugins/weave_fmt/tests/ breezy/store/revision/ doc/ja/_templates/ man1/ man1
 recursive-include tools/win32 *
-recursive-include breezy *.py *.pyx *.pxd *.txt *.c *.h *.rs
+recursive-include breezy *.py *.txt *.rs
 recursive-include tools *.py *.sh
 recursive-include apport *
 recursive-include contrib *

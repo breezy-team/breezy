@@ -133,17 +133,17 @@ class Testament:
         a(self.long_header)
         a(f"revision-id: {self.revision_id.decode('utf-8')}\n")
         a(f"committer: {self.committer}\n")
-        a(f"timestamp: {int(self.timestamp)}\n")
-        a(f"timezone: {int(self.timezone)}\n")
+        a("timestamp: %d\n" % self.timestamp)
+        a("timezone: %d\n" % self.timezone)
         # inventory length contains the root, which is not shown here
         a("parents:\n")
         for parent_id in sorted(self.parent_ids):
             if contains_whitespace(parent_id):
                 raise ValueError(parent_id)
-            a("  {}\n".format(parent_id.decode("utf-8")))
+            a(f"  {parent_id.decode('utf-8')}\n")
         a("message:\n")
         for l in self.message.splitlines():
-            a("  {}\n".format(l))
+            a(f"  {l}\n")
         a("inventory:\n")
         for path, ie in self._get_entries():
             a(self._entry_to_line(path, ie))
@@ -194,6 +194,11 @@ class Testament:
         return l
 
     def as_text(self):
+        """Return the testament as a single UTF-8 encoded byte string.
+
+        Returns:
+            bytes: The complete testament text.
+        """
         return b"".join(self.as_text_lines())
 
     def as_short_text(self):
@@ -211,12 +216,17 @@ class Testament:
         for name, value in sorted(self.revprops.items()):
             if contains_whitespace(name):
                 raise ValueError(name)
-            r.append("  {}:\n".format(name))
+            r.append(f"  {name}:\n")
             for line in value.splitlines():
-                r.append("    {}\n".format(line))
+                r.append(f"    {line}\n")
         return r
 
     def as_sha1(self):
+        """Return the SHA-1 hash of the testament.
+
+        Returns:
+            str: The hexadecimal SHA-1 digest of the testament.
+        """
         return sha_strings(self.as_text_lines())
 
 

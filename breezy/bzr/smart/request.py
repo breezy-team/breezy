@@ -33,41 +33,68 @@ Interesting module attributes:
 import threading
 from _thread import get_ident
 
+from bzrformats.errors import (
+    BzrCheckError,
+    RevisionNotPresent,
+)
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
+
 from ... import branch as _mod_branch
 from ... import debug, errors, osutils, registry, revision, trace, urlutils
-from ... import transport as _mod_transport
-from ...lazy_import import lazy_import
-
-lazy_import(
-    globals(),
-    """
-from breezy.bzr import bzrdir
-from breezy.bzr.bundle import serializer
-
-import tempfile
-""",
-)
-
 
 jail_info = threading.local()
 jail_info.transports = None
 
 
 class DisabledMethod(errors.InternalBzrError):
+    """Exception raised when a smart server method is disabled.
+
+    This exception is used to indicate that a particular smart server
+    request handler method has been disabled and cannot be used.
+
+    Attributes:
+        class_name: The name of the disabled method class.
+    """
+
     _fmt = "The smart server method '%(class_name)s' is disabled."
 
     def __init__(self, class_name):
+        """Initialize DisabledMethod exception.
+
+        Args:
+            class_name: The name of the disabled method class.
+        """
         errors.BzrError.__init__(self)
         self.class_name = class_name
 
 
 def _install_hook():
+    """Install the pre-open hook for jail security.
+
+    This function installs a hook that will be called before opening
+    any BzrDir, to ensure that the server jail restrictions are enforced.
+    """
+    from breezy.bzr import bzrdir
+
     bzrdir.BzrDir.hooks.install_named_hook(
         "pre_open", _pre_open_hook, "checking server jail"
     )
 
 
 def _pre_open_hook(transport):
+    """Hook function to check if a transport is within the allowed jail.
+
+    This function is called before opening a BzrDir to ensure that the
+    transport being accessed is within the allowed jail boundaries. If the
+    transport is outside the jail, a JailBreak error is raised.
+
+    Args:
+        transport: The transport being opened.
+
+    Raises:
+        JailBreak: If the transport is outside the allowed jail.
+    """
     allowed_transports = getattr(jail_info, "transports", None)
     if allowed_transports is None:
         return
@@ -75,7 +102,7 @@ def _pre_open_hook(transport):
     for allowed_transport in allowed_transports:
         try:
             allowed_transport.relpath(abspath)
-        except errors.PathNotChild:
+        except transport_errors.PathNotChild:
             continue
         else:
             return
@@ -123,7 +150,14 @@ class SmartServerRequest:
         self._body_chunks = []
 
     def _check_enabled(self):
-        """Raises DisabledMethod if this method is disabled."""
+        """Check if this request method is enabled.
+
+        Subclasses can override this method to implement specific
+        enabling/disabling logic. By default, all methods are enabled.
+
+        Raises:
+            DisabledMethod: If this method has been disabled.
+        """
         pass
 
     def do(self, *args):
@@ -155,25 +189,51 @@ class SmartServerRequest:
         Must return a SmartServerResponse.
         """
         if body_bytes != b"":
-            raise errors.SmartProtocolError("Request does not expect a body")
+            raise transport_errors.SmartProtocolError("Request does not expect a body")
 
     def do_chunk(self, chunk_bytes):
-        """Called with each body chunk if the request has a streamed body.
+        """Process a chunk of streamed body data.
 
-        The do() method is still called, and must have returned None.
+        This method is called for each chunk of data when the request
+        has a streamed body. The chunks are accumulated and will be
+        processed together when do_end() is called.
+
+        The do() method is still called first, and must have returned None
+        to indicate that a body is expected.
+
+        Args:
+            chunk_bytes: A chunk of body data as bytes.
         """
         self._body_chunks.append(chunk_bytes)
 
     def do_end(self):
-        """Called when the end of the request has been received."""
+        """Handle the end of a request with a body.
+
+        This method is called when all chunks of a request body have been
+        received. It concatenates all the chunks and passes them to do_body().
+
+        Returns:
+            SmartServerResponse: The response from processing the complete body.
+        """
         body_bytes = b"".join(self._body_chunks)
         self._body_chunks = None
         return self.do_body(body_bytes)
 
     def setup_jail(self):
+        """Set up the jail for this request.
+
+        This method configures the jail to restrict file access to only
+        the paths under self._jail_root. This prevents the request from
+        accessing files outside its designated area.
+        """
         jail_info.transports = [self._jail_root]
 
     def teardown_jail(self):
+        """Tear down the jail after request processing.
+
+        This method removes the jail restrictions that were set up by
+        setup_jail(), allowing normal file access again.
+        """
         jail_info.transports = None
 
     def translate_client_path(self, client_path):
@@ -202,7 +262,7 @@ class SmartServerRequest:
                 raise ValueError(relpath)
             return urlutils.escape("." + relpath)
         else:
-            raise errors.PathNotChild(client_path, self._root_client_path)
+            raise transport_errors.PathNotChild(client_path, self._root_client_path)
 
     def transport_from_client_path(self, client_path):
         """Get a backing transport corresponding to the location referred to by
@@ -237,6 +297,14 @@ class SmartServerResponse:
         self.body_stream = body_stream
 
     def __eq__(self, other):
+        """Compare two SmartServerResponse objects for equality.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if the responses are equal, False otherwise.
+        """
         if other is None:
             return False
         return (
@@ -246,16 +314,23 @@ class SmartServerResponse:
         )
 
     def __repr__(self):
-        return "<{} args={!r} body={!r}>".format(
-            self.__class__.__name__, self.args, self.body
-        )
+        """Return a string representation of the response.
+
+        Returns:
+            str: A string representation showing the class name, args, and body.
+        """
+        return f"<{self.__class__.__name__} args={self.args!r} body={self.body!r}>"
 
 
 class FailedSmartServerResponse(SmartServerResponse):
     """A SmartServerResponse for a request which failed."""
 
     def is_successful(self):
-        """FailedSmartServerResponse are not successful."""
+        """Check if this response represents a successful operation.
+
+        Returns:
+            bool: Always False for failed responses.
+        """
         return False
 
 
@@ -263,7 +338,11 @@ class SuccessfulSmartServerResponse(SmartServerResponse):
     """A SmartServerResponse for a successfully completed request."""
 
     def is_successful(self):
-        """SuccessfulSmartServerResponse are successful."""
+        """Check if this response represents a successful operation.
+
+        Returns:
+            bool: Always True for successful responses.
+        """
         return True
 
 
@@ -300,17 +379,29 @@ class SmartServerRequestHandler:
         self.response = None
         self.finished_reading = False
         self._command = None
-        if "hpss" in debug.debug_flags:
+        if debug.debug_flag_enabled("hpss"):
             self._request_start_time = osutils.perf_counter()
             self._thread_id = get_ident()
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
+        """Log trace information for debugging.
+
+        This method logs debugging information about request processing when
+        the 'hpss' debug flag is enabled. It includes thread ID, timing
+        information, and optional byte data.
+
+        Args:
+            action: The action being performed (e.g., 'accept body', 'end').
+            message: The main message to log.
+            extra_bytes: Optional bytes to include in the trace (truncated to 40 chars).
+            include_time: If True, include elapsed time since request start.
+        """
         # It is a bit of a shame that this functionality overlaps with that of
         # ProtocolThreeRequester._trace. However, there is enough difference
         # that just putting it in a helper doesn't help a lot. And some state
         # is taken from the instance.
         if include_time:
-            t = "%5.3fs " % (osutils.perf_counter() - self._request_start_time)
+            t = f"{osutils.perf_counter() - self._request_start_time:5.3f}s "
         else:
             t = ""
         if extra_bytes is None:
@@ -319,33 +410,49 @@ class SmartServerRequestHandler:
             extra = " " + repr(extra_bytes[:40])
             if len(extra) > 33:
                 extra = extra[:29] + extra[-1] + "..."
-        trace.mutter("%12s: [%s] %s%s%s", action, self._thread_id, t, message, extra)
+        trace.mutter("%12s: [%s] %s%s%s" % (action, self._thread_id, t, message, extra))
 
     def accept_body(self, bytes):
-        """Accept body data."""
+        """Accept and process body data for the current request.
+
+        This method is called when body data is received for a request.
+        It passes the data to the current command's do_chunk method.
+
+        Args:
+            bytes: The body data received.
+        """
         if self._command is None:
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
-        if "hpss" in debug.debug_flags:
+        if debug.debug_flag_enabled("hpss"):
             self._trace("accept body", f"{len(bytes)} bytes", bytes)
 
     def end_of_body(self):
-        """No more body data will be received."""
+        """Handle the end of body data reception.
+
+        This method is called when all body data has been received.
+        It triggers the command's do_end method and marks the request
+        as finished reading.
+        """
         self._run_handler_code(self._command.do_end, (), {})
         # cannot read after this.
         self.finished_reading = True
-        if "hpss" in debug.debug_flags:
+        if debug.debug_flag_enabled("hpss"):
             self._trace("end of body", "", include_time=True)
 
     def _run_handler_code(self, callable, args, kwargs):
-        """Run some handler specific code 'callable'.
+        """Execute handler code with error handling.
 
-        If a result is returned, it is considered to be the commands response,
-        and finished_reading is set true, and its assigned to self.response.
+        This method runs the specified callable with the given arguments,
+        catching and converting any exceptions into response objects.
+        If the callable returns a result, it becomes the response and
+        marks the request as finished.
 
-        Any exceptions caught are translated and a response object created
-        from them.
+        Args:
+            callable: The function or method to call.
+            args: Positional arguments for the callable.
+            kwargs: Keyword arguments for the callable.
         """
         result = self._call_converting_errors(callable, args, kwargs)
 
@@ -354,7 +461,22 @@ class SmartServerRequestHandler:
             self.finished_reading = True
 
     def _call_converting_errors(self, callable, args, kwargs):
-        """Call callable converting errors to Response objects."""
+        """Call a function and convert exceptions to response objects.
+
+        This method sets up the jail, calls the specified function, and
+        ensures the jail is torn down afterwards. Any exceptions (except
+        KeyboardInterrupt and SystemExit) are caught and converted to
+        FailedSmartServerResponse objects.
+
+        Args:
+            callable: The function or method to call.
+            args: Positional arguments for the callable.
+            kwargs: Keyword arguments for the callable.
+
+        Returns:
+            The result of the callable, or a FailedSmartServerResponse
+            if an exception occurred.
+        """
         # XXX: most of this error conversion is VFS-related, and thus ought to
         # be in SmartServerVFSRequestHandler somewhere.
         try:
@@ -370,51 +492,98 @@ class SmartServerRequestHandler:
             return FailedSmartServerResponse(err_struct)
 
     def headers_received(self, headers):
+        """Handle receipt of request headers.
+
+        Currently this is a no-op that only logs the headers when
+        debugging is enabled.
+
+        Args:
+            headers: The headers received with the request.
+        """
         # Just a no-op at the moment.
-        if "hpss" in debug.debug_flags:
+        if debug.debug_flag_enabled("hpss"):
             self._trace("headers", repr(headers))
 
     def args_received(self, args):
+        """Process received request arguments.
+
+        This method looks up the appropriate command handler based on the
+        first argument (the command name), creates an instance of it, and
+        executes it with the remaining arguments.
+
+        Args:
+            args: Tuple of arguments, where args[0] is the command name
+                  and args[1:] are the command arguments.
+
+        Raises:
+            UnknownSmartMethod: If the command is not recognized.
+        """
         cmd = args[0]
         args = args[1:]
         try:
             command = self._commands.get(cmd)
         except LookupError as e:
-            if "hpss" in debug.debug_flags:
+            if debug.debug_flag_enabled("hpss"):
                 self._trace("hpss unknown request", cmd, repr(args)[1:-1])
-            raise errors.UnknownSmartMethod(cmd) from e
-        if "hpss" in debug.debug_flags:
+            raise transport_errors.UnknownSmartMethod(cmd) from e
+        if debug.debug_flag_enabled("hpss"):
             from . import vfs
 
             if issubclass(command, vfs.VfsRequest):
                 action = "hpss vfs req"
             else:
                 action = "hpss request"
-            self._trace(action, "{} {}".format(cmd, repr(args)[1:-1]))
+            self._trace(action, f"{cmd} {repr(args)[1:-1]}")
         self._command = command(
             self._backing_transport, self._root_client_path, self._jail_root
         )
         self._run_handler_code(self._command.execute, args, {})
 
     def end_received(self):
+        """Handle the end of request marker.
+
+        This method is called when an end-of-request marker is received.
+        It triggers the command's do_end method if a command is active.
+        """
         if self._command is None:
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_end, (), {})
-        if "hpss" in debug.debug_flags:
+        if debug.debug_flag_enabled("hpss"):
             self._trace("end", "", include_time=True)
 
     def post_body_error_received(self, error_args):
+        """Handle post-body error notifications.
+
+        This method is called when an error occurs after the body has
+        been sent. Currently it's a no-op.
+
+        Args:
+            error_args: Arguments describing the error.
+        """
         # Just a no-op at the moment.
         pass
 
 
 def _translate_error(err):
-    if isinstance(err, _mod_transport.NoSuchFile):
+    """Translate Python exceptions into smart protocol error tuples.
+
+    This function converts various exception types into tuples that can
+    be serialized and sent over the smart protocol. The first element
+    of the tuple is always the error type name as bytes.
+
+    Args:
+        err: The exception to translate.
+
+    Returns:
+        tuple: A tuple representing the error in a format suitable for
+               the smart protocol. The exact format depends on the error type.
+    """
+    if isinstance(err, NoSuchFile):
         return (b"NoSuchFile", err.path.encode("utf-8"))
-    elif isinstance(err, _mod_transport.FileExists):
+    elif isinstance(err, FileExists):
         return (b"FileExists", err.path.encode("utf-8"))
-    elif isinstance(err, errors.DirectoryNotEmpty):
+    elif isinstance(err, transport_errors.DirectoryNotEmpty):
         return (b"DirectoryNotEmpty", err.path.encode("utf-8"))
     elif isinstance(err, errors.IncompatibleRepositories):
         return (
@@ -423,15 +592,15 @@ def _translate_error(err):
             str(err.target),
             str(err.details),
         )
-    elif isinstance(err, errors.ShortReadvError):
+    elif isinstance(err, transport_errors.ShortReadvError):
         return (
             b"ShortReadvError",
-            err.path.encode("utf-8"),
-            str(err.offset).encode("ascii"),
-            str(err.length).encode("ascii"),
-            str(err.actual).encode("ascii"),
+            err.path.encode("utf-8") if err.path is not None else None,
+            str(err.offset).encode("ascii") if err.offset is not None else None,
+            str(err.length).encode("ascii") if err.length is not None else None,
+            str(err.actual).encode("ascii") if err.actual is not None else None,
         )
-    elif isinstance(err, errors.RevisionNotPresent):
+    elif isinstance(err, RevisionNotPresent):
         return (b"RevisionNotPresent", err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):
         return (
@@ -447,7 +616,7 @@ def _translate_error(err):
         )
     elif isinstance(err, errors.NotStacked):
         return (b"NotStacked",)
-    elif isinstance(err, errors.BzrCheckError):
+    elif isinstance(err, BzrCheckError):
         return (b"BzrCheckError", err.msg.encode("utf-8"))
     elif isinstance(err, UnicodeError):
         # If it is a DecodeError, than most likely we are starting
@@ -469,13 +638,13 @@ def _translate_error(err):
             str(err.end),
             err.reason,
         )
-    elif isinstance(err, errors.TransportNotPossible):
+    elif isinstance(err, transport_errors.TransportNotPossible):
         if err.msg == "readonly transport":
             return (b"ReadOnlyError",)
-    elif isinstance(err, errors.ReadError):
+    elif isinstance(err, transport_errors.ReadError):
         # cannot read the file
         return (b"ReadError", err.path)
-    elif isinstance(err, errors.PermissionDenied):
+    elif isinstance(err, transport_errors.PermissionDenied):
         return (
             b"PermissionDenied",
             err.path.encode("utf-8"),
@@ -488,7 +657,7 @@ def _translate_error(err):
     elif isinstance(err, errors.GhostRevisionsHaveNoRevno):
         return (b"GhostRevisionsHaveNoRevno", err.revision_id, err.ghost_revision_id)
     elif isinstance(err, urlutils.InvalidURL):
-        return (b"InvalidURL", err.path.encode("utf-8"), err.extra.encode("ascii"))
+        return (b"InvalidURL", err.path.encode("utf-8"), err.extra.encode("utf-8"))
     elif isinstance(err, MemoryError):
         # GZ 2011-02-24: Copy breezy.trace -Dmem_dump functionality here?
         return (b"MemoryError",)
@@ -509,6 +678,12 @@ class HelloRequest(SmartServerRequest):
     """
 
     def do(self):
+        """Respond to a hello request with the protocol version.
+
+        Returns:
+            SuccessfulSmartServerResponse: Response containing 'ok' and
+                                          the protocol version '2'.
+        """
         return SuccessfulSmartServerResponse((b"ok", b"2"))
 
 
@@ -516,6 +691,23 @@ class GetBundleRequest(SmartServerRequest):
     """Get a bundle of from the null revision to the specified revision."""
 
     def do(self, path, revision_id):
+        """Generate a bundle from the null revision to the specified revision.
+
+        This method creates a bundle containing all the changes needed to
+        recreate the repository state up to the specified revision.
+
+        Args:
+            path: The path to the repository.
+            revision_id: The target revision ID for the bundle.
+
+        Returns:
+            SuccessfulSmartServerResponse: Response containing the bundle data.
+        """
+        import tempfile
+
+        from breezy.bzr import bzrdir
+        from breezy.bzr.bundle import serializer
+
         # open transport relative to our base
         t = self.transport_from_client_path(path)
         control, _extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
@@ -528,13 +720,22 @@ class GetBundleRequest(SmartServerRequest):
 
 
 class SmartServerIsReadonly(SmartServerRequest):
+    """Request handler to check if the transport is read-only.
+
+    This handler checks whether the backing transport is read-only
+    and returns 'yes' or 'no' accordingly.
+    """
+
     # XXX: this request method belongs somewhere else.
 
     def do(self):
-        if self._backing_transport.is_readonly():
-            answer = b"yes"
-        else:
-            answer = b"no"
+        """Check if the backing transport is read-only.
+
+        Returns:
+            SuccessfulSmartServerResponse: Response containing either
+                                          b'yes' or b'no'.
+        """
+        answer = b"yes" if self._backing_transport.is_readonly() else b"no"
         return SuccessfulSmartServerResponse((answer,))
 
 

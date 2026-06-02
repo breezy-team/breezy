@@ -16,8 +16,9 @@
 
 """Tests for branch.last_revision_info."""
 
-from breezy.revision import NULL_REVISION
 from breezy.tests import TestCaseWithTransport
+
+from ...revision import NULL_REVISION
 
 
 class TestLastRevisionInfo(TestCaseWithTransport):

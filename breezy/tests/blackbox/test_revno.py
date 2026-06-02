@@ -20,7 +20,8 @@
 import os
 
 from breezy import tests
-from breezy.errors import NoSuchRevision
+
+from ...errors import NoSuchRevision
 
 
 class TestRevno(tests.TestCaseWithTransport):
@@ -154,10 +155,10 @@ class TestRevno(tests.TestCaseWithTransport):
         revid1 = wt.commit("rev1")
         wt.commit("rev2")
 
-        out, err = self.run_bzr("revno -r-2 .")
+        out, _err = self.run_bzr("revno -r-2 .")
         self.assertEqual("1\n", out)
 
-        out, _err = self.run_bzr("revno -rrevid:{} .".format(revid1.decode("utf-8")))
+        out, _err = self.run_bzr(f"revno -rrevid:{revid1.decode('utf-8')} .")
         self.assertEqual("1\n", out)
 
     def test_revno_and_tree_mutually_exclusive(self):

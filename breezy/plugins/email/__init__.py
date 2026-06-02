@@ -99,6 +99,11 @@ def branch_post_change_hook(params):
 
 
 def test_suite():
+    """Return the test suite for the email plugin.
+
+    Returns:
+        TestSuite: A unittest TestSuite containing all tests for the email plugin.
+    """
     from unittest import TestSuite
 
     from .tests import test_suite

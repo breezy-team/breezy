@@ -14,10 +14,14 @@ __docformat__ = "restructuredtext"
 
 
 class FileNotFound(Exception):
+    """Exception raised when specified file does not exist."""
+
     pass
 
 
 class VersionNotAvailable(Exception):
+    """Exception raised when file version information is not available."""
+
     pass
 
 
@@ -31,8 +35,8 @@ def get_file_version(filename):
 
     try:
         version_info = win32api.GetFileVersionInfo(filename, "\\")
-    except pywintypes.error:
-        raise VersionNotAvailable
+    except pywintypes.error as err:
+        raise VersionNotAvailable from err
 
     return divmod(version_info["FileVersionMS"], 65536) + divmod(
         version_info["FileVersionLS"], 65536

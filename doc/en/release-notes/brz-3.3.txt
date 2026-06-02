@@ -276,7 +276,7 @@ Improvements
 
 * Add supports_auto_merge setting. (Jelmer Vernooĳ)
 
-* Add --auto argument for "brz propose". 
+* Add --auto argument for "brz propose".
   (Jelmer Vernooĳ)
 
 Bug Fixes

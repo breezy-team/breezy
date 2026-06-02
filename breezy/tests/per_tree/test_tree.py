@@ -14,11 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import conflicts, errors, osutils, revisiontree, tests
-from breezy import transport as _mod_transport
+from bzrformats.inventory import NoSuchId
+from dromedary.errors import NoSuchFile
+
+from breezy import conflicts, osutils, revisiontree, tests
 from breezy.bzr import workingtree_4
 from breezy.tests.per_tree import TestCaseWithTree
-from breezy.tree import MissingNestedTree
+
+from ...tree import MissingNestedTree
 
 
 class TestAnnotate(TestCaseWithTree):
@@ -143,7 +146,7 @@ class TestFileIds(TestCaseWithTree):
         with tree.lock_read():
             self.assertEqual("a", tree.id2path(a_id))
             # other ids give an error- don't return None for this case
-            self.assertRaises(errors.NoSuchId, tree.id2path, b"a")
+            self.assertRaises(NoSuchId, tree.id2path, b"a")
 
     def test_all_file_ids(self):
         work_tree = self.make_branch_and_tree("wt")
@@ -240,7 +243,7 @@ class TestExtractFilesBytes(TestCaseWithTree):
         self.assertEqual(b"bar", extracted["id2"])
         self.assertEqual(b"baz", extracted["id3"])
         self.assertRaises(
-            _mod_transport.NoSuchFile,
+            NoSuchFile,
             lambda: list(tree.iter_files_bytes([("qux", "file1-notpresent")])),
         )
 
@@ -281,9 +284,7 @@ class TestIterChildEntries(TestCaseWithTree):
         self.build_tree(["a/"])
         work_tree.add(["a"])
         tree = self._convert_tree(work_tree)
-        self.assertRaises(
-            _mod_transport.NoSuchFile, lambda: list(tree.iter_child_entries("unknown"))
-        )
+        self.assertRaises(NoSuchFile, lambda: list(tree.iter_child_entries("unknown")))
 
 
 class TestExtras(TestCaseWithTree):

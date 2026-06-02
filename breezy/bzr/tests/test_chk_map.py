@@ -16,14 +16,23 @@
 
 """Tests for maps built on a CHK versionedfiles facility."""
 
-from ... import errors, osutils, tests
-from .. import chk_map, groupcompress
-from ..chk_map import CHKMap, InternalNode, LeafNode, Node
+from bzrformats import chk_map, groupcompress
+from bzrformats.chk_map import (
+    CHKMap,
+    InternalNode,
+    LeafNode,
+    _bytes_to_text_key,
+    _search_key_16,
+    _search_key_255,
+    common_prefix_pair,
+)
+
+from ... import osutils, tests
 
 
 class TestNode(tests.TestCase):
     def assertCommonPrefix(self, expected_common, prefix, key):
-        common = Node.common_prefix(prefix, key)
+        common = common_prefix_pair(prefix, key)
         self.assertTrue(len(common) <= len(prefix))
         self.assertTrue(len(common) <= len(key))
         self.assertStartsWith(prefix, common)
@@ -86,7 +95,7 @@ class TestCaseWithStore(tests.TestCaseWithMemoryTransport):
         stream = chk_bytes.get_record_stream([key], "unordered", True)
         record = next(stream)
         if record.storage_kind == "absent":
-            self.fail("Store does not contain the key {}".format(key))
+            self.fail(f"Store does not contain the key {key}")
         return record.get_bytes_as("fulltext")
 
     def to_dict(self, node, *args):
@@ -527,8 +536,10 @@ class TestMap(TestCaseWithStore):
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, {(b"a",): b"b"})
         chkmap = CHKMap(chk_bytes, root_key)
+        from bzrformats.errors import InconsistentDeltaDelta
+
         self.assertRaises(
-            errors.InconsistentDelta, chkmap.apply_delta, [(None, (b"a",), b"b")]
+            InconsistentDeltaDelta, chkmap.apply_delta, [(None, (b"a",), b"b")]
         )
         # As an error occured, the update should have left us without changing
         # anything (the root should be unchanged).
@@ -1214,14 +1225,14 @@ class TestMap(TestCaseWithStore):
 
         def get_record_stream(keys, order, fulltext):
             if (b"sha1:1adf7c0d1b9140ab5f33bb64c6275fa78b1580b7",) in keys:
-                raise AssertionError("'aaa' pointer was followed {!r}".format(keys))
+                raise AssertionError(f"'aaa' pointer was followed {keys!r}")
             return basis_get(keys, order, fulltext)
 
         basis._store.get_record_stream = get_record_stream
         result = sorted(target.iter_changes(basis))
         for change in result:
             if change[0] == (b"aaa",):
-                self.fail("Found unexpected change: {}".format(change))
+                self.fail(f"Found unexpected change: {change}")
 
     def test_iter_changes_unchanged_keys_in_multi_key_leafs_ignored(self):
         # Within a leaf there are no hash's to exclude keys, make sure multi
@@ -1484,7 +1495,7 @@ class TestMap(TestCaseWithStore):
 
 def _search_key_single(key):
     """A search key function that maps all nodes to the same value."""
-    return "value"
+    return b"value"
 
 
 def _test_search_key(key):
@@ -1760,7 +1771,7 @@ class TestLeafNode(TestCaseWithStore):
         node.set_maximum_size(10)
         result = node.map(None, (b"foo bar",), b"baz quux")
         self.assertEqual((b"foo bar", [(b"", node)]), result)
-        self.assertTrue(node._current_size() > 10)
+        self.assertLess(10, node._current_size())
 
     def test_map_exceeding_max_size_second_entry_early_difference_new(self):
         node = LeafNode()
@@ -3107,4 +3118,91 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
             [((b"abb",), b"changed left"), ((b"cbb",), b"changed right")],
             [left, right],
             [basis],
+        )
+
+
+class TestSearchKeys(tests.TestCase):
+    def assertSearchKey16(self, expected, key):
+        self.assertEqual(expected, _search_key_16(key))
+
+    def assertSearchKey255(self, expected, key):
+        actual = _search_key_255(key)
+        self.assertEqual(expected, actual, f"actual: {actual!r}")
+
+    def test_simple_16(self):
+        self.assertSearchKey16(
+            b"8C736521",
+            (b"foo",),
+        )
+        self.assertSearchKey16(b"8C736521\x008C736521", (b"foo", b"foo"))
+        self.assertSearchKey16(b"8C736521\x0076FF8CAA", (b"foo", b"bar"))
+        self.assertSearchKey16(
+            b"ED82CD11",
+            (b"abcd",),
+        )
+
+    def test_simple_255(self):
+        self.assertSearchKey255(
+            b"\x8cse!",
+            (b"foo",),
+        )
+        self.assertSearchKey255(b"\x8cse!\x00\x8cse!", (b"foo", b"foo"))
+        self.assertSearchKey255(b"\x8cse!\x00v\xff\x8c\xaa", (b"foo", b"bar"))
+        # The standard mapping for these would include '\n', so it should be
+        # mapped to '_'
+        self.assertSearchKey255(b"\xfdm\x93_\x00P_\x1bL", (b"<", b"V"))
+
+    def test_255_does_not_include_newline(self):
+        # When mapping via _search_key_255, we should never have the '\n'
+        # character, but all other 255 values should be present
+        chars_used = set()
+        for char_in in range(256):
+            search_key = _search_key_255((bytes([char_in]),))
+            chars_used.update([bytes([x]) for x in search_key])
+        all_chars = {bytes([x]) for x in range(256)}
+        unused_chars = all_chars.symmetric_difference(chars_used)
+        self.assertEqual({b"\n"}, unused_chars)
+
+
+class Test_BytesToTextKey(tests.TestCase):
+    def assertBytesToTextKey(self, key, bytes):
+        self.assertEqual(key, _bytes_to_text_key(bytes))
+
+    def assertBytesToTextKeyRaises(self, bytes):
+        # These are invalid bytes, and we want to make sure the code under test
+        # raises an exception rather than segfaults, etc. We don't particularly
+        # care what exception.
+        self.assertRaises((ValueError, IndexError), _bytes_to_text_key, bytes)
+
+    def test_file(self):
+        self.assertBytesToTextKey(
+            (b"file-id", b"revision-id"),
+            b"file: file-id\nparent-id\nname\nrevision-id\n"
+            b"da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN",
+        )
+
+    def test_invalid_no_kind(self):
+        self.assertBytesToTextKeyRaises(
+            b"file  file-id\nparent-id\nname\nrevision-id\n"
+            b"da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN"
+        )
+
+    def test_invalid_no_space(self):
+        self.assertBytesToTextKeyRaises(
+            b"file:file-id\nparent-id\nname\nrevision-id\n"
+            b"da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN"
+        )
+
+    def test_invalid_too_short_file_id(self):
+        self.assertBytesToTextKeyRaises(b"file:file-id")
+
+    def test_invalid_too_short_parent_id(self):
+        self.assertBytesToTextKeyRaises(b"file:file-id\nparent-id")
+
+    def test_invalid_too_short_name(self):
+        self.assertBytesToTextKeyRaises(b"file:file-id\nparent-id\nname")
+
+    def test_dir(self):
+        self.assertBytesToTextKey(
+            (b"dir-id", b"revision-id"), b"dir: dir-id\nparent-id\nname\nrevision-id"
         )

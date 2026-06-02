@@ -31,6 +31,7 @@ __all__ = [
 ]
 
 
+import contextlib
 import warnings
 
 # Import the 'warn' symbol so breezy can call it even if we redefine it
@@ -85,9 +86,9 @@ def deprecation_string(a_callable, deprecation_version):
         getattr(a_callable, "__qualname__", None) is not None
         and "<" not in a_callable.__qualname__
     ):
-        symbol = "{}.{}".format(a_callable.__module__, a_callable.__qualname__)
+        symbol = f"{a_callable.__module__}.{a_callable.__qualname__}"
     else:
-        symbol = "{}.{}".format(a_callable.__module__, a_callable.__name__)
+        symbol = f"{a_callable.__module__}.{a_callable.__name__}"
     return deprecation_version % symbol
 
 
@@ -137,10 +138,7 @@ def deprecated_method(deprecation_version):
             from . import trace
 
             if callable.__name__ == "__init__":
-                symbol = "{}.{}".format(
-                    self.__class__.__module__,
-                    self.__class__.__name__,
-                )
+                symbol = f"{self.__class__.__module__}.{self.__class__.__name__}"
             else:
                 symbol = "{}.{}.{}".format(
                     self.__class__.__module__,
@@ -177,10 +175,7 @@ def deprecated_passed(parameter_value):
 
 
 def _decorate_docstring(callable, deprecation_version, label, decorated_callable):
-    if callable.__doc__:
-        docstring_lines = callable.__doc__.split("\n")
-    else:
-        docstring_lines = []
+    docstring_lines = callable.__doc__.split("\n") if callable.__doc__ else []
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
@@ -212,7 +207,7 @@ def _dict_deprecation_wrapper(wrapped_method):
     """Returns a closure that emits a warning and calls the superclass."""
 
     def cb(dep_dict, *args, **kwargs):
-        msg = "access to {}".format(dep_dict._variable_name)
+        msg = f"access to {dep_dict._variable_name}"
         msg = dep_dict._deprecation_version % (msg,)
         if dep_dict._advice:
             msg += " " + dep_dict._advice
@@ -267,7 +262,7 @@ def deprecated_list(deprecation_version, variable_name, initial_value, extra=Non
     :param variable_name: This allows better warnings to be printed
     :param extra: Extra info to print when printing a warning
     """
-    subst_text = "Modifying {}".format(variable_name)
+    subst_text = f"Modifying {variable_name}"
     msg = deprecation_version % (subst_text,)
     if extra:
         msg += " " + extra
@@ -282,23 +277,23 @@ def deprecated_list(deprecation_version, variable_name, initial_value, extra=Non
             return func(self, *args, **kwargs)
 
         def append(self, obj):
-            """appending to {} is deprecated""".format(variable_name)
+            """Appending to {variable_name} is deprecated."""
             return self._warn_deprecated(list.append, obj)
 
         def insert(self, index, obj):
-            """inserting to {} is deprecated""".format(variable_name)
+            """Inserting to {variable_name} is deprecated."""
             return self._warn_deprecated(list.insert, index, obj)
 
         def extend(self, iterable):
-            """extending {} is deprecated""".format(variable_name)
+            """Extending {variable_name} is deprecated."""
             return self._warn_deprecated(list.extend, iterable)
 
         def remove(self, value):
-            """removing from {} is deprecated""".format(variable_name)
+            """Removing from {variable_name} is deprecated."""
             return self._warn_deprecated(list.remove, value)
 
         def pop(self, index=None):
-            """pop'ing from {} is deprecated""".format(variable_name)
+            """Pop'ing from {variable_name} is deprecated."""
             if index:
                 return self._warn_deprecated(list.pop, index)
             else:
@@ -332,10 +327,8 @@ def _remove_filter_callable(filter):
 
     def cleanup():
         if filter:
-            try:
+            with contextlib.suppress(ValueError, IndexError):
                 warnings.filters.remove(filter)
-            except (ValueError, IndexError):
-                pass
 
     return cleanup
 

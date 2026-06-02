@@ -33,8 +33,7 @@ class TestSmartServerPing(tests.TestCaseWithTransport):
         self.assertLength(1, self.hpss_connections)
         self.assertEqual(
             out,
-            "Response: (b'ok', b'2')\nHeaders: {{'Software version': '{}'}}\n".format(
-                breezy.version_string
-            ),
+            "Response: (b'ok', b'2')\n"
+            f"Headers: {{'Software version': '{breezy.version_string}'}}\n",
         )
         self.assertEqual(err, "")
