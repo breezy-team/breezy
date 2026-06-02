@@ -701,9 +701,7 @@ class RustOptionParser:
         def apply(opt_str, value, flag_value):
             setattr(self.values, option._param_name, flag_value)
             if option.custom_callback is not None:
-                option.custom_callback(
-                    option, option._param_name, flag_value, self
-                )
+                option.custom_callback(option, option._param_name, flag_value, self)
 
         return apply
 
@@ -810,9 +808,7 @@ class RustOptionParser:
                     if option.is_hidden(key):
                         continue
                     names = [key] + [
-                        a
-                        for a in alias_map.get(key, [])
-                        if not option.is_hidden(a)
+                        a for a in alias_map.get(key, []) if not option.is_hidden(a)
                     ]
                     switch = ", ".join(f"--{n}" for n in names)
                     if (
@@ -820,14 +816,14 @@ class RustOptionParser:
                         and key in option.short_value_switches
                     ):
                         switch = f"-{option.short_value_switches[key]}, {switch}"
-                    entries.append((switch, gettext(option.registry.get_help(key) or "")))
+                    entries.append(
+                        (switch, gettext(option.registry.get_help(key) or ""))
+                    )
                 groups.append((option.title, entries))
             else:
                 if option.is_hidden(option.name):
                     continue
-                main.append(
-                    (self._option_string(option), gettext(option.help or ""))
-                )
+                main.append((self._option_string(option), gettext(option.help or "")))
         return groups
 
     @staticmethod
