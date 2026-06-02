@@ -72,7 +72,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         tree = self.example_tree("a")
         tree.controldir.create_branch(name="otherbranch")
         self.assertTrue(tree.controldir.has_branch("otherbranch"))
-        self.run_bzr("rmbranch {},branch=otherbranch".format(tree.controldir.user_url))
+        self.run_bzr(f"rmbranch {tree.controldir.user_url},branch=otherbranch")
         dir = controldir.ControlDir.open("a")
         self.assertFalse(dir.has_branch("otherbranch"))
         self.assertTrue(dir.has_branch())
@@ -82,7 +82,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         tree = self.example_tree("a")
         tree.controldir.create_branch(name="otherbranch")
         self.assertTrue(tree.controldir.has_branch("otherbranch"))
-        self.run_bzr("rmbranch otherbranch -d {}".format(tree.controldir.user_url))
+        self.run_bzr(f"rmbranch otherbranch -d {tree.controldir.user_url}")
         dir = controldir.ControlDir.open("a")
         self.assertFalse(dir.has_branch("otherbranch"))
         self.assertTrue(dir.has_branch())
@@ -94,10 +94,8 @@ class TestRemoveBranch(TestCaseWithTransport):
         branch.create_checkout("a")
         self.run_bzr_error(
             ["Branch is active. Use --force to remove it.\n"],
-            "rmbranch otherbranch -d {}".format(branch.controldir.user_url),
+            f"rmbranch otherbranch -d {branch.controldir.user_url}",
         )
         self.assertTrue(dir.has_branch("otherbranch"))
-        self.run_bzr(
-            "rmbranch --force otherbranch -d {}".format(branch.controldir.user_url)
-        )
+        self.run_bzr(f"rmbranch --force otherbranch -d {branch.controldir.user_url}")
         self.assertFalse(dir.has_branch("otherbranch"))

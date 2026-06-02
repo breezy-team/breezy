@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__docformat__ = "google"
-
 """Copying of history from one branch to another.
 
 The basic plan is that every branch knows the history of everything
@@ -24,7 +22,11 @@ branch operation we copy history from the source into the destination
 branch.
 """
 
+__docformat__ = "google"
+
 import operator
+
+from bzrformats.inventory import NoSuchId
 
 from .. import errors, ui
 from ..i18n import gettext
@@ -50,11 +52,13 @@ class RepoFetcher:
         """Create a repo fetcher.
 
         Args:
-          last_revision: If set, try to limit to the data this revision
-            references.
-          fetch_spec: A SearchResult specifying which revisions to fetch.
-            If set, this overrides last_revision.
-          find_ghosts: If True search the entire history for ghosts.
+            to_repository: The target repository to fetch into.
+            from_repository: The source repository to fetch from.
+            last_revision: If set, try to limit to the data this revision
+                references.
+            find_ghosts: If True search the entire history for ghosts.
+            fetch_spec: A SearchResult specifying which revisions to fetch.
+                If set, this overrides last_revision.
         """
         # repository.fetch has the responsibility for short-circuiting
         # attempts to copy between a repository and itself.
@@ -119,6 +123,12 @@ class RepoFetcher:
         with ui.ui_factory.nested_progress_bar() as pb:
             pb.update("Get stream source")
             source = self.from_repository._get_source(self.to_repository._format)
+            # A stacked target cannot store a text delta whose basis lives
+            # only in a fallback (ResumedPack._check_references rejects it).
+            # Ask the source for self-contained texts so the stream never
+            # carries such deltas.
+            if self.to_repository._fallback_repositories:
+                source._stream_self_contained_texts = True
             stream = source.get_stream(search)
             from_format = self.from_repository._format
             pb.update("Inserting stream")
@@ -134,22 +144,24 @@ class RepoFetcher:
                 )
             if missing_keys:
                 raise AssertionError(
-                    "second push failed to complete a fetch {!r}.".format(missing_keys)
+                    f"second push failed to complete a fetch {missing_keys!r}."
                 )
             if resume_tokens:
                 raise AssertionError(
-                    "second push failed to commit the fetch {!r}.".format(resume_tokens)
+                    f"second push failed to commit the fetch {resume_tokens!r}."
                 )
             pb.update("Finishing stream")
             self.sink.finished()
 
     def _revids_to_fetch(self):
-        """Determines the exact revisions needed from self.from_repository to
+        """Determines the exact revisions needed from self.from_repository.
+
+        Determines the exact revisions needed from self.from_repository to
         install self._last_revision in self.to_repository.
 
         Returns:
-          A SearchResult of some sort.  (Possibly a
-          PendingAncestryResult, EmptySearchResult, etc.)
+            A SearchResult of some sort.  (Possibly a
+            PendingAncestryResult, EmptySearchResult, etc.)
         """
         from . import vf_search
 
@@ -211,6 +223,16 @@ class Inter1and2Helper:
             revs = revs[100:]
 
     def _find_root_ids(self, revs, parent_map, graph):
+        """Find root ids for the given revisions.
+
+        Args:
+            revs: List of revision ids to find root ids for.
+            parent_map: Map of revision id to parent revision ids.
+            graph: Graph object for accessing revision relationships.
+
+        Returns:
+            Dictionary mapping revision id to root id.
+        """
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
             root_id = tree.path2id("")
@@ -233,7 +255,7 @@ class Inter1and2Helper:
         Args:
           revs: the revisions to include
         """
-        from ..tsort import topo_sort
+        from vcsgraph.tsort import topo_sort
 
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
@@ -262,6 +284,7 @@ def _new_root_data_stream(
     Used in fetches that do rich-root upgrades.
 
     Args:
+      repo: Repository
       root_keys_to_create: iterable of (root_id, rev_id) pairs describing
         the root entries to create.
       rev_id_to_root_id_map: dict of known rev_id -> root_id mappings for
@@ -271,7 +294,7 @@ def _new_root_data_stream(
         root_keys_to_create.
       graph: a graph to use instead of repo.get_graph().
     """
-    from .versionedfile import ChunkedContentFactory
+    from bzrformats.versionedfile import ChunkedContentFactory
 
     for root_key in root_keys_to_create:
         root_id, rev_id = root_key
@@ -331,7 +354,7 @@ def _parent_keys_for_root_version(
                     parent_ids.append(
                         tree.get_file_revision(tree.id2path(root_id, recurse="none"))
                     )
-                except errors.NoSuchId:
+                except NoSuchId:
                     # not in the tree
                     pass
     # Drop non-head parents
@@ -379,6 +402,7 @@ class FetchSpecFactory:
     """
 
     def __init__(self):
+        """Initialize a new FetchSpecFactory."""
         self._explicit_rev_ids = set()
         self.source_branch = None
         self.source_branch_stop_revision_id = None
@@ -396,9 +420,7 @@ class FetchSpecFactory:
         from . import vf_search
 
         if self.target_repo_kind is None or self.source_repo is None:
-            raise AssertionError(
-                "Incomplete FetchSpecFactory: {!r}".format(self.__dict__)
-            )
+            raise AssertionError(f"Incomplete FetchSpecFactory: {self.__dict__!r}")
         if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
             if self.limit is not None:
                 raise NotImplementedError(

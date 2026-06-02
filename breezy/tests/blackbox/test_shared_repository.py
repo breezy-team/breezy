@@ -19,9 +19,10 @@
 import os
 
 import breezy.errors as errors
-from breezy.bzr.bzrdir import BzrDirMetaFormat1
-from breezy.controldir import ControlDir
 from breezy.tests import TestCaseInTempDir
+
+from ...bzr.bzrdir import BzrDirMetaFormat1
+from ...controldir import ControlDir
 
 
 class TestSharedRepo(TestCaseInTempDir):
@@ -36,7 +37,7 @@ Location:
         )
         self.assertEqual(err, "")
         dir = ControlDir.open("a")
-        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertTrue(dir.open_repository().is_shared())
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
 
@@ -45,7 +46,7 @@ Location:
         self.assertEqual(out, "")
         self.assertEqual(err, "")
         dir = ControlDir.open("a")
-        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertTrue(dir.open_repository().is_shared())
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
 
@@ -62,7 +63,7 @@ Location:
         self.run_bzr("init-shared-repo a")
         self.run_bzr("init --format=default a/b")
         dir = ControlDir.open("a")
-        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertTrue(dir.open_repository().is_shared())
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
         bdir = ControlDir.open("a/b")

@@ -18,7 +18,7 @@
 
 import re
 
-from breezy.bzr.tests.test_testament import (
+from ...bzr.tests.test_testament import (
     REV_1_SHORT,
     REV_1_SHORT_STRICT,
     REV_2_TESTAMENT,

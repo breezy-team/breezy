@@ -20,8 +20,10 @@ import os
 import sys
 from io import StringIO
 
+from dromedary.errors import NoSuchFile
+
 from ... import add as _mod_add
-from ... import errors, ignores, osutils, tests, trace, transport, workingtree
+from ... import errors, ignores, osutils, tests, trace, workingtree
 from .. import features, per_workingtree, test_smart_add
 
 
@@ -52,11 +54,11 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree("tree")
         try:
             self.build_tree(["tree/" + filename])
-        except transport.NoSuchFile:
+        except NoSuchFile as err:
             if sys.platform == "win32":
                 raise tests.TestNotApplicable(
-                    "Cannot create files named {!r} on win32".format(filename)
-                )
+                    f"Cannot create files named {filename!r} on win32"
+                ) from err
         tree.smart_add(["tree"])
         self.assertFalse(tree.is_versioned(filename))
 
@@ -114,9 +116,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.overrideAttr(trace, "warning", warning)
         wt.smart_add((".",))
         self.assertFalse(wt.is_versioned("nested"))
-        self.assertEqual(
-            ["skipping nested tree {!r}".format(nested_wt.basedir)], warnings
-        )
+        self.assertEqual([f"skipping nested tree {nested_wt.basedir!r}"], warnings)
 
     def test_add_dot_from_subdir(self):
         """Test adding . from a subdir of the tree."""
@@ -187,12 +187,12 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(tree_shape)
         wt.smart_add(add_paths)
         for path in expected_paths:
-            self.assertTrue(wt.is_versioned(path), "No id added for {}".format(path))
+            self.assertTrue(wt.is_versioned(path), f"No id added for {path}")
 
     def test_add_non_existant(self):
         """Test smart-adding a file that does not exist."""
         wt = self.make_branch_and_tree(".")
-        self.assertRaises(transport.NoSuchFile, wt.smart_add, ["non-existant-file"])
+        self.assertRaises(NoSuchFile, wt.smart_add, ["non-existant-file"])
 
     def test_returns_and_ignores(self):
         """Correctly returns added/ignored files."""
@@ -231,12 +231,11 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
         for path in added_paths:
             self.assertTrue(
-                wt.is_versioned(path.rstrip("/")), "Failed to add path: {}".format(path)
+                wt.is_versioned(path.rstrip("/")), f"Failed to add path: {path}"
             )
         for path in not_added:
             self.assertFalse(
-                wt.is_versioned(path.rstrip("/")),
-                "Accidentally added path: {}".format(path),
+                wt.is_versioned(path.rstrip("/")), f"Accidentally added path: {path}"
             )
 
     def test_add_file_in_unknown_dir(self):
@@ -338,7 +337,7 @@ class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree_contents([("t1/file", b"content in t1")])
         t1.commit("Changing file in t1")
         t1.merge_from_branch(tb.branch)
-        fnames = ["file.{}".format(s) for s in ("BASE", "THIS", "OTHER")]
+        fnames = [f"file.{s}" for s in ("BASE", "THIS", "OTHER")]
         for fn in fnames:
             self.assertPathExists(os.path.join(t1.basedir, fn))
         return t1
@@ -349,9 +348,9 @@ class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
         self.assertEqual(([], {}), (added, ignored))
 
     def test_can_add_generated_files_explicitly(self):
-        fnames = ["file.{}".format(s) for s in ("BASE", "THIS", "OTHER")]
+        fnames = [f"file.{s}" for s in ("BASE", "THIS", "OTHER")]
         t = self.make_tree_with_text_conflict()
-        added, ignored = t.smart_add([t.basedir + "/{}".format(f) for f in fnames])
+        added, ignored = t.smart_add([t.basedir + f"/{f}" for f in fnames])
         self.assertEqual((fnames, {}), (added, ignored))
 
 
@@ -369,17 +368,22 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         workingtree format has the requires_normalized_unicode_filenames flag
         set and the underlying filesystem doesn't normalize.
         """
-        osutils.normalized_filename = osutils._accessible_normalized_filename
         if (
             self.workingtree_format.requires_normalized_unicode_filenames
             and sys.platform != "darwin"
         ):
-            self.assertRaises(transport.NoSuchFile, self.wt.smart_add, ["a\u030a"])
+            if not osutils.normalizes_filenames():
+                self.skipTest("Filesystem does not normalize filenames")
+            self.assertRaises(NoSuchFile, self.wt.smart_add, ["a\u030a"])
         else:
+            if not osutils.normalizes_filenames():
+                self.skipTest("Filesystem does not normalize filenames")
             self.wt.smart_add(["a\u030a"])
 
     def test_accessible_explicit(self):
-        osutils.normalized_filename = osutils._accessible_normalized_filename
+        if not osutils.normalizes_filenames():
+            raise tests.TestNotApplicable("filesystem dopes not normalize filenames")
+
         if self.workingtree_format.requires_normalized_unicode_filenames:
             raise tests.TestNotApplicable(
                 "Working tree format smart_add requires normalized unicode filenames"
@@ -393,7 +397,9 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         )
 
     def test_accessible_implicit(self):
-        osutils.normalized_filename = osutils._accessible_normalized_filename
+        if not osutils.normalizes_filenames():
+            raise tests.TestNotApplicable("filesystem dopes not normalize filenames")
+
         if self.workingtree_format.requires_normalized_unicode_filenames:
             raise tests.TestNotApplicable(
                 "Working tree format smart_add requires normalized unicode filenames"
@@ -407,11 +413,23 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         )
 
     def test_inaccessible_explicit(self):
-        osutils.normalized_filename = osutils._inaccessible_normalized_filename
+        if osutils.normalizes_filenames():
+            raise tests.TestNotApplicable(
+                "filesystem normalizes filenames, so unnormalized paths are "
+                "always accessible"
+            )
+        self.addCleanup(osutils.set_normalization_mode, "auto")
+        osutils.set_normalization_mode("inaccessible")
         self.assertRaises(errors.InvalidNormalization, self.wt.smart_add, ["a\u030a"])
 
     def test_inaccessible_implicit(self):
-        osutils.normalized_filename = osutils._inaccessible_normalized_filename
+        if osutils.normalizes_filenames():
+            raise tests.TestNotApplicable(
+                "filesystem normalizes filenames, so unnormalized paths are "
+                "always accessible"
+            )
+        self.addCleanup(osutils.set_normalization_mode, "auto")
+        osutils.set_normalization_mode("inaccessible")
         # TODO: jam 20060701 In the future, this should probably
         #       just ignore files that don't fit the normalization
         #       rules, rather than exploding

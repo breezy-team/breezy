@@ -44,6 +44,7 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
     """Create a version file which is a python source module."""
 
     def generate(self, to_file):
+        """Write a Python module describing the current branch revision."""
         info = {
             "build_date": create_date_str(),
             "revno": None,

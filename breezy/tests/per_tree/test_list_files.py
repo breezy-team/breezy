@@ -45,7 +45,7 @@ class TestListFiles(TestCaseWithTree):
                     (path, status, kind)
                     for path, status, kind, ie in tree.list_files(**kwargs)
                 ]
-                expected = [(path, status, kind) for path, status, kind in expected]
+                expected = list(expected)
         self.assertEqual(expected, actual)
 
     def test_list_files_with_root(self):

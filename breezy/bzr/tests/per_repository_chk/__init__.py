@@ -25,13 +25,14 @@ run.
 
 from breezy import repository
 from breezy.bzr import remote
-from breezy.bzr.groupcompress_repo import RepositoryFormat2a
-from breezy.bzr.knitpack_repo import RepositoryFormatKnitPack5
 from breezy.tests import multiply_tests
 from breezy.tests.per_repository import (
     TestCaseWithRepository,
     all_repository_format_scenarios,
 )
+
+from ...groupcompress_repo import RepositoryFormat2a
+from ...knitpack_repo import RepositoryFormatKnitPack5
 
 
 class TestCaseWithRepositoryCHK(TestCaseWithRepository):
@@ -62,11 +63,11 @@ def load_tests(loader, standard_tests, pattern):
         else:
             unsupported_scenarios.append((test_name, scenario_info))
     result = loader.suiteClass()
-    supported_tests = loader.loadTestsFromModuleNames(
-        ["breezy.bzr.tests.per_repository_chk.test_supported"]
+    supported_tests = loader.loadTestsFromName(
+        "breezy.bzr.tests.per_repository_chk.test_supported"
     )
-    unsupported_tests = loader.loadTestsFromModuleNames(
-        ["breezy.bzr.tests.per_repository_chk.test_unsupported"]
+    unsupported_tests = loader.loadTestsFromName(
+        "breezy.bzr.tests.per_repository_chk.test_unsupported"
     )
     multiply_tests(supported_tests, supported_scenarios, result)
     multiply_tests(unsupported_tests, unsupported_scenarios, result)

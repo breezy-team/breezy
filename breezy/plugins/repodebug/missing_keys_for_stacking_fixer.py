@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Commands for fixing repository stacking issues and mirroring revisions."""
+
 from ... import errors
 from ...bzr.vf_search import PendingAncestryResult
 from ...commands import Command
@@ -38,13 +40,19 @@ class cmd_fix_missing_keys_for_stacking(Command):
     ]
 
     def run(self, branch_url, dry_run=False):
+        """Execute the fix-missing-keys-for-stacking command.
+
+        Args:
+            branch_url: URL of the branch to fix.
+            dry_run: Whether to show what would be done without actually doing it.
+        """
         try:
             bd = ControlDir.open(branch_url)
             b = bd.open_branch(ignore_fallbacks=True)
-        except (errors.NotBranchError, errors.InvalidURL):
+        except (errors.NotBranchError, errors.InvalidURL) as e:
             raise errors.CommandError(
-                "Not a branch or invalid URL: {}".format(branch_url)
-            )
+                f"Not a branch or invalid URL: {branch_url}"
+            ) from e
         b.lock_read()
         try:
             b.get_stacked_on_url()
@@ -52,9 +60,9 @@ class cmd_fix_missing_keys_for_stacking(Command):
             errors.UnstackableRepositoryFormat,
             errors.NotStacked,
             errors.UnstackableBranchFormat,
-        ):
+        ) as e:
             b.unlock()
-            raise errors.CommandError("Not stacked: {}".format(branch_url))
+            raise errors.CommandError(f"Not stacked: {branch_url}") from e
         raw_r = b.repository.controldir.open_repository()
         if dry_run:
             raw_r.lock_read()
@@ -74,10 +82,13 @@ class cmd_fix_missing_keys_for_stacking(Command):
             if not needed:
                 # Nothing to see here.
                 return
-            self.outf.write("Missing inventories: {!r}\n".format(needed))
+            self.outf.write(f"Missing inventories: {needed!r}\n")
             if dry_run:
                 return
-            assert raw_r._format.network_name() == b.repository._format.network_name()
+            if raw_r._format.network_name() != b.repository._format.network_name():
+                raise AssertionError(
+                    f"Network names don't match: {raw_r._format.network_name()!r} != {b.repository._format.network_name()!r}"
+                )
             stream = b.repository.inventories.get_record_stream(
                 needed, "topological", True
             )
@@ -86,7 +97,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
         finally:
             raw_r.unlock()
         b.unlock()
-        self.outf.write("Fixed: {}\n".format(branch_url))
+        self.outf.write(f"Fixed: {branch_url}\n")
 
 
 class cmd_mirror_revs_into(Command):
@@ -98,6 +109,12 @@ class cmd_mirror_revs_into(Command):
     _see_also = ["fetch-all-records"]
 
     def run(self, source, destination):
+        """Execute the mirror-revs-into command.
+
+        Args:
+            source: Source repository URL.
+            destination: Destination repository URL.
+        """
         bd = ControlDir.open(source)
         source_r = bd.open_branch().repository
         bd = ControlDir.open(destination)

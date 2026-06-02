@@ -55,9 +55,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         d = ControlDir.open(".")
         thebranch = d.create_branch()
         self.assertEqual(
-            "<LocalGitBranch('{}/', {!r})>".format(
-                urlutils.local_path_to_url(self.test_dir), "master"
-            ),
+            f"<LocalGitBranch('{urlutils.local_path_to_url(self.test_dir)}/', 'master')>",
             repr(thebranch),
         )
 

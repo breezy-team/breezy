@@ -21,7 +21,8 @@ import os
 
 from breezy import errors, merge
 from breezy.tests import per_workingtree
-from breezy.workingtree import PointlessMerge
+
+from ...workingtree import PointlessMerge
 
 
 class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):

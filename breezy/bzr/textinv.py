@@ -14,8 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Text-based inventory support."""
+
+from bzrformats.inventory import Inventory
+
 from .errors import BzrError
-from .inventory import Inventory
 
 START_MARK = "# bzr inventory format 3\n"
 END_MARK = "# end of inventory\n"
@@ -36,6 +39,7 @@ def escape(s):
 
 
 def unescape(s):
+    """Unescape a string escaped with escape()."""
     if s.find(" ") != -1:
         raise AssertionError()
     s = (

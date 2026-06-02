@@ -23,6 +23,12 @@ transport.register_urlparse_netloc_protocol("github")
 
 
 class GitHubDirectory:
+    """Directory service for GitHub repositories.
+
+    This class provides a directory service that translates GitHub repository
+    names into their corresponding git+ssh URLs.
+    """
+
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up."""
         return "git+ssh://git@github.com/" + name

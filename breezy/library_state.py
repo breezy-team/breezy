@@ -83,6 +83,7 @@ class BzrLibraryState:
         self.started = False
 
     def __enter__(self):
+        """Enter the context manager and initialize the library state."""
         if not self.started:
             self._start()
         return self  # This is bound to the 'as' clause in a with statement.
@@ -113,6 +114,7 @@ class BzrLibraryState:
         self.started = True
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager and clean up library state."""
         if exc_type is None:
             # Save config changes
             for _k, store in self.config_stores.items():

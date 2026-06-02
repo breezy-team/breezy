@@ -16,11 +16,9 @@
 
 """Tests of breezy test matchers."""
 
-from testtools.matchers import *
-
 from ...tests import CapturedCall, TestCase
 from ..smart.client import CallHookParams
-from .matchers import *
+from .matchers import *  # noqa: F403
 
 
 class TestContainsNoVfsCalls(TestCase):

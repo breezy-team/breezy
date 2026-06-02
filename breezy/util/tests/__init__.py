@@ -1,1 +1,1 @@
-True  # noqa: B018
+"""Tests for util."""

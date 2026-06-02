@@ -22,8 +22,9 @@ import sys
 
 from breezy import branch, debug, osutils, tests, uncommit, urlutils, workingtree
 from breezy.bzr import remote
-from breezy.directory_service import directories
 from breezy.tests import fixtures, script
+
+from ...directory_service import directories
 
 
 class TestPull(tests.TestCaseWithTransport):
@@ -263,7 +264,7 @@ class TestPull(tests.TestCaseWithTransport):
         self.assertEqual(branch_c.controldir.root_transport.base, branch_b.get_parent())
 
     def test_pull_bundle(self):
-        from breezy.bzr.testament import Testament
+        from ...bzr.testament import Testament
 
         # Build up 2 trees and prepare for a pull
         tree_a = self.make_branch_and_tree("branch_a")
@@ -421,7 +422,7 @@ class TestPull(tests.TestCaseWithTransport):
         # this simulates what would happen across the network, where
         # interdifferingserializer is not active
 
-        debug.debug_flags.add("IDS_never")
+        debug.set_debug_flag("IDS_never")
         # TestCase take care of restoring them
 
         from_tree = self.make_branch_and_tree("from", format="2a")
@@ -557,7 +558,8 @@ class TestPull(tests.TestCaseWithTransport):
 
 class TestPullOutput(script.TestCaseWithTransportAndScript):
     def test_pull_log_format(self):
-        self.run_script("""
+        self.run_script(
+            """
             $ brz init trunk
             Created a standalone tree (format: 2a)
             $ cd trunk
@@ -578,4 +580,5 @@ class TestPullOutput(script.TestCaseWithTransportAndScript):
             1: jrandom@example.com ...we need some foo
             2>+N  file
             2>All changes applied successfully.
-            """)
+            """
+        )

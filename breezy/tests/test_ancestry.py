@@ -14,6 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for revision ancestry tracking.
+
+This module tests that the ancestry of revisions is correctly tracked
+and reported by repositories.
+"""
 
 from ..branchbuilder import BranchBuilder
 from . import TestCaseWithMemoryTransport
@@ -21,6 +26,8 @@ from .matchers import MatchesAncestry
 
 
 class TestAncestry(TestCaseWithMemoryTransport):
+    """Tests for checking revision ancestry in repositories."""
+
     def test_straightline_ancestry(self):
         """Test ancestry file when just committing."""
         builder = BranchBuilder(self.get_transport())

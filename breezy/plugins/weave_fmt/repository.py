@@ -20,11 +20,10 @@ Weave based formats scaled linearly with history size and could not represent
 ghosts.
 """
 
+import contextlib
 import gzip
 import os
 from io import BytesIO
-
-import vcsgraph
 
 from ...lazy_import import lazy_import
 
@@ -36,20 +35,26 @@ import itertools
 from breezy import (
     ui,
     )
-from breezy.bzr import (
-    xml5,
-    )
+from bzrformats import xml5
 """,
 )
-from ... import debug, errors, lockable_files, lockdir, osutils, trace, urlutils
-from ... import transport as _mod_transport
-from ...bzr import tuned_gzip, versionedfile, weave, weavefile
-from ...bzr.repository import RepositoryFormatMetaDir
-from ...bzr.versionedfile import (
+from bzrformats import tuned_gzip, versionedfile, weave, weavefile
+from bzrformats._bzr_rs import revision_serializer_v5
+from bzrformats.errors import (
+    ObjectNotLocked,
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
+)
+from bzrformats.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
     VersionedFiles,
 )
+from dromedary.errors import NoSuchFile
+
+from ... import debug, errors, lockdir, osutils, trace, urlutils
+from ...bzr import lockable_files
+from ...bzr.repository import RepositoryFormatMetaDir
 from ...bzr.vf_repository import (
     InterSameDataRepository,
     MetaDirVersionedFileRepository,
@@ -67,10 +72,22 @@ class AllInOneRepository(VersionedFileRepository):
     """Legacy support - the repository behaviour for all-in-one branches."""
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
+
+    @property
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _escape(self, file_or_path):
+        """Escape a file or path for use in a URL.
+
+        Args:
+            file_or_path: Either a string path or a list of path components.
+
+        Returns:
+            URL-escaped string representation of the path.
+        """
         if not isinstance(file_or_path, str):
             file_or_path = "/".join(file_or_path)
         if file_or_path == "":
@@ -78,6 +95,12 @@ class AllInOneRepository(VersionedFileRepository):
         return urlutils.escape(osutils.safe_unicode(file_or_path))
 
     def __init__(self, _format, a_controldir):
+        """Initialize an all-in-one repository.
+
+        Args:
+            _format: The repository format.
+            a_controldir: The control directory containing this repository.
+        """
         # we reuse one control files instance.
         dir_mode = a_controldir._get_dir_mode()
         file_mode = a_controldir._get_file_mode()
@@ -108,7 +131,7 @@ class AllInOneRepository(VersionedFileRepository):
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
-        if "evil" in debug.debug_flags:
+        if debug.debug_flag_enabled("evil"):
             trace.mutter_callsite(3, "_all_possible_ids scales with size of history.")
         with self.lock_read():
             return [key[-1] for key in self.inventories.keys()]
@@ -124,7 +147,11 @@ class AllInOneRepository(VersionedFileRepository):
             return [key[-1] for key in self.revisions.keys()]
 
     def _activate_new_inventory(self):
-        """Put a replacement inventory.new into use as inventories."""
+        """Put a replacement inventory.new into use as inventories.
+
+        This method copies the new inventory weave file over the existing one
+        and validates that the new weave can be parsed correctly.
+        """
         # Copy the content across
         t = self.controldir._control_files._transport
         t.copy("inventory.new.weave", "inventory.weave")
@@ -134,10 +161,21 @@ class AllInOneRepository(VersionedFileRepository):
         self.inventories.keys()
 
     def _backup_inventory(self):
+        """Create a backup copy of the current inventory weave.
+
+        The backup is stored as 'inventory.backup.weave' in the control files
+        transport.
+        """
         t = self.controldir._control_files._transport
         t.copy("inventory.weave", "inventory.backup.weave")
 
     def _temp_inventories(self):
+        """Get a temporary inventory weave for modifications.
+
+        Returns:
+            A new inventory weave that can be modified without affecting the
+            main inventory.
+        """
         t = self.controldir._control_files._transport
         return self._format._get_inventories(t, self, "inventory.new")
 
@@ -153,6 +191,22 @@ class AllInOneRepository(VersionedFileRepository):
         revision_id=None,
         lossy=False,
     ):
+        """Obtain a CommitBuilder for this repository.
+
+        Args:
+            branch: The branch being committed to.
+            parents: List of parent revision IDs.
+            config: Configuration to use for the commit.
+            timestamp: Optional timestamp for the commit.
+            timezone: Optional timezone for the commit.
+            committer: Optional committer identity.
+            revprops: Optional revision properties.
+            revision_id: Optional specific revision ID to use.
+            lossy: Whether to allow lossy conversion.
+
+        Returns:
+            A VersionedFileCommitBuilder instance.
+        """
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
         result = VersionedFileCommitBuilder(
             self,
@@ -169,7 +223,17 @@ class AllInOneRepository(VersionedFileRepository):
         return result
 
     def _inventory_add_lines(self, revision_id, parents, lines, check_content=True):
-        """Store lines in inv_vf and return the sha1 of the inventory."""
+        """Store lines in inv_vf and return the sha1 of the inventory.
+
+        Args:
+            revision_id: The revision ID for this inventory.
+            parents: Parent revision IDs.
+            lines: The inventory lines to store.
+            check_content: Whether to check content validity.
+
+        Returns:
+            The SHA1 hash of the stored inventory.
+        """
         present_parents = self.get_graph().get_parent_map(parents)
         final_parents = []
         for parent in parents:
@@ -180,7 +244,11 @@ class AllInOneRepository(VersionedFileRepository):
         )[0]
 
     def is_shared(self):
-        """AllInOne repositories cannot be shared."""
+        """Check if this repository is shared.
+
+        Returns:
+            bool: Always False, as all-in-one repositories cannot be shared.
+        """
         return False
 
     def set_make_working_trees(self, new_value):
@@ -188,14 +256,22 @@ class AllInOneRepository(VersionedFileRepository):
 
         This only applies to branches that use this repository.
 
-        The default is 'True'.
-        :param new_value: True to restore the default, False to disable making
-                          working trees.
+        Args:
+            new_value: True to restore the default, False to disable making
+                      working trees.
+
+        Raises:
+            RepositoryUpgradeRequired: Always raised as this format doesn't
+                                      support this operation.
         """
         raise errors.RepositoryUpgradeRequired(self.user_url)
 
     def make_working_trees(self):
-        """Returns the policy for making working trees on new branches."""
+        """Check if working trees should be created for new branches.
+
+        Returns:
+            bool: Always True for this format.
+        """
         return True
 
 
@@ -203,12 +279,20 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
     def __init__(self, _format, a_controldir, control_files):
+        """Initialize a weave meta-directory repository.
+
+        Args:
+            _format: The repository format.
+            a_controldir: The control directory containing this repository.
+            control_files: The lockable files instance for this repository.
+        """
         super().__init__(_format, a_controldir, control_files)
-        self._serializer = _format._serializer
+        self._inventory_serializer = _format._inventory_serializer
+        self._revision_serializer = _format._revision_serializer
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
-        if "evil" in debug.debug_flags:
+        if debug.debug_flag_enabled("evil"):
             trace.mutter_callsite(3, "_all_possible_ids scales with size of history.")
         with self.lock_read():
             return [key[-1] for key in self.inventories.keys()]
@@ -224,7 +308,11 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
             return [key[-1] for key in self.revisions.keys()]
 
     def _activate_new_inventory(self):
-        """Put a replacement inventory.new into use as inventories."""
+        """Put a replacement inventory.new into use as inventories.
+
+        This method copies the new inventory weave file over the existing one
+        and validates that the new weave can be parsed correctly.
+        """
         # Copy the content across
         t = self._transport
         t.copy("inventory.new.weave", "inventory.weave")
@@ -234,10 +322,20 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
         self.inventories.keys()
 
     def _backup_inventory(self):
+        """Create a backup copy of the current inventory weave.
+
+        The backup is stored as 'inventory.backup.weave' in the transport.
+        """
         t = self._transport
         t.copy("inventory.weave", "inventory.backup.weave")
 
     def _temp_inventories(self):
+        """Get a temporary inventory weave for modifications.
+
+        Returns:
+            A new inventory weave that can be modified without affecting the
+            main inventory.
+        """
         t = self._transport
         return self._format._get_inventories(t, self, "inventory.new")
 
@@ -253,6 +351,22 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
         revision_id=None,
         lossy=False,
     ):
+        """Obtain a CommitBuilder for this repository.
+
+        Args:
+            branch: The branch being committed to.
+            parents: List of parent revision IDs.
+            config: Configuration to use for the commit.
+            timestamp: Optional timestamp for the commit.
+            timezone: Optional timezone for the commit.
+            committer: Optional committer identity.
+            revprops: Optional revision properties.
+            revision_id: Optional specific revision ID to use.
+            lossy: Whether to allow lossy conversion.
+
+        Returns:
+            A VersionedFileCommitBuilder instance.
+        """
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
         result = VersionedFileCommitBuilder(
             self,
@@ -274,7 +388,17 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
             return self.get_revision_reconcile(revision_id)
 
     def _inventory_add_lines(self, revision_id, parents, lines, check_content=True):
-        """Store lines in inv_vf and return the sha1 of the inventory."""
+        """Store lines in inv_vf and return the sha1 of the inventory.
+
+        Args:
+            revision_id: The revision ID for this inventory.
+            parents: Parent revision IDs.
+            lines: The inventory lines to store.
+            check_content: Whether to check content validity.
+
+        Returns:
+            The SHA1 hash of the stored inventory.
+        """
         present_parents = self.get_graph().get_parent_map(parents)
         final_parents = []
         for parent in parents:
@@ -355,6 +479,11 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
         return result
 
     def is_deprecated(self):
+        """Check if this format is deprecated.
+
+        Returns:
+            bool: Always True, as all pre-split-out formats are deprecated.
+        """
         return True
 
 
@@ -396,11 +525,11 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         return None
 
     def _get_revisions(self, repo_transport, repo):
-        from .xml4 import serializer_v4
+        from bzrformats.xml4 import revision_serializer_v4
 
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
-            serializer_v4,
+            revision_serializer_v4,
             True,
             versionedfile.PrefixMapper(),
             repo.is_locked,
@@ -434,8 +563,12 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     supports_funky_characters = False
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
+
+    @property
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -452,9 +585,11 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         )
 
     def _get_revisions(self, repo_transport, repo):
+        from bzrformats.xml5 import revision_serializer_v5
+
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
-            xml5.serializer_v5,
+            revision_serializer_v5,
             False,
             versionedfile.PrefixMapper(),
             repo.is_locked,
@@ -492,8 +627,12 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     supports_funky_characters = False
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
+
+    @property
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -510,9 +649,11 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
         )
 
     def _get_revisions(self, repo_transport, repo):
+        from bzrformats.xml5 import revision_serializer_v5
+
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
-            xml5.serializer_v5,
+            revision_serializer_v5,
             False,
             versionedfile.HashPrefixMapper(),
             repo.is_locked,
@@ -559,8 +700,12 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     fast_deltas = False
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
+
+    @property
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     @classmethod
     def get_format_string(cls):
@@ -578,9 +723,11 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
         )
 
     def _get_revisions(self, repo_transport, repo):
+        from bzrformats.xml5 import revision_serializer_v5
+
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
-            xml5.serializer_v5,
+            revision_serializer_v5,
             True,
             versionedfile.HashPrefixMapper(),
             repo.is_locked,
@@ -652,6 +799,11 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
         return result
 
     def is_deprecated(self):
+        """Check if this format is deprecated.
+
+        Returns:
+            bool: Always True, as all pre-split-out formats are deprecated.
+        """
         return True
 
 
@@ -659,6 +811,15 @@ class TextVersionedFiles(VersionedFiles):
     """Just-a-bunch-of-files based VersionedFile stores."""
 
     def __init__(self, transport, compressed, mapper, is_locked, can_write):
+        """Initialize a text-based versioned files store.
+
+        Args:
+            transport: Transport for accessing the store.
+            compressed: Whether files should be gzip compressed.
+            mapper: Mapper for converting keys to file paths.
+            is_locked: Callable that returns whether the store is locked.
+            can_write: Callable that returns whether writing is allowed.
+        """
         self._compressed = compressed
         self._transport = transport
         self._mapper = mapper
@@ -670,13 +831,24 @@ class TextVersionedFiles(VersionedFiles):
         self._can_write = can_write
 
     def add_lines(self, key, parents, lines):
-        """Add a revision to the store."""
+        """Add a revision to the store.
+
+        Args:
+            key: The key for the content.
+            parents: Parent keys (unused in this implementation).
+            lines: The lines of content to store.
+
+        Raises:
+            ObjectNotLocked: If the store is not locked.
+            ReadOnlyError: If the store is read-only.
+            ValueError: If the key contains invalid characters.
+        """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         if not self._can_write():
             raise errors.ReadOnlyError(self)
         if b"/" in key[-1]:
-            raise ValueError("bad idea to put / in {!r}".format(key))
+            raise ValueError(f"bad idea to put / in {key!r}")
         chunks = lines
         if self._compressed:
             chunks = tuned_gzip.chunks_to_gzip(chunks)
@@ -686,11 +858,19 @@ class TextVersionedFiles(VersionedFiles):
         )
 
     def insert_record_stream(self, stream):
+        """Insert records from a stream into the store.
+
+        Args:
+            stream: Iterator of records to insert.
+
+        Raises:
+            RevisionNotPresent: If a record is marked as absent.
+        """
         adapters = {}
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == "absent":
-                raise errors.RevisionNotPresent([record.key[0]], self)
+                raise RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
             if record.storage_kind in ("fulltext", "chunks", "lines"):
                 self.add_lines(record.key, None, record.get_bytes_as("lines"))
@@ -705,26 +885,35 @@ class TextVersionedFiles(VersionedFiles):
                 lines = adapter.get_bytes(
                     record, record.get_bytes_as(record.storage_kind)
                 )
-                try:
+                with contextlib.suppress(RevisionAlreadyPresent):
                     self.add_lines(record.key, None, lines)
-                except errors.RevisionAlreadyPresent:
-                    pass
 
     def _load_text(self, key):
+        """Load text content for a given key.
+
+        Args:
+            key: The key to load content for.
+
+        Returns:
+            The text content, or None if not found.
+
+        Raises:
+            ObjectNotLocked: If the store is not locked.
+        """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         path = self._map(key)
         try:
             text = self._transport.get_bytes(path)
             compressed = self._compressed
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             if self._compressed:
                 # try without the .gz
                 path = path[:-3]
                 try:
                     text = self._transport.get_bytes(path)
                     compressed = False
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     return None
             else:
                 return None
@@ -733,6 +922,14 @@ class TextVersionedFiles(VersionedFiles):
         return text
 
     def _map(self, key):
+        """Map a key to a file path.
+
+        Args:
+            key: The key to map.
+
+        Returns:
+            The file path including extension.
+        """
         return self._mapper.map(key) + self._ext
 
 
@@ -740,20 +937,45 @@ class RevisionTextStore(TextVersionedFiles):
     """Legacy thunk for format 4 repositories."""
 
     def __init__(self, transport, serializer, compressed, mapper, is_locked, can_write):
-        """Create a RevisionTextStore at transport with serializer."""
+        """Create a RevisionTextStore at transport with serializer.
+
+        Args:
+            transport: Transport for accessing the store.
+            serializer: Serializer for revision objects.
+            compressed: Whether files should be gzip compressed.
+            mapper: Mapper for converting keys to file paths.
+            is_locked: Callable that returns whether the store is locked.
+            can_write: Callable that returns whether writing is allowed.
+        """
         TextVersionedFiles.__init__(
             self, transport, compressed, mapper, is_locked, can_write
         )
-        self._serializer = serializer
+        self._revision_serializer = serializer
 
     def _load_text_parents(self, key):
+        """Load text and parent information for a revision.
+
+        Args:
+            key: The revision key to load.
+
+        Returns:
+            Tuple of (text, parent_keys) or (None, None) if not found.
+        """
         text = self._load_text(key)
         if text is None:
             return None, None
-        parents = self._serializer.read_revision_from_string(text).parent_ids
+        parents = self._revision_serializer.read_revision_from_string(text).parent_ids
         return text, tuple((parent,) for parent in parents)
 
     def get_parent_map(self, keys):
+        """Get a map of keys to their parents.
+
+        Args:
+            keys: Iterable of keys to get parents for.
+
+        Returns:
+            Dict mapping keys to their parent keys.
+        """
         result = {}
         for key in keys:
             parents = self._load_text_parents(key)[1]
@@ -763,13 +985,32 @@ class RevisionTextStore(TextVersionedFiles):
         return result
 
     def get_known_graph_ancestry(self, keys):
-        """Get a KnownGraph instance with the ancestry of keys."""
+        """Get a KnownGraph instance with the ancestry of keys.
+
+        Args:
+            keys: Keys to include in the ancestry graph.
+
+        Returns:
+            KnownGraph instance containing the ancestry.
+        """
+        from vcsgraph.known_graph import KnownGraph
+
         keys = self.keys()
         parent_map = self.get_parent_map(keys)
-        kg = vcsgraph.KnownGraph(parent_map)
+        kg = KnownGraph(parent_map)
         return kg
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
+        """Get a stream of records for the given keys.
+
+        Args:
+            keys: Keys to get records for.
+            sort_order: Ordering for the returned records (ignored).
+            include_delta_closure: Whether to include delta closure (ignored).
+
+        Yields:
+            ContentFactory instances for each key.
+        """
         for key in keys:
             text, parents = self._load_text_parents(key)
             if text is None:
@@ -778,8 +1019,16 @@ class RevisionTextStore(TextVersionedFiles):
                 yield FulltextContentFactory(key, parents, None, text)
 
     def keys(self):
+        """Get all keys in the store.
+
+        Returns:
+            Set of all keys in the store.
+
+        Raises:
+            ObjectNotLocked: If the store is not locked.
+        """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         relpaths = set()
         for quoted_relpath in self._transport.iter_files_recursive():
             relpath = urlutils.unquote(quoted_relpath)
@@ -796,12 +1045,31 @@ class SignatureTextStore(TextVersionedFiles):
     """Legacy thunk for format 4-7 repositories."""
 
     def __init__(self, transport, compressed, mapper, is_locked, can_write):
+        """Initialize a signature text store.
+
+        Args:
+            transport: Transport for accessing the store.
+            compressed: Whether files should be gzip compressed.
+            mapper: Mapper for converting keys to file paths.
+            is_locked: Callable that returns whether the store is locked.
+            can_write: Callable that returns whether writing is allowed.
+        """
         TextVersionedFiles.__init__(
             self, transport, compressed, mapper, is_locked, can_write
         )
         self._ext = ".sig" + self._ext
 
     def get_parent_map(self, keys):
+        """Get a map of keys to their parents.
+
+        Signatures don't have parents, so this returns None for all found keys.
+
+        Args:
+            keys: Iterable of keys to check.
+
+        Returns:
+            Dict mapping found keys to None.
+        """
         result = {}
         for key in keys:
             text = self._load_text(key)
@@ -811,6 +1079,16 @@ class SignatureTextStore(TextVersionedFiles):
         return result
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
+        """Get a stream of signature records for the given keys.
+
+        Args:
+            keys: Keys to get records for.
+            sort_order: Ordering for the returned records (ignored).
+            include_delta_closure: Whether to include delta closure (ignored).
+
+        Yields:
+            ContentFactory instances for each key.
+        """
         for key in keys:
             text = self._load_text(key)
             if text is None:
@@ -819,8 +1097,16 @@ class SignatureTextStore(TextVersionedFiles):
                 yield FulltextContentFactory(key, None, None, text)
 
     def keys(self):
+        """Get all signature keys in the store.
+
+        Returns:
+            Set of all signature keys in the store.
+
+        Raises:
+            ObjectNotLocked: If the store is not locked.
+        """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         relpaths = set()
         for quoted_relpath in self._transport.iter_files_recursive():
             relpath = urlutils.unquote(quoted_relpath)
@@ -861,13 +1147,20 @@ class InterWeaveRepo(InterSameDataRepository):
             return False
 
     def copy_content(self, revision_id=None):
-        """See InterRepository.copy_content()."""
+        """Copy repository content from source to target.
+
+        This is an optimized implementation for weave repositories that
+        directly copies the weave files when possible.
+
+        Args:
+            revision_id: Optional revision to limit the copy to.
+        """
         with self.lock_write():
             # weave specific optimised path:
-            try:
+            with contextlib.suppress(
+                errors.RepositoryUpgradeRequired, NotImplementedError
+            ):
                 self.target.set_make_working_trees(self.source.make_working_trees())
-            except (errors.RepositoryUpgradeRequired, NotImplementedError):
-                pass
             # FIXME do not peek!
             if self.source._transport.listable():
                 with ui.ui_factory.nested_progress_bar() as pb:
@@ -898,7 +1191,17 @@ class InterWeaveRepo(InterSameDataRepository):
     def search_missing_revision_ids(
         self, find_ghosts=True, revision_ids=None, if_present_ids=None, limit=None
     ):
-        """See InterRepository.search_missing_revision_ids()."""
+        """Search for revision IDs missing from the target repository.
+
+        Args:
+            find_ghosts: Whether to find ghost revisions.
+            revision_ids: Specific revision IDs to check.
+            if_present_ids: Only return results if these IDs are present.
+            limit: Maximum number of missing revisions to return.
+
+        Returns:
+            SearchResult of missing revision IDs.
+        """
         with self.lock_read():
             # we want all revisions to satisfy revision_id in source.
             # but we don't want to stat every file here and there.
@@ -947,6 +1250,11 @@ InterRepository.register_optimiser(InterWeaveRepo)
 
 
 def get_extra_interrepo_test_combinations():
+    """Get extra test combinations for inter-repository operations.
+
+    Returns:
+        List of tuples containing (InterRepository class, source format, target format).
+    """
     from ...bzr import knitrepo
 
     return [(InterRepository, RepositoryFormat5(), knitrepo.RepositoryFormatKnit3())]

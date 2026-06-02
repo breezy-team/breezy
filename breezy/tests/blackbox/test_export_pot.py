@@ -18,7 +18,8 @@
 """External tests of 'brz export-pot'."""
 
 from breezy.tests import TestCaseWithMemoryTransport
-from breezy.tests.features import PluginLoadedFeature
+
+from ..features import PluginLoadedFeature
 
 
 class TestExportPot(TestCaseWithMemoryTransport):

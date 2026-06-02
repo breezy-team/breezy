@@ -98,6 +98,7 @@ class ForeignRevision(Revision):
     """
 
     def __init__(self, foreign_revid, mapping, *args, **kwargs):
+        """Create a ForeignRevision object."""
         if "inventory_sha1" not in kwargs:
             kwargs["inventory_sha1"] = b""
         super().__init__(*args, **kwargs)
@@ -169,8 +170,8 @@ class ForeignVcsRegistry(registry.Registry):
             raise errors.InvalidRevisionId(revid, None)
         try:
             foreign_vcs = self.get(revid.split(b"-")[0].decode("ascii"))
-        except KeyError:
-            raise errors.InvalidRevisionId(revid, None)
+        except KeyError as e:
+            raise errors.InvalidRevisionId(revid, None) from e
         return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)
 
 
@@ -216,5 +217,10 @@ class ForeignBranch(Branch):
     """Branch that exists in a foreign version control system."""
 
     def __init__(self, mapping):
+        """Initialize a ForeignBranch.
+
+        Args:
+            mapping: The VcsMapping to use for this branch.
+        """
         self.mapping = mapping
         super().__init__()

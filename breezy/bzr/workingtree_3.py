@@ -16,22 +16,34 @@
 
 """WorkingTree3 format and implementation."""
 
-import errno
+import contextlib
 
-from .. import errors, osutils, trace
+from bzrformats import inventory
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+from dromedary.local import LocalTransport
+
 from .. import revision as _mod_revision
-from .. import transport as _mod_transport
-from ..lockable_files import LockableFiles
+from .. import trace
 from ..lockdir import LockDir
 from ..mutabletree import MutableTree
-from ..transport.local import LocalTransport
-from . import bzrdir, hashcache, inventory
+from . import bzrdir, hashcache
 from . import transform as bzr_transform
+from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
 
 
 class PreDirStateWorkingTree(InventoryWorkingTree):
+    """Working tree implementation before DirState was introduced."""
+
     def __init__(self, basedir=".", *args, **kwargs):
+        """Initialize a PreDirStateWorkingTree.
+
+        Args:
+            basedir: The base directory for the working tree.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+        """
         super().__init__(basedir, *args, **kwargs)
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -61,23 +73,33 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         if self._hashcache.needs_write:
             try:
                 self._hashcache.write()
-            except OSError as e:
-                if e.errno not in (errno.EPERM, errno.EACCES):
-                    raise
+            except PermissionError as e:
                 # TODO: jam 20061219 Should this be a warning? A single line
                 #       warning might be sufficient to let the user know what
                 #       is going on.
                 trace.mutter(
                     "Could not write hashcache for %s\nError: %s",
                     self._hashcache.cache_file_name(),
-                    osutils.safe_unicode(e.args[1]),
+                    e.filename,
                 )
 
     def get_file_sha1(self, path, stat_value=None):
+        """Get the SHA1 hash of a file in the working tree.
+
+        Args:
+            path: Path to the file relative to the tree root.
+            stat_value: Optional stat value for the file.
+
+        Returns:
+            The SHA1 hash of the file contents.
+
+        Raises:
+            NoSuchFile: If the file is not versioned.
+        """
         with self.lock_read():
             # To make sure NoSuchFile gets raised..
             if not self.is_versioned(path):
-                raise _mod_transport.NoSuchFile(path)
+                raise NoSuchFile(path)
             return self._hashcache.get_sha1(path, stat_value)
 
 
@@ -96,16 +118,14 @@ class WorkingTree3(PreDirStateWorkingTree):
         with self.lock_read():
             try:
                 return self._transport.get_bytes("last-revision")
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 return _mod_revision.NULL_REVISION
 
     def _change_last_revision(self, revision_id):
         """See WorkingTree._change_last_revision."""
         if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
-            try:
+            with contextlib.suppress(NoSuchFile):
                 self._transport.delete("last-revision")
-            except _mod_transport.NoSuchFile:
-                pass
             return False
         else:
             self._transport.put_bytes(
@@ -118,6 +138,7 @@ class WorkingTree3(PreDirStateWorkingTree):
         return [("trees", self.last_revision())]
 
     def unlock(self):
+        """Unlock the working tree and perform cleanup operations."""
         if self._control_files._lock_count == 1:
             # do non-implementation specific cleanup
             self._cleanup()
@@ -190,7 +211,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
             where possible.
         """
         if not isinstance(a_controldir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_controldir.transport.base)
+            raise transport_errors.NotLocalUrl(a_controldir.transport.base)
         transport = a_controldir.get_workingtree_transport(self)
         control_files = self._open_control_files(a_controldir)
         control_files.create_lock()
@@ -198,10 +219,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         transport.put_bytes(
             "format", self.as_string(), mode=a_controldir._get_file_mode()
         )
-        if from_branch is not None:
-            branch = from_branch
-        else:
-            branch = a_controldir.open_branch()
+        branch = from_branch if from_branch is not None else a_controldir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         # WorkingTree3 can handle an inventory which has a unique root id.
@@ -252,7 +270,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
             # we are being called directly and must probe.
             raise NotImplementedError
         if not isinstance(a_controldir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_controldir.transport.base)
+            raise transport_errors.NotLocalUrl(a_controldir.transport.base)
         wt = self._open(a_controldir, self._open_control_files(a_controldir))
         return wt
 

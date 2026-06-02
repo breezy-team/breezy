@@ -29,13 +29,8 @@ def load_tests(loader, basic_tests, pattern):
     suite.addTests(basic_tests)
 
     prefix = __name__ + "."
-    testmod_names = [
-        "test_dump_btree",
-    ]
+    testmod_names = []
     # add the tests for the sub modules
-    suite.addTests(
-        loader.loadTestsFromModuleNames(
-            [prefix + module_name for module_name in testmod_names]
-        )
-    )
+    for module_name in testmod_names:
+        suite.addTest(loader.loadTestsFromName(prefix + module_name))
     return suite

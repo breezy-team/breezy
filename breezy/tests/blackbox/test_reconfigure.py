@@ -15,7 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from breezy import controldir, errors, tests, workingtree
-from breezy.tests.script import TestCaseWithTransportAndScript
+
+from ..script import TestCaseWithTransportAndScript
 
 
 class TestReconfigure(TestCaseWithTransportAndScript):
@@ -192,7 +193,8 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         self.test_lightweight_format_checkout_to_tree("rich-root-pack")
 
     def test_branch_and_use_shared(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz init -q branch
 $ echo foo > branch/foo
 $ brz add -q branch/foo
@@ -204,10 +206,12 @@ Repository branch (format: ...)
 Location:
   shared repository: .
   repository branch: branch
-""")
+"""
+        )
 
     def test_use_shared_and_branch(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz init -q branch
 $ echo foo > branch/foo
 $ brz add -q branch/foo
@@ -219,14 +223,13 @@ Repository branch (format: ...)
 Location:
   shared repository: .
   repository branch: branch
-""")
+"""
+        )
 
 
 class TestReconfigureStacking(tests.TestCaseWithTransport):
     def test_reconfigure_stacking(self):
-        """Test stacking reconfiguration.
-
-        Test a fairly realistic scenario for stacking:
+        """Test a fairly realistic scenario for stacking.
 
          * make a branch with some history
          * branch it
@@ -252,9 +255,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         self.assertEqual("", err)
         # can also give the absolute URL of the branch, and it gets stored
         # as a relative path if possible
-        out, err = self.run_bzr(
-            "reconfigure --stacked-on {} b2".format(self.get_url("b1"))
-        )
+        out, err = self.run_bzr(f"reconfigure --stacked-on {self.get_url('b1')} b2")
         self.assertContainsRe(out, "^.*/b2/ is now stacked on ../b1\n$")
         self.assertEqual("", err)
         # Refresh the branch as 'reconfigure' modified it

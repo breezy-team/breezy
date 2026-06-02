@@ -60,12 +60,12 @@ class ExpectShelver(shelf_ui.Shelver):
     def prompt(self, message, choices, default):
         try:
             expected_message, response = self.expected.pop(0)
-        except IndexError:
-            raise AssertionError("Unexpected prompt: {}".format(message))
+        except IndexError as err:
+            raise AssertionError(f"Unexpected prompt: {message}") from err
         if message != expected_message:
-            raise AssertionError("Wrong prompt: {}".format(message))
+            raise AssertionError(f"Wrong prompt: {message}")
         if choices != "&yes\n&No\n&finish\n&quit":
-            raise AssertionError("Wrong choices: {}".format(choices))
+            raise AssertionError(f"Wrong choices: {choices}")
         return response
 
 
@@ -547,7 +547,8 @@ class TestUnshelver(tests.TestCaseWithTransport):
 
         # But the diff was written to write_diff_to.
         diff = write_diff_to.getvalue()
-        expected = dedent("""\
+        expected = dedent(
+            """\
             @@ -1,4 +1,4 @@
             -a
             +z
@@ -561,7 +562,8 @@ class TestUnshelver(tests.TestCaseWithTransport):
             -j
             +y
 
-            """)
+            """
+        )
         self.assertEqualDiff(expected.encode("utf-8"), diff[-len(expected) :])
 
     def test_unshelve_args_delete_only(self):
@@ -599,38 +601,46 @@ class TestUnshelver(tests.TestCaseWithTransport):
 class TestUnshelveScripts(TestUnshelver, script.TestCaseWithTransportAndScript):
     def test_unshelve_messages_keep(self):
         self.create_tree_with_shelf()
-        self.run_script("""
+        self.run_script(
+            """
 $ cd tree
 $ brz unshelve --keep
 2>Using changes with id "1".
 2> M  foo
 2>All changes applied successfully.
-""")
+"""
+        )
 
     def test_unshelve_messages_delete(self):
         self.create_tree_with_shelf()
-        self.run_script("""
+        self.run_script(
+            """
 $ cd tree
 $ brz unshelve --delete-only
 2>Deleted changes with id "1".
-""")
+"""
+        )
 
     def test_unshelve_messages_apply(self):
         self.create_tree_with_shelf()
-        self.run_script("""
+        self.run_script(
+            """
 $ cd tree
 $ brz unshelve --apply
 2>Using changes with id "1".
 2> M  foo
 2>All changes applied successfully.
 2>Deleted changes with id "1".
-""")
+"""
+        )
 
     def test_unshelve_messages_dry_run(self):
         self.create_tree_with_shelf()
-        self.run_script("""
+        self.run_script(
+            """
 $ cd tree
 $ brz unshelve --dry-run
 2>Using changes with id "1".
 2> M  foo
-""")
+"""
+        )

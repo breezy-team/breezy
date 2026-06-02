@@ -1,3 +1,5 @@
+"""Blackbox tests for the stats plugin."""
+
 from ...tests import TestCaseWithTransport
 
 

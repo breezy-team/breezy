@@ -19,17 +19,36 @@
 These tests are repeated for all pack-based repository formats.
 """
 
+import hashlib
 from stat import S_ISDIR
+
+from bzrformats import inventory
+from bzrformats.btree_index import BTreeGraphIndex
+from bzrformats.errors import BzrCheckError
+from bzrformats.index import GraphIndex
+from bzrformats.inventory import InventoryDirectory
+from dromedary import errors as transport_errors
+from dromedary import memory
 
 from ... import controldir, errors, gpg, osutils, repository, tests, transport, ui
 from ... import revision as _mod_revision
 from ...tests import TestCaseWithTransport, TestNotApplicable, test_server
-from ...transport import memory
-from .. import inventory
-from ..btree_index import BTreeGraphIndex
 from ..groupcompress_repo import RepositoryFormat2a
-from ..index import GraphIndex
 from ..smart import client
+
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
 
 
 class TestPackRepository(TestCaseWithTransport):
@@ -161,7 +180,7 @@ class TestPackRepository(TestCaseWithTransport):
         pack_value = node[2]
         sizes = [int(digits) for digits in pack_value.split(b" ")]
         for size, suffix in zip(sizes, [".rix", ".iix", ".tix", ".six"], strict=False):
-            stat = trans.stat("indices/{}{}".format(name.decode("ascii"), suffix))
+            stat = trans.stat(f"indices/{name.decode('ascii')}{suffix}")
             self.assertEqual(size, stat.st_size)
 
     def test_pulling_nothing_leads_to_no_new_names(self):
@@ -184,7 +203,7 @@ class TestPackRepository(TestCaseWithTransport):
         # in the test. But for now 11 commits is not a big deal in a single
         # test.
         for x in range(9):
-            tree.commit("commit {}".format(x))
+            tree.commit(f"commit {x}")
         # there should be 9 packs:
         index = self.index_class(trans, "pack-names", None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
@@ -232,16 +251,18 @@ class TestPackRepository(TestCaseWithTransport):
                 repo.start_write_group()
                 try:
                     inv = inventory.Inventory(revision_id=revid)
-                    inv.root.revision = revid
+                    _set_root_revision(inv, revid)
                     repo.texts.add_lines((inv.root.file_id, revid), [], [])
                     rev = _mod_revision.Revision(
                         timestamp=0,
                         timezone=None,
                         committer="Foo Bar <foo@example.com>",
                         message="Message",
+                        parent_ids=[],
+                        properties={},
+                        inventory_sha1=None,
                         revision_id=revid,
                     )
-                    rev.parent_ids = ()
                     repo.add_revision(revid, rev, inv=inv)
                 except:
                     repo.abort_write_group()
@@ -394,9 +415,7 @@ class TestPackRepository(TestCaseWithTransport):
                 pos_1 = pos
             else:
                 pos_2 = pos
-        self.assertTrue(
-            pos_2 < pos_1, "rev 1 came before rev 2 {} > {}".format(pos_1, pos_2)
-        )
+        self.assertTrue(pos_2 < pos_1, f"rev 1 came before rev 2 {pos_1} > {pos_2}")
 
     def test_pack_repositories_support_multiple_write_locks(self):
         format = self.get_format()
@@ -554,7 +573,7 @@ class TestPackRepository(TestCaseWithTransport):
         tree = self.make_branch_and_tree("tree")
         with tree.lock_write():
             for i in range(9):
-                tree.commit(f"rev {i}")
+                tree.commit("rev %d" % (i,))
             r2 = repository.Repository.open("tree")
             with r2.lock_write():
                 # Monkey patch so that pack occurs while the other repo is
@@ -633,7 +652,7 @@ class TestPackRepository(TestCaseWithTransport):
             repo.lock_write()
             repo.start_write_group()
             inv = inventory.Inventory(revision_id=revision_id)
-            inv.root.revision = revision_id
+            _set_root_revision(inv, revision_id)
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, [])
             repo.texts.add_lines((root_id, revision_id), [], [])
@@ -641,11 +660,12 @@ class TestPackRepository(TestCaseWithTransport):
                 timestamp=0,
                 timezone=None,
                 committer="Foo Bar <foo@example.com>",
+                properties={},
                 message="Message",
                 inventory_sha1=sha1,
+                parent_ids=parent_ids,
                 revision_id=revision_id,
             )
-            rev.parent_ids = parent_ids
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
@@ -674,31 +694,31 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_missing_inventories_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
-        key = ("junk",)
-        repo.inventories._index._missing_compression_parents.add(key)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        key = (b"junk",)
+        repo.inventories._index.add_missing_compression_parent(key)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_missing_revisions_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
-        key = ("junk",)
-        repo.revisions._index._missing_compression_parents.add(key)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        key = (b"junk",)
+        repo.revisions._index.add_missing_compression_parent(key)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_missing_signatures_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
-        key = ("junk",)
-        repo.signatures._index._missing_compression_parents.add(key)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        key = (b"junk",)
+        repo.signatures._index.add_missing_compression_parent(key)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_missing_text_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
-        key = ("some", "junk")
-        repo.texts._index._missing_compression_parents.add(key)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        key = (b"some", b"junk")
+        repo.texts._index.add_missing_compression_parent(key)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_supports_external_lookups(self):
         repo = self.make_repository(".", format=self.get_format())
@@ -745,7 +765,10 @@ class TestPackRepository(TestCaseWithTransport):
         # Damage the repository on the filesystem
         self.get_transport("").rename("repo", "foo")
         # abort_write_group will not raise an error
-        self.assertRaises(Exception, repo.abort_write_group)
+        self.assertRaises(
+            (errors.BzrError, transport_errors.TransportError),
+            repo.abort_write_group,
+        )
         if token is not None:
             repo.leave_lock_in_place()
 
@@ -766,7 +789,7 @@ class TestPackRepository(TestCaseWithTransport):
         upload_transport = repo._pack_collection._upload_transport
         limbo_files = upload_transport.list_dir("")
         self.assertEqual(sorted(expected_names), sorted(limbo_files))
-        md5 = osutils.md5(upload_transport.get_bytes(expected_pack_name))
+        md5 = hashlib.md5(upload_transport.get_bytes(expected_pack_name))  # noqa: S324
         self.assertEqual(wg_tokens[0], md5.hexdigest())
 
     def test_resume_chk_bytes(self):
@@ -863,9 +886,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
 
     def setUp(self):
         if not self.format_supports_external_lookups:
-            raise TestNotApplicable(
-                "{!r} doesn't support stacking".format(self.format_name)
-            )
+            raise TestNotApplicable(f"{self.format_name!r} doesn't support stacking")
         super().setUp()
 
     def get_format(self):
@@ -941,7 +962,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             str(e),
             r"(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n"
             r".*Repository.*/repo/.*\n"
-            r"different serializers",
+            r"different (?:inventory )?serializers",
         )
 
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
@@ -971,7 +992,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         # test.
         local_tree = tree.branch.create_checkout("local")
         for x in range(9):
-            local_tree.commit("commit {}".format(x))
+            local_tree.commit(f"commit {x}")
         # there should be 9 packs:
         index = self.index_class(trans, "pack-names", None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
@@ -1033,7 +1054,7 @@ class TestKeyDependencies(TestCaseWithTransport):
                 [(b"B-id",)], "unordered", True
             )
             target_repo.revisions.insert_record_stream(stream)
-            key_refs = target_repo.revisions._index._key_dependencies
+            key_refs = target_repo.revisions._index.key_dependencies
             self.assertEqual([(b"B-id",)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.abort_write_group()
@@ -1047,7 +1068,7 @@ class TestKeyDependencies(TestCaseWithTransport):
                 [(b"B-id",)], "unordered", True
             )
             target_repo.revisions.insert_record_stream(stream)
-            key_refs = target_repo.revisions._index._key_dependencies
+            key_refs = target_repo.revisions._index.key_dependencies
             self.assertEqual([(b"B-id",)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.suspend_write_group()
@@ -1073,7 +1094,7 @@ class TestKeyDependencies(TestCaseWithTransport):
                 [(b"B-id",)], "unordered", True
             )
             target_repo.revisions.insert_record_stream(stream)
-            key_refs = target_repo.revisions._index._key_dependencies
+            key_refs = target_repo.revisions._index.key_dependencies
             self.assertEqual([(b"B-id",)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.commit_write_group()
@@ -1109,7 +1130,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         # Make 9 local revisions, and push them one at a time to the remote
         # repo to produce 9 pack files.
         for x in range(9):
-            tree.commit("commit {}".format(x))
+            tree.commit(f"commit {x}")
             tree.branch.push(remote_branch)
         # Make one more push to trigger an autopack
         self.hpss_calls = []

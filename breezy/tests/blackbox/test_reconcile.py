@@ -16,8 +16,9 @@
 
 """Black box tests for the reconcile command."""
 
+from bzrformats import inventory
+
 from breezy import controldir, tests
-from breezy.bzr import inventory
 from breezy.repository import WriteGroup
 
 
@@ -31,13 +32,11 @@ class TrivialTest(tests.TestCaseWithTransport):
             does_backup_text = ""
         self.assertEqualDiff(
             out,
-            "Reconciling branch {}\n"
+            f"Reconciling branch {t.branch.base}\n"
             "revision_history ok.\n"
-            "Reconciling repository {}\n"
-            "{}"
-            "Reconciliation complete.\n".format(
-                t.branch.base, t.controldir.root_transport.base, does_backup_text
-            ),
+            f"Reconciling repository {t.controldir.root_transport.base}\n"
+            f"{does_backup_text}"
+            "Reconciliation complete.\n",
         )
         self.assertEqualDiff(err, "")
 
@@ -46,7 +45,18 @@ class TrivialTest(tests.TestCaseWithTransport):
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
         inv = inventory.Inventory(revision_id=b"missing")
-        inv.root.revision = b"missing"
+        # bzrformats InventoryEntry attributes are read-only, so build
+        # a fresh root with the desired revision and swap it in.
+        root = inv.root
+        inv.delete(root.file_id)
+        inv.add(
+            inventory.InventoryDirectory(
+                file_id=root.file_id,
+                name=root.name,
+                parent_id=None,
+                revision=b"missing",
+            )
+        )
         repo.lock_write()
         with repo.lock_write(), WriteGroup(repo):
             repo.add_inventory(b"missing", inv, [])
@@ -56,13 +66,11 @@ class TrivialTest(tests.TestCaseWithTransport):
         else:
             does_backup_text = ""
         expected = (
-            "Reconciling branch {}\n"
+            f"Reconciling branch {t.branch.base}\n"
             "revision_history ok.\n"
-            "Reconciling repository {}\n"
-            "{}"
-            "Reconciliation complete.\n".format(
-                t.branch.base, t.controldir.root_transport.base, does_backup_text
-            )
+            f"Reconciling repository {t.controldir.root_transport.base}\n"
+            f"{does_backup_text}"
+            "Reconciliation complete.\n"
         )
         self.assertEqualDiff(expected, out)
         self.assertEqualDiff(err, "")

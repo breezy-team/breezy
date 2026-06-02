@@ -112,7 +112,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo.pack()
         with repo.lock_read():
             repo.all_revision_ids()
-            self.assertTrue(len(repo._git.object_store._pack_cache) > 0)
+            self.assertGreater(len(repo._git.object_store._pack_cache), 0)
         self.assertEqual(len(repo._git.object_store._pack_cache), 0)
 
     def test_revision_tree(self):
@@ -195,6 +195,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
         repo = self.git_repo
         # Create an annotated tag pointing at the commit
         from dulwich.objects import Tag
+
         tag = Tag()
         tag.name = b"v1.0"
         tag.tagger = b"Test User <test@example.com>"
@@ -225,9 +226,11 @@ class SigningGitRepository(tests.TestCaseWithTransport):
         self.assertFalse(branch.repository.has_signature_for_revision_id(revid))
         try:
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
-            conf = config.MemoryStack(b"""
+            conf = config.MemoryStack(
+                b"""
 create_signatures=always
-""")
+"""
+            )
             revid2 = wt.commit(config=conf, message="base", allow_pointless=True)
 
             def sign(text):
@@ -264,7 +267,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
     def test_multiple_authors(self):
         wt = self.make_branch_and_tree(".", format="git")
         self.assertRaises(
-            Exception,
+            ValueError,
             wt.commit,
             "base",
             allow_pointless=True,
