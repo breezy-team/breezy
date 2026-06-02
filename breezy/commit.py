@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Commit logic and related functionality.
+
+This module provides classes and functions for creating commits, including
+commit reporters that track progress and report on changes during the commit
+process.
+"""
+
 # The newly committed revision is going to have a shape corresponding
 # to that of the working tree.  Files that are not in the
 # working tree and that were in the predecessor are reported as
@@ -56,23 +63,28 @@ from . import debug, errors, trace, ui
 from .branch import Branch
 from .errors import BzrError, ConflictsInTree, StrictCommitFailed
 from .i18n import gettext
-from .osutils import (
-    get_user_encoding,
-    is_inside_any,
-    minimum_path_selection,
-)
+from .osutils import get_user_encoding, is_inside_any, minimum_path_selection
 from .trace import is_quiet, mutter, note
 from .urlutils import unescape_for_display
 
 
 class PointlessCommit(BzrError):
+    """Exception raised when attempting to commit with no changes."""
+
     _fmt = "No changes to commit"
 
 
 class CannotCommitSelectedFileMerge(BzrError):
+    """Exception raised when trying to commit selected files during a merge."""
+
     _fmt = "Selected-file commit of merges is not supported yet: files %(files_str)s"
 
     def __init__(self, files):
+        """Initialize CannotCommitSelectedFileMerge exception.
+
+        Args:
+            files: List of files that cannot be committed during merge.
+        """
         files_str = ", ".join(files)
         BzrError.__init__(self, files=files, files_str=files_str)
 
@@ -107,28 +119,71 @@ class NullCommitReporter:
     """I report on progress of a commit."""
 
     def started(self, revno, revid, location):
+        """Called when the commit process starts.
+
+        Args:
+            revno: Revision number of the commit.
+            revid: Revision id of the commit.
+            location: Location where the commit is being made.
+        """
         pass
 
     def snapshot_change(self, change, path):
+        """Called when a change is being recorded in the snapshot.
+
+        Args:
+            change: Type of change being made.
+            path: Path of the file being changed.
+        """
         pass
 
     def completed(self, revno, rev_id):
+        """Called when the commit process completes.
+
+        Args:
+            revno: Revision number of the completed commit.
+            rev_id: Revision id of the completed commit.
+        """
         pass
 
     def deleted(self, path):
+        """Called when a file is deleted.
+
+        Args:
+            path: Path of the deleted file.
+        """
         pass
 
     def missing(self, path):
+        """Called when a file is missing.
+
+        Args:
+            path: Path of the missing file.
+        """
         pass
 
     def renamed(self, change, old_path, new_path):
+        """Called when a file is renamed.
+
+        Args:
+            change: Type of change.
+            old_path: Original path of the file.
+            new_path: New path of the file.
+        """
         pass
 
     def is_verbose(self):
+        """Return whether the reporter provides verbose output.
+
+        Returns:
+            False for null reporter (no output).
+        """
         return False
 
 
 class ReportCommitToLog(NullCommitReporter):
+    """Commit reporter that logs progress information."""
+
     def _note(self, format, *args):
         """Output a message.
 
@@ -137,16 +192,35 @@ class ReportCommitToLog(NullCommitReporter):
         note(format, *args)
 
     def snapshot_change(self, change, path):
+        """Report on a snapshot change.
+
+        Args:
+            change: Type of change being made.
+            path: Path of the file being changed.
+        """
         if path == "" and change in (gettext("added"), gettext("modified")):
             return
         self._note("%s %s", change, path)
 
     def started(self, revno, rev_id, location):
+        """Report that the commit has started.
+
+        Args:
+            revno: Revision number of the commit.
+            rev_id: Revision id of the commit.
+            location: Location where the commit is being made.
+        """
         self._note(
             gettext("Committing to: %s"), unescape_for_display(location, "utf-8")
         )
 
     def completed(self, revno, rev_id):
+        """Report that the commit has completed.
+
+        Args:
+            revno: Revision number of the completed commit.
+            rev_id: Revision id of the completed commit.
+        """
         if revno is not None:
             self._note(gettext("Committed revision %d."), revno)
             # self._note goes to the console too; so while we want to log the
@@ -159,15 +233,37 @@ class ReportCommitToLog(NullCommitReporter):
             self._note(gettext("Committed revid %s."), rev_id)
 
     def deleted(self, path):
+        """Report that a file was deleted.
+
+        Args:
+            path: Path of the deleted file.
+        """
         self._note(gettext("deleted %s"), path)
 
     def missing(self, path):
+        """Report that a file is missing.
+
+        Args:
+            path: Path of the missing file.
+        """
         self._note(gettext("missing %s"), path)
 
     def renamed(self, change, old_path, new_path):
+        """Report that a file was renamed.
+
+        Args:
+            change: Type of change.
+            old_path: Original path of the file.
+            new_path: New path of the file.
+        """
         self._note("%s %s => %s", change, old_path, new_path)
 
     def is_verbose(self):
+        """Return whether the reporter provides verbose output.
+
+        Returns:
+            True for logging reporter (provides output).
+        """
         return True
 
 
@@ -196,6 +292,18 @@ class Commit:
     def update_revprops(
         revprops, branch, authors=None, local=False, possible_master_transports=None
     ):
+        """Update revision properties with branch and author information.
+
+        Args:
+            revprops: Existing revision properties dictionary.
+            branch: Branch being committed to.
+            authors: Optional list of authors.
+            local: Whether this is a local commit.
+            possible_master_transports: Optional list of master transports.
+
+        Returns:
+            Updated revision properties dictionary.
+        """
         if revprops is None:
             revprops = {}
         if possible_master_transports is None:
@@ -468,10 +576,11 @@ class Commit:
                 self._set_progress_stage("Uploading data to master branch")
                 # 'commit' to the master first so a timeout here causes the
                 # local branch to be out of date
-                (new_revno, self.rev_id) = (
-                    self.master_branch.import_last_revision_info_and_tags(
-                        self.branch, new_revno, self.rev_id, lossy=self._lossy
-                    )
+                (
+                    new_revno,
+                    self.rev_id,
+                ) = self.master_branch.import_last_revision_info_and_tags(
+                    self.branch, new_revno, self.rev_id, lossy=self._lossy
                 )
                 if self._lossy:
                     self.branch.fetch(self.master_branch, self.rev_id)
@@ -499,8 +608,9 @@ class Commit:
             if tag_conflicts:
                 warning_lines = ["    " + name for name, _, _ in tag_conflicts]
                 note(
-                    gettext("Conflicting tags in bound branch:\n%s")
-                    % ("\n".join(warning_lines),)
+                    gettext("Conflicting tags in bound branch:\n{}").format(
+                        "\n".join(warning_lines)
+                    )
                 )
 
     def _select_reporter(self):
@@ -615,7 +725,7 @@ class Commit:
             hooks = post_commit.split(" ")
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
-                eval(
+                eval(  # noqa: S307
                     hook + "(branch, rev_id)",
                     {"branch": self.branch, "breezy": breezy, "rev_id": self.rev_id},
                 )
@@ -636,10 +746,7 @@ class Commit:
         # With bound branches, when the master is behind the local branch,
         # the 'old_revno' and old_revid values here are incorrect.
         # XXX: FIXME ^. RBC 20060206
-        if self.parents:
-            old_revid = self.parents[0]
-        else:
-            old_revid = breezy.revision.NULL_REVISION
+        old_revid = self.parents[0] if self.parents else breezy.revision.NULL_REVISION
 
         if hook_name == "pre_commit":
             future_tree = self.builder.revision_tree()
@@ -651,12 +758,11 @@ class Commit:
             # the user) this is still showing progress, not showing overall
             # actions - its up to each plugin to show a UI if it want's to
             # (such as 'Emailing diff to foo@example.com').
-            self.pb_stage_name = "Running {} hooks [{}]".format(
-                hook_name,
-                Branch.hooks.get_hook_name(hook),
+            self.pb_stage_name = (
+                f"Running {hook_name} hooks [{Branch.hooks.get_hook_name(hook)}]"
             )
             self._emit_progress()
-            if "hooks" in debug.debug_flags:
+            if debug.debug_flag_enabled("hooks"):
                 mutter("Invoking commit hook: %r", hook)
             if hook_name == "post_commit":
                 hook(
@@ -725,8 +831,8 @@ class Commit:
                     and not self.work_tree.supports_symlinks()
                 ):
                     trace.warning(
-                        'Ignoring "{}" as symlinks are not '
-                        "supported on this filesystem.".format(change.path[0])
+                        f'Ignoring "{change.path[0]}" as symlinks are not '
+                        "supported on this filesystem."
                     )
                     continue
                 deleted_paths.append(change.path[1])
@@ -734,9 +840,8 @@ class Commit:
                 change = change.discard_new()
                 new_path = change.path[1]
                 versioned = False
-            elif kind == "tree-reference":
-                if self.recursive == "down":
-                    self._commit_nested_tree(change.path[1])
+            elif kind == "tree-reference" and self.recursive == "down":
+                self._commit_nested_tree(change.path[1])
             if change.versioned[0] or change.versioned[1]:
                 yield change
                 if report_changes:

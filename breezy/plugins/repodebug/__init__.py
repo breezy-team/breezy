@@ -25,6 +25,7 @@ from ...commands import plugin_cmds
 
 
 def test_suite():
+    """Return the test suite for the repodebug plugin."""
     from unittest import TestSuite
 
     from .tests import test_suite

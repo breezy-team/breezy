@@ -16,8 +16,9 @@
 
 """Tests for implementations of Repository.has_revisions."""
 
-from breezy.revision import NULL_REVISION
 from breezy.tests.per_repository import TestCaseWithRepository
+
+from ...revision import NULL_REVISION
 
 
 class TestHasRevisions(TestCaseWithRepository):

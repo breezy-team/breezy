@@ -42,9 +42,10 @@ from io import BytesIO
 
 parse_headers = http_client.parse_headers
 
-from .. import errors, tests
-from ..transport.http import response, urllib
-from .file_utils import FakeReadFile
+from dromedary import errors as transport_errors
+from dromedary.http import response
+
+from .. import tests
 
 
 class ReadSocket:
@@ -55,17 +56,6 @@ class ReadSocket:
 
     def makefile(self, mode="r", bufsize=None):
         return self.readfile
-
-
-class FakeHTTPConnection(urllib.HTTPConnection):
-    def __init__(self, sock):
-        urllib.HTTPConnection.__init__(self, "localhost")
-        # Set the socket to bypass the connection
-        self.sock = sock
-
-    def send(self, str):
-        """Ignores the writes on the socket."""
-        pass
 
 
 class TestResponseFileIter(tests.TestCase):
@@ -80,29 +70,6 @@ class TestResponseFileIter(tests.TestCase):
     def test_readlines(self):
         f = response.ResponseFile("many", BytesIO(b"0\n1\nboo!\n"))
         self.assertEqual([b"0\n", b"1\n", b"boo!\n"], f.readlines())
-
-
-class TestHTTPConnection(tests.TestCase):
-    def test_cleanup_pipe(self):
-        sock = ReadSocket(b"""HTTP/1.1 200 OK\r
-Content-Type: text/plain; charset=UTF-8\r
-Content-Length: 18
-\r
-0123456789
-garbage""")
-        conn = FakeHTTPConnection(sock)
-        # Simulate the request sending so that the connection will be able to
-        # read the response.
-        conn.putrequest("GET", "http://localhost/fictious")
-        conn.endheaders()
-        # Now, get the response
-        resp = conn.getresponse()
-        # Read part of the response
-        self.assertEqual(b"0123456789\n", resp.read(11))
-        # Override the thresold to force the warning emission
-        conn._range_warning_thresold = 6  # There are 7 bytes pending
-        conn.cleanup_pipe()
-        self.assertContainsRe(self.get_log(), "Got a 200 response when asking")
 
 
 class TestRangeFileMixin:
@@ -156,7 +123,7 @@ class TestRangeFileMixin:
         f = self._file
         self.assertEqual(self.alpha, f.read())
         self.assertEqual(b"", f.read(0))
-        self.assertRaises(errors.InvalidRange, f.read, 1)
+        self.assertRaises(transport_errors.InvalidRange, f.read, 1)
 
     def test_unbounded_read_after_seek(self):
         f = self._file
@@ -169,14 +136,16 @@ class TestRangeFileMixin:
         start = self.first_range_start
         f.seek(start)
         f.read(12)
-        self.assertRaises(errors.InvalidRange, f.seek, start + 5)
+        self.assertRaises(transport_errors.InvalidRange, f.seek, start + 5)
 
     def test_seek_outside_single_range(self):
         f = self._file
         if f._size == -1 or f._boundary is not None:
             raise tests.TestNotApplicable("Needs a fully defined range")
         # Will seek past the range and then errors out
-        self.assertRaises(errors.InvalidRange, f.seek, self.first_range_start + 27)
+        self.assertRaises(
+            transport_errors.InvalidRange, f.seek, self.first_range_start + 27
+        )
 
     def test_read_past_end_of_range(self):
         f = self._file
@@ -184,7 +153,7 @@ class TestRangeFileMixin:
             raise tests.TestNotApplicable("Can't check an unknown size")
         start = self.first_range_start
         f.seek(start + 20)
-        self.assertRaises(errors.InvalidRange, f.read, 10)
+        self.assertRaises(transport_errors.InvalidRange, f.read, 10)
 
     def test_seek_from_end(self):
         """Test seeking from the end of the file.
@@ -218,7 +187,7 @@ class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
 
         The end of the file can't be determined since the size is unknown.
         """
-        self.assertRaises(errors.InvalidRange, self._file.seek, -1, 2)
+        self.assertRaises(transport_errors.InvalidRange, self._file.seek, -1, 2)
 
     def test_read_at_range_end(self):
         """Test read behaviour at range end."""
@@ -251,7 +220,7 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
         # This can't occur under normal circumstances, we have to force it
         f = self._file
         f._pos = 0  # Force an invalid pos
-        self.assertRaises(errors.InvalidRange, f.read, 2)
+        self.assertRaises(transport_errors.InvalidRange, f.read, 2)
 
 
 class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
@@ -359,7 +328,7 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         f = self._file
         f.seek(-2, 2)
         self.assertEqual(b"yz", f.read())
-        self.assertRaises(errors.InvalidRange, f.seek, -2, 2)
+        self.assertRaises(transport_errors.InvalidRange, f.seek, -2, 2)
 
     def test_seek_into_void(self):
         f = self._file
@@ -390,7 +359,7 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         start = self.first_range_start
         f.seek(start + 40)  # Past the first range but before the second
         # Now the file is positioned at the second range start (100)
-        self.assertRaises(errors.InvalidRange, f.seek, start + 41)
+        self.assertRaises(transport_errors.InvalidRange, f.seek, start + 41)
 
     def test_seek_at_range_end(self):
         """Test seek behavior at range end."""
@@ -404,7 +373,7 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         self.assertEqual(self.alpha, f.read())
         self.assertEqual(self.alpha, f.read())
         self.assertEqual(self.alpha.upper(), f.read())
-        self.assertRaises(errors.InvalidHttpResponse, f.read, 1)
+        self.assertRaises(transport_errors.InvalidHttpResponse, f.read, 1)
 
 
 class TestRangeFileMultipleRangesQuotedBoundaries(TestRangeFileMultipleRanges):
@@ -463,7 +432,7 @@ class TestRangeFileVarious(tests.TestCase):
 
         def nok(header_value):
             self.assertRaises(
-                errors.InvalidHttpRange, f.set_range_from_header, header_value
+                transport_errors.InvalidHttpRange, f.set_range_from_header, header_value
             )
 
         nok("bytes 10-2/3")
@@ -782,7 +751,7 @@ class TestHandleResponse(tests.TestCase):
     def test_single_range_truncated(self):
         out = self.get_response(_single_range_response_truncated)
         # Content-Range declares 100 but only 51 present
-        self.assertRaises(errors.ShortReadvError, out.seek, out.tell() + 51)
+        self.assertRaises(transport_errors.ShortReadvError, out.seek, out.tell() + 51)
 
     def test_multi_range(self):
         out = self.get_response(_multipart_range_response)
@@ -806,7 +775,7 @@ class TestHandleResponse(tests.TestCase):
 
     def test_invalid_response(self):
         self.assertRaises(
-            errors.InvalidHttpResponse, self.get_response, _invalid_response
+            transport_errors.InvalidHttpResponse, self.get_response, _invalid_response
         )
 
     def test_full_text_no_content_type(self):
@@ -826,7 +795,7 @@ class TestHandleResponse(tests.TestCase):
         code, raw_headers, body = _single_range_no_content_range
         getheader = self._build_HTTPMessage(raw_headers)
         self.assertRaises(
-            errors.InvalidHttpResponse,
+            transport_errors.InvalidHttpResponse,
             response.handle_response,
             "http://bogus",
             code,
@@ -838,7 +807,7 @@ class TestHandleResponse(tests.TestCase):
         code, raw_headers, body = _multipart_no_content_range
         getheader = self._build_HTTPMessage(raw_headers)
         self.assertRaises(
-            errors.InvalidHttpResponse,
+            transport_errors.InvalidHttpResponse,
             response.handle_response,
             "http://bogus",
             code,
@@ -850,40 +819,4 @@ class TestHandleResponse(tests.TestCase):
         out = self.get_response(_multipart_no_boundary)
         out.read()  # Read the whole range
         # Fail to find the boundary line
-        self.assertRaises(errors.InvalidHttpResponse, out.seek, 1, 1)
-
-
-class TestRangeFileSizeReadLimited(tests.TestCase):
-    """Test RangeFile _max_read_size functionality which limits the size of
-    read blocks to prevent MemoryError messages in socket.recv.
-    """
-
-    def setUp(self):
-        super().setUp()
-        # create a test datablock larger than _max_read_size.
-        chunk_size = response.RangeFile._max_read_size
-        test_pattern = b"0123456789ABCDEF"
-        self.test_data = test_pattern * (3 * chunk_size // len(test_pattern))
-        self.test_data_len = len(self.test_data)
-
-    def test_max_read_size(self):
-        """Read data in blocks and verify that the reads are not larger than
-        the maximum read size.
-        """
-        # retrieve data in large blocks from response.RangeFile object
-        mock_read_file = FakeReadFile(self.test_data)
-        range_file = response.RangeFile("test_max_read_size", mock_read_file)
-        response_data = range_file.read(self.test_data_len)
-
-        # verify read size was equal to the maximum read size
-        self.assertTrue(mock_read_file.get_max_read_size() > 0)
-        self.assertEqual(
-            mock_read_file.get_max_read_size(), response.RangeFile._max_read_size
-        )
-        self.assertEqual(mock_read_file.get_read_count(), 3)
-
-        # report error if the data wasn't equal (we only report the size due
-        # to the length of the data)
-        if response_data != self.test_data:
-            message = "Data not equal.  Expected %d bytes, received %d."
-            self.fail(message % (len(response_data), self.test_data_len))
+        self.assertRaises(transport_errors.InvalidHttpResponse, out.seek, 1, 1)

@@ -17,7 +17,8 @@
 """Tests for lock-breaking user interface."""
 
 from breezy import branch, config, controldir, errors, osutils, tests
-from breezy.tests.script import run_script
+
+from ..script import run_script
 
 
 class TestBreakLock(tests.TestCaseWithTransport):
@@ -54,10 +55,10 @@ class TestBreakLock(tests.TestCaseWithTransport):
         local_branch = controldir.ControlDir.create_branch_convenience("repo/branch")
         try:
             local_branch.bind(self.master_branch)
-        except branch.BindingUnsupported:
+        except branch.BindingUnsupported as err:
             raise tests.TestNotApplicable(
                 "default format does not support bound branches"
-            )
+            ) from err
         checkoutdir = controldir.ControlDir.create("checkout")
         checkoutdir.set_branch_reference(local_branch)
         self.wt = checkoutdir.create_workingtree()
@@ -119,7 +120,6 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
 
     def test_break_lock(self):
         self.run_bzr(
-            "break-lock --config {}".format(osutils.dirname(self.config_file_name)),
-            stdin="y\n",
+            f"break-lock --config {osutils.dirname(self.config_file_name)}", stdin="y\n"
         )
         self.assertRaises(errors.LockBroken, self.config.unlock)

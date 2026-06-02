@@ -1,0 +1,304 @@
+==========================================
+CHK Map File Format Specification
+==========================================
+
+.. contents::
+
+Overview
+========
+
+CHK (Content Hash Key) maps are persistent maps from tuple_of_strings->string
+using CHK stores. They implement a trie data structure with internal nodes having
+8-bit fan-out. The key tuples are mapped to strings by joining them with \x00
+(null bytes), and \x00 padding shorter keys out to the length of the longest key.
+Leaf nodes are packed as densely as possible, and internal nodes are all an
+additional 8-bits wide, leading to a sparse upper tree.
+
+CHK maps are used in Bazaar's group-compress repository format (2a) for storing
+inventory data and other content-addressed storage needs. Each node in the CHK
+map is stored as a separate record with a SHA1 hash as its identifier.
+
+Key Concepts
+============
+
+Key Serialization
+-----------------
+
+Keys in CHK maps are tuples of byte strings. These are serialized by joining the
+elements with ``\x00`` (null byte) separators. For example:
+
+* ``(b"foo", b"bar")`` → ``b"foo\x00bar"``
+* ``(b"a", b"b", b"c")`` → ``b"a\x00b\x00c"``
+
+Search Key Functions
+--------------------
+
+CHK maps support different search key functions that transform keys before using
+them for node organization:
+
+1. **Plain** (``_search_key_plain``): Direct concatenation with ``\x00`` separators
+
+   * Example: ``(b"foo", b"bar")`` → ``b"foo\x00bar"``
+
+2. **16-bit Hash** (``_search_key_16``): CRC32 of each element, formatted as
+   uppercase hex with ``\x00`` separators
+
+   * Example: ``(b"a",)`` → ``b"E8B7BE43\x00"``
+   * Example: ``(b"a", b"b")`` → ``b"E8B7BE43\x0071BEEFF9"``
+   * Provides better key distribution for hash-based storage
+
+3. **255-way Hash** (``_search_key_255``): CRC32 as 4 bytes, with ``\n``
+   replaced by ``_``
+
+   * Used for wider fan-out in internal nodes
+   * Example: ``(b"a",)`` → ``b"\xe8\xb7\xbeC"`` (4 raw bytes)
+
+Node Addressing
+---------------
+
+Each node is addressable by its SHA1 hash of the serialized content. Node
+references are stored as ``sha1:<hex_hash>`` where ``<hex_hash>`` is the
+40-character hexadecimal representation of the SHA1 hash.
+
+Node Types
+==========
+
+LeafNode Format
+---------------
+
+LeafNodes store the actual key-value pairs. The binary format is::
+
+    chkleaf:\n
+    <maximum_size>\n
+    <key_width>\n
+    <item_count>\n
+    <common_prefix>\n
+    [<serialized_key_suffix>\x00<value_line_count>\n
+    <value_line_1>\n
+    <value_line_2>\n
+    ...]*
+
+Field descriptions:
+
+* ``chkleaf:`` - Literal marker (8 bytes) identifying this as a leaf node
+* ``<maximum_size>`` - Decimal integer, maximum size this node can grow to before splitting
+* ``<key_width>`` - Decimal integer, number of elements in each key tuple
+* ``<item_count>`` - Decimal integer, number of items stored in this node
+* ``<common_prefix>`` - Common prefix shared by all serialized keys in this node
+  (can be empty)
+
+For each item:
+
+* ``<serialized_key_suffix>`` - The key with common prefix removed, elements
+  separated by ``\x00``
+* ``<value_line_count>`` - Decimal integer, number of lines in the value
+* Value lines follow, each terminated by ``\n``
+
+Example LeafNode::
+
+    chkleaf:
+    100
+    2
+    3
+    foo\x00
+    bar\x001
+    value1
+    baz\x002
+    value
+    2
+    \x001
+    value3
+
+This represents a leaf with:
+
+* Maximum size: 100 bytes
+* Key width: 2 (tuples have 2 elements each)
+* Item count: 3 items stored
+* Common prefix: ``foo\x00`` (shared by all keys)
+* Item 1: key=(``foo``, ``bar``), value=``value1``
+* Item 2: key=(``foo``, ``baz``), value=``value\n2`` (multi-line value)
+* Item 3: key=(``foo``, ``\x00``), value=``value3``
+
+Note: The keys are reconstructed by prepending the common prefix to each key suffix.
+
+InternalNode Format
+-------------------
+
+InternalNodes contain references to child nodes. The binary format is::
+
+    chknode:\n
+    <maximum_size>\n
+    <key_width>\n
+    <total_item_count>\n
+    <search_prefix>\n
+    [<prefix_suffix>\x00<child_sha1>\n]*
+
+Field descriptions:
+
+* ``chknode:`` - Literal marker (8 bytes) identifying this as an internal node
+* ``<maximum_size>`` - Decimal integer, maximum size parameter
+* ``<key_width>`` - Decimal integer, number of elements in keys
+* ``<total_item_count>`` - Decimal integer, total number of items in all
+  descendant nodes
+* ``<search_prefix>`` - Common search prefix for this node
+
+For each child:
+
+* ``<prefix_suffix>`` - Search key prefix with common prefix removed
+* ``<child_sha1>`` - SHA1 hash of the child node (format: ``sha1:hexhash``)
+
+Example InternalNode::
+
+    chknode:
+    4096
+    1
+    15
+    a
+    aa\x00sha1:1234567890abcdef1234567890abcdef12345678
+    ab\x00sha1:abcdef1234567890abcdef1234567890abcdef12
+    ac\x00sha1:567890abcdef1234567890abcdef1234567890ab
+
+This represents an internal node with:
+
+* Maximum size: 4096 bytes
+* Key width: 1 (single element keys)
+* Total item count: 15 (sum of all items in descendant nodes)
+* Search prefix: ``a`` (common to all children)
+* Three child nodes with search key prefixes ``aa``, ``ab``, ``ac``
+* Child references stored as SHA1 hashes in the format ``sha1:<40-char-hex>``
+
+Format Properties
+=================
+
+Compression
+-----------
+
+Nodes use common prefix compression to reduce size:
+
+* LeafNodes store a common prefix shared by all keys
+* InternalNodes store a search prefix common to all children
+* Only the suffix after the common prefix is stored for each item
+
+Node Splitting
+--------------
+
+When a LeafNode exceeds its ``maximum_size``, it splits:
+
+1. The node computes the common search prefix of all keys
+2. Split occurs at position ``len(common_prefix) + 1``
+3. Items are distributed into new LeafNodes based on their prefixes at the split position
+4. A new InternalNode is created to reference the split nodes
+5. Keys shorter than the split position are padded with ``\x00`` bytes
+
+Example split with search keys:
+
+* Before: LeafNode with keys ``aaa``, ``aab``, ``aba``, ``abb``
+* Common search prefix: ``a``
+* Split at position 2 (len("a") + 1)
+* After: InternalNode with two children:
+
+  * Child ``aa``: LeafNode with ``aaa``, ``aab``
+  * Child ``ab``: LeafNode with ``aba``, ``abb``
+
+Note: If a split results in a child that itself needs splitting, the process
+continues recursively, potentially creating deeper internal nodes.
+
+Node Collapsing
+---------------
+
+When nodes shrink (due to deletions), the tree may collapse:
+
+1. If an InternalNode has only one child remaining, it returns that child
+2. If all children of an InternalNode are LeafNodes and their combined size
+   fits within maximum_size, they merge into a single LeafNode
+3. This happens recursively up the tree
+4. Helps maintain efficiency after deletions
+
+Collapse conditions:
+* Single child remaining in an InternalNode (immediate collapse)
+* Multiple LeafNode children that fit within size limits when combined
+* The check stops early if any child is an InternalNode
+
+Binary Safety
+-------------
+
+The format handles binary data safely:
+
+* Null bytes in values are preserved (using line count encoding)
+* Values can contain any byte sequence
+* Keys use null bytes as separators, but this is handled by the tuple structure
+
+Line Encoding
+-------------
+
+Values are encoded with line counts to handle multi-line data:
+
+* Each value is preceded by its line count
+* Lines are separated by ``\n``
+* A trailing ``\n`` is always added to the last line
+* This allows values to contain newlines safely
+
+Implementation Notes
+====================
+
+Memory Efficiency
+-----------------
+
+* Nodes are loaded on-demand from the store
+* A page cache is used to avoid repeated deserialization
+* Cache uses LRU eviction based on total byte size
+* Thread-local caches avoid locking overhead
+
+Thread Safety
+-------------
+
+* Each thread maintains its own page cache
+* No shared state between threads for cache operations
+* Avoids locking overhead for cache access
+
+Search Algorithm
+----------------
+
+Node lookups follow these steps:
+
+1. Transform the key using the search key function
+2. Start at the root node
+3. For InternalNodes, find the child with the longest matching prefix
+4. Continue until reaching a LeafNode
+5. Search the LeafNode's items for the exact key
+
+Performance Characteristics
+---------------------------
+
+* Lookup: O(key length) - bounded by tree depth
+* Insertion: O(key length) + potential split cost
+* Deletion: O(key length) + potential merge cost
+* Tree depth: Typically 2-4 levels for normal use cases
+* Iteration: Supports efficient key filtering to reduce I/O
+* Bulk operations: Optimized for batch updates
+
+Limitations
+-----------
+
+* Keys must be tuples of byte strings
+* Values must be byte strings
+* Maximum node size affects performance trade-offs:
+
+  * Larger nodes: fewer levels, more I/O per node
+  * Smaller nodes: more levels, less I/O per node
+
+* Special handling for hash collisions: When using hash-based search keys,
+  multiple keys may map to the same search key. The format handles this by
+  allowing nodes to grow beyond maximum_size when all keys have identical
+  search keys.
+
+Version Compatibility
+=====================
+
+This specification describes the format as implemented in:
+
+* Bazaar 2.0 and later
+* Breezy 3.0 and later
+
+The format is stable and designed for long-term compatibility. Any future
+extensions will maintain backward compatibility with this specification.

@@ -14,10 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ... import commands, controldir, errors
+"""Command for finding file references in repository inventories."""
+
+from bzrformats.inventory import NoSuchId
+
+from ... import commands, controldir
 
 
 class cmd_file_refs(commands.Command):
+    """Find the inventories that reference a particular version of a text."""
+
     __doc__ = """Find the inventories that reference a particular version of a text."""
 
     hidden = True
@@ -25,6 +31,13 @@ class cmd_file_refs(commands.Command):
     takes_options = ["directory"]
 
     def run(self, file_id, rev_id, directory="."):
+        """Execute the file_refs command.
+
+        Args:
+            file_id: File ID to search for.
+            rev_id: Revision ID to search for.
+            directory: Working directory (defaults to current directory).
+        """
         file_id = file_id.encode()
         rev_id = rev_id.encode()
         bd, _relpath = controldir.ControlDir.open_containing(directory)
@@ -36,7 +49,7 @@ class cmd_file_refs(commands.Command):
         for inv in repo.iter_inventories(all_invs, "unordered"):
             try:
                 entry = inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 # This file doesn't even appear in this inv.
                 continue
             if entry.revision == rev_id:

@@ -16,9 +16,11 @@
 
 """Tests for fetch between repositories of the same type."""
 
+from bzrformats.inventory import ROOT_ID
+from dromedary import errors as transport_errors
+
 from breezy import controldir, errors, gpg, repository
 from breezy.bzr import remote
-from breezy.bzr.inventory import ROOT_ID
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_repository import TestCaseWithRepository
 
@@ -65,7 +67,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             format.check_conversion_target(f.repository_format)
             # if we cannot convert data to knit3, skip the test.
         except errors.BadConversionTarget as e:
-            raise TestSkipped(str(e))
+            raise TestSkipped(str(e)) from e
         self.get_transport().mkdir("b")
         b_bzrdir = f.initialize(self.get_url("b"))
         knit3_repo = b_bzrdir.create_repository()
@@ -82,15 +84,15 @@ class TestFetchSameRepository(TestCaseWithRepository):
         b_branch.pull(tree_a.branch)
         try:
             tree_b = b_bzrdir.create_workingtree()
-        except errors.NotLocalUrl:
+        except transport_errors.NotLocalUrl:
             try:
                 tree_b = b_branch.create_checkout("b", lightweight=True)
-            except errors.NotLocalUrl:
+            except transport_errors.NotLocalUrl as err:
                 raise TestSkipped(
                     "cannot make working tree with transport {!r}".format(
                         b_bzrdir.transport
                     )
-                )
+                ) from err
         rev2 = tree_b.commit("no change")
         rev2_tree = knit3_repo.revision_tree(rev2)
         self.assertEqual(rev1, rev2_tree.get_file_revision(""))
@@ -342,9 +344,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo.start_write_group()
         try:
             repo.sign_revision(rev1, gpg.LoopbackGPGStrategy(None))
-        except errors.UnsupportedOperation:
+        except errors.UnsupportedOperation as err:
             self.assertFalse(repo._format.supports_revision_signatures)
-            raise TestNotApplicable("repository format does not support signatures")
+            raise TestNotApplicable(
+                "repository format does not support signatures"
+            ) from err
         repo.commit_write_group()
         repo.unlock()
         return repo, rev1

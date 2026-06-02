@@ -15,8 +15,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy.osutils import basename
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ...osutils import basename
 
 
 class TestIsControlFilename(TestCaseWithWorkingTree):

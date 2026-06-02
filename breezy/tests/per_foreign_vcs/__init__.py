@@ -43,8 +43,10 @@ def load_tests(loader, standard_tests, pattern):
         "branch",
         "repository",
     ]
-    sub_tests = loader.loadTestsFromModuleNames(
-        ["breezy.tests.per_foreign_vcs.test_" + name for name in per_vcs_mod_names]
-    )
+    sub_tests = loader.suiteClass()
+    for name in per_vcs_mod_names:
+        sub_tests.addTest(
+            loader.loadTestsFromName("breezy.tests.per_foreign_vcs.test_" + name)
+        )
     tests.multiply_tests(sub_tests, vcs_scenarios(), result)
     return result

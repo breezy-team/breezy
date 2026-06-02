@@ -14,6 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Breezy plugin support.
+
+This module provides functionality for loading and managing Breezy plugins.
+"""
+
 __docformat__ = "google"
 
 """Breezy plugin support.
@@ -43,7 +48,8 @@ from importlib import util as importlib_util
 
 import breezy
 
-from . import debug, errors, osutils, trace
+from . import debug, osutils, trace
+from . import errors as _mod_errors
 
 _MODULE_PREFIX = "breezy.plugins."
 
@@ -262,9 +268,9 @@ def _load_plugins(state, paths):
             if not valid_plugin_name(name):
                 sanitised_name = sanitise_plugin_name(name)
                 trace.warning(
-                    "Unable to load {!r} in {!r} as a plugin because the "
+                    f"Unable to load {name!r} in {path!r} as a plugin because the "
                     "file path isn't a valid module name; try renaming "
-                    "it to {!r}.".format(name, path, sanitised_name)
+                    f"it to {sanitised_name!r}."
                 )
                 continue
             msg = _load_plugin_module(name, path)
@@ -311,9 +317,8 @@ def _walk_modules(path):
     for root, dirs, files in os.walk(path):
         files.sort()
         for f in files:
-            if f[:2] != "__":
-                if f.endswith((".py", COMPILED_EXT)):
-                    yield f.rsplit(".", 1)[0], root
+            if f[:2] != "__" and f.endswith((".py", COMPILED_EXT)):
+                yield f.rsplit(".", 1)[0], root
         dirs.sort()
         for d in dirs:
             if d[:2] != "__":
@@ -348,17 +353,14 @@ def describe_plugins(show_paths=False, state=None):
             version = plugin.__version__
             if version == "unknown":
                 version = ""
-            yield "{} {}\n".format(name, version)
+            yield f"{name} {version}\n"
             d = plugin.module.__doc__
-            if d:
-                doc = d.split("\n")[0]
-            else:
-                doc = "(no description)"
-            yield ("  {}\n".format(doc))
+            doc = d.split("\n")[0] if d else "(no description)"
+            yield (f"  {doc}\n")
             if show_paths:
-                yield ("   {}\n".format(plugin.path()))
+                yield (f"   {plugin.path()}\n")
         else:
-            yield "{} (failed to load)\n".format(name)
+            yield f"{name} (failed to load)\n"
         if name in state.plugin_warnings:
             for line in state.plugin_warnings[name]:
                 yield "  ** " + line + "\n"
@@ -394,21 +396,50 @@ def _get_site_plugin_paths(sys_paths):
 
 
 def get_user_plugin_path():
-    from breezy.bedding import config_dir
+    """Get the user-specific plugin directory path.
+
+    Returns:
+        Path to the user's plugin directory.
+    """
+    from .bedding import config_dir
 
     return osutils.pathjoin(config_dir(), "plugins")
 
 
 def record_plugin_warning(warning_message):
+    """Record a plugin warning message.
+
+    Args:
+        warning_message: The warning message to record.
+
+    Returns:
+        The warning message.
+    """
     trace.mutter(warning_message)
     return warning_message
 
 
 def valid_plugin_name(name):
+    """Check if a plugin name is valid.
+
+    Args:
+        name: The plugin name to validate.
+
+    Returns:
+        True if the name is valid, False otherwise.
+    """
     return not re.search("\\.|-| ", name)
 
 
 def sanitise_plugin_name(name):
+    """Sanitize a plugin name for use as a Python module name.
+
+    Args:
+        name: The plugin name to sanitize.
+
+    Returns:
+        The sanitized plugin name.
+    """
     sanitised_name = re.sub("[-. ]", "_", name)
     if sanitised_name.startswith("brz_"):
         sanitised_name = sanitised_name[len("brz_") :]
@@ -426,20 +457,18 @@ def _load_plugin_module(name, dir):
         return
     try:
         __import__(_MODULE_PREFIX + name)
-    except errors.IncompatibleVersion as e:
+    except _mod_errors.IncompatibleVersion as e:
         warning_message = (
-            "Unable to load plugin {!r}. It supports {} "
-            "versions {!r} but the current version is {}".format(
-                name, e.api.__name__, e.wanted, e.current
-            )
+            f"Unable to load plugin {name!r}. It supports {e.api.__name__} "
+            f"versions {e.wanted!r} but the current version is {e.current}"
         )
         return record_plugin_warning(warning_message)
     except Exception as e:
         trace.log_exception_quietly()
-        if "error" in debug.debug_flags:
+        if debug.debug_flag_enabled("error"):
             trace.print_exception(sys.exc_info(), sys.stderr)
         return record_plugin_warning(
-            "Unable to load plugin {!r} from {!r}: {}".format(name, dir, e)
+            f"Unable to load plugin {name!r} from {dir!r}: {e}"
         )
 
 
@@ -477,7 +506,7 @@ def format_concise_plugin_list(state=None):
         state = breezy.get_global_state()
     items = []
     for name, a_plugin in sorted(getattr(state, "plugins", {}).items()):
-        items.append("{}[{}]".format(name, a_plugin.__version__))
+        items.append(f"{name}[{a_plugin.__version__}]")
     return ", ".join(items)
 
 
@@ -485,6 +514,7 @@ class PluginsHelpIndex:
     """A help index that returns help topics for plugins."""
 
     def __init__(self):
+        """Initialize the PluginsHelpIndex."""
         self.prefix = "plugins/"
 
     def get_topics(self, topic):
@@ -533,7 +563,7 @@ class ModuleHelpTopic:
         from . import help_topics
 
         if not self.module.__doc__:
-            result = "Plugin '{}' has no docstring.\n".format(self.module.__name__)
+            result = f"Plugin '{self.module.__name__}' has no docstring.\n"
         else:
             result = self.module.__doc__
         if result[-1] != "\n":
@@ -572,6 +602,11 @@ class PlugIn:
             return repr(self.module)
 
     def __repr__(self):
+        """Return string representation of the plugin info.
+
+        Returns:
+            String representation including class, name, and module.
+        """
         return "<{}.{} name={}, module={}>".format(
             self.__class__.__module__, self.__class__.__name__, self.name, self.module
         )
@@ -612,6 +647,11 @@ class PlugIn:
 
     @property
     def __version__(self):
+        """Get the plugin version string.
+
+        Returns:
+            Version string or 'unknown' if not available.
+        """
         version_info = self.version_info()
         if version_info is None or len(version_info) == 0:
             return "unknown"
@@ -632,7 +672,7 @@ class _PluginsAtFinder:
         self.names_to_path = {prefix + n: p for n, p in names_and_paths}
 
     def __repr__(self):
-        return "<{} {!r}>".format(self.__class__.__name__, self.prefix)
+        return f"<{self.__class__.__name__} {self.prefix!r}>"
 
     def find_spec(self, fullname, paths, target=None):
         """New module spec returning find method."""
@@ -644,7 +684,5 @@ class _PluginsAtFinder:
             if path is None:
                 # GZ 2017-06-02: Any reason to block loading of the name from
                 # further down the path like this?
-                raise ImportError(
-                    "Not loading namespace package {} as {}".format(path, fullname)
-                )
+                raise ImportError(f"Not loading namespace package {path} as {fullname}")
         return importlib_util.spec_from_file_location(fullname, path)

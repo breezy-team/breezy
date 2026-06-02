@@ -17,16 +17,19 @@
 import datetime
 import time
 
+from vcsgraph.errors import NoCommonAncestor
+
 from breezy import errors
 from breezy import revision as _mod_revision
-from breezy.revisionspec import (
+from breezy.tests import TestCaseWithTransport
+
+from ..revisionspec import (
     InvalidRevisionSpec,
     RevisionInfo,
     RevisionSpec,
     RevisionSpec_dwim,
     RevisionSpec_tag,
 )
-from breezy.tests import TestCaseWithTransport
 
 
 def spec_in_history(spec, branch):
@@ -64,16 +67,13 @@ class TestRevisionSpec(TestCaseWithTransport):
         self.assertEqual(
             exp_revno,
             rev_info.revno,
-            "Revision spec: {!r} returned wrong revno: {!r} != {!r}".format(
-                revision_spec, exp_revno, rev_info.revno
-            ),
+            f"Revision spec: {revision_spec!r} returned wrong revno: {exp_revno!r} != {rev_info.revno!r}",
         )
         self.assertEqual(
             exp_revision_id,
             rev_info.rev_id,
-            "Revision spec: {!r} returned wrong revision id: {!r} != {!r}".format(
-                revision_spec, exp_revision_id, rev_info.rev_id
-            ),
+            f"Revision spec: {revision_spec!r} returned wrong revision id:"
+            f" {exp_revision_id!r} != {rev_info.rev_id!r}",
         )
 
     def assertInvalid(self, revision_spec, extra="", invalid_as_revision_id=True):
@@ -84,9 +84,8 @@ class TestRevisionSpec(TestCaseWithTransport):
             self.assertEqual(extra, e.extra)
         else:
             self.fail(
-                "Expected InvalidRevisionSpec to be raised for {!r}.in_history".format(
-                    revision_spec
-                )
+                "Expected InvalidRevisionSpec to be raised for"
+                f" {revision_spec!r}.in_history"
             )
         if invalid_as_revision_id:
             try:
@@ -98,7 +97,7 @@ class TestRevisionSpec(TestCaseWithTransport):
             else:
                 self.fail(
                     "Expected InvalidRevisionSpec to be raised for"
-                    " {!r}.as_revision_id".format(revision_spec)
+                    f" {revision_spec!r}.as_revision_id"
                 )
 
     def assertAsRevisionId(self, revision_id, revision_spec):
@@ -291,7 +290,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_with_url(self):
         url = self.get_url() + "/tree2"
-        revinfo = self.get_in_history("revno:2:{}".format(url))
+        revinfo = self.get_in_history(f"revno:2:{url}")
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
@@ -299,7 +298,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_negative_with_url(self):
         url = self.get_url() + "/tree2"
-        revinfo = self.get_in_history("revno:-1:{}".format(url))
+        revinfo = self.get_in_history(f"revno:-1:{url}")
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
@@ -586,9 +585,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
         new_tree.commit("Commit three", rev_id=b"new_r3")
 
         # With no common ancestor, we should raise another user error
-        self.assertRaises(
-            errors.NoCommonAncestor, self.get_in_history, "ancestor:new_tree"
-        )
+        self.assertRaises(NoCommonAncestor, self.get_in_history, "ancestor:new_tree")
 
     def test_no_commits(self):
         new_tree = self.make_branch_and_tree("new_tree")

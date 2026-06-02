@@ -129,8 +129,8 @@ class TestInfo(tests.TestCaseWithTransport):
 
     def assertTreeDescription(self, format):
         """Assert a tree's format description matches expectations."""
-        self.make_branch_and_tree("{}_tree".format(format), format=format)
-        tree = workingtree.WorkingTree.open("{}_tree".format(format))
+        self.make_branch_and_tree(f"{format}_tree", format=format)
+        tree = workingtree.WorkingTree.open(f"{format}_tree")
         self.assertEqual(
             format,
             info.describe_format(
@@ -142,28 +142,26 @@ class TestInfo(tests.TestCaseWithTransport):
         """Assert a checkout's format description matches expectations."""
         if expected is None:
             expected = format
-        branch = self.make_branch("{}_cobranch".format(format), format=format)
+        branch = self.make_branch(f"{format}_cobranch", format=format)
         # this ought to be easier...
         branch.create_checkout(
-            "{}_co".format(format), lightweight=True
+            f"{format}_co", lightweight=True
         ).controldir.destroy_workingtree()
-        control = controldir.ControlDir.open("{}_co".format(format))
+        control = controldir.ControlDir.open(f"{format}_co")
         old_format = control._format.workingtree_format
         try:
             control._format.workingtree_format = (
                 controldir.format_registry.make_controldir(format).workingtree_format
             )
             control.create_workingtree()
-            tree = workingtree.WorkingTree.open("{}_co".format(format))
+            tree = workingtree.WorkingTree.open(f"{format}_co")
             format_description = info.describe_format(
                 tree.controldir, tree.branch.repository, tree.branch, tree
             )
             self.assertEqual(
                 expected,
                 format_description,
-                "checkout of format called {!r} was described as {!r}".format(
-                    expected, format_description
-                ),
+                f"checkout of format called {expected!r} was described as {format_description!r}",
             )
         finally:
             control._format.workingtree_format = old_format
@@ -172,8 +170,8 @@ class TestInfo(tests.TestCaseWithTransport):
         """Assert branch's format description matches expectations."""
         if expected is None:
             expected = format
-        self.make_branch("{}_branch".format(format), format=format)
-        branch = _mod_branch.Branch.open("{}_branch".format(format))
+        self.make_branch(f"{format}_branch", format=format)
+        branch = _mod_branch.Branch.open(f"{format}_branch")
         self.assertEqual(
             expected,
             info.describe_format(branch.controldir, branch.repository, branch, None),
@@ -183,8 +181,8 @@ class TestInfo(tests.TestCaseWithTransport):
         """Assert repository's format description matches expectations."""
         if expected is None:
             expected = format
-        self.make_repository("{}_repo".format(format), format=format)
-        repo = _mod_repository.Repository.open("{}_repo".format(format))
+        self.make_repository(f"{format}_repo", format=format)
+        repo = _mod_repository.Repository.open(f"{format}_repo")
         self.assertEqual(
             expected, info.describe_format(repo.controldir, repo, None, None)
         )
@@ -394,8 +392,10 @@ class TestInfo(tests.TestCaseWithTransport):
         )
         try:
             bound_branch.bind(branch)
-        except _mod_branch.BindingUnsupported:
-            raise tests.TestNotApplicable("format does not support bound branches")
+        except _mod_branch.BindingUnsupported as err:
+            raise tests.TestNotApplicable(
+                "format does not support bound branches"
+            ) from err
         self.assertEqual(
             [
                 ("shared repository", bound_branch.repository.controldir.user_url),

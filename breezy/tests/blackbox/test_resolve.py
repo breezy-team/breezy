@@ -16,7 +16,7 @@
 
 from breezy import tests
 from breezy.bzr import conflicts as _mod_bzr_conflicts
-from breezy.tests import KnownFailure, script
+from breezy.tests import expectedFailure, script
 from breezy.tests.blackbox import test_conflicts
 
 
@@ -26,7 +26,8 @@ class TestResolve(script.TestCaseWithTransportAndScript):
         test_conflicts.make_tree_with_conflicts(self, "branch", "other")
 
     def test_resolve_one_by_one(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ cd branch
 $ brz conflicts
 Text conflict in my_other_file
@@ -38,39 +39,51 @@ $ brz resolve my_other_file
 2>1 conflict resolved, 1 remaining
 $ brz resolve mydir2
 2>1 conflict resolved, 0 remaining
-""")
+"""
+        )
 
     def test_resolve_all(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ cd branch
 $ brz resolve --all
 2>3 conflicts resolved, 0 remaining
 $ brz conflicts
-""")
+"""
+        )
 
     def test_resolve_from_subdir(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ mkdir branch/subdir
 $ cd branch/subdir
 $ brz resolve ../myfile
 2>1 conflict resolved, 2 remaining
-""")
+"""
+        )
 
     def test_resolve_via_directory_option(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz resolve -d branch myfile
 2>1 conflict resolved, 2 remaining
-""")
+"""
+        )
 
     def test_resolve_all_via_directory_option(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz resolve -d branch --all
 2>3 conflicts resolved, 0 remaining
 $ brz conflicts -d branch
-""")
+"""
+        )
 
+    # bug #842575
+    @expectedFailure
     def test_bug_842575_manual_rm(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz init -q trunk
 $ echo original > trunk/foo
 $ brz add -q trunk/foo
@@ -87,16 +100,19 @@ $ brz update tree
 $ rm tree/foo.BASE tree/foo.THIS
 $ brz resolve --all -d tree
 2>1 conflict resolved, 0 remaining
-""")
-        try:
-            self.run_script("""\
+"""
+        )
+        self.run_script(
+            """\
 $ brz status tree
-""")
-        except AssertionError:
-            raise KnownFailure("bug #842575")
+"""
+        )
 
+    # bug 842575
+    @expectedFailure
     def test_bug_842575_take_other(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz init -q trunk
 $ echo original > trunk/foo
 $ brz add -q trunk/foo
@@ -114,15 +130,15 @@ $ brz update tree
 2>Updated to revision 2 of branch ...
 $ brz resolve --take-other --all -d tree
 2>1 conflict resolved, 0 remaining
-""")
-        try:
-            self.run_script("""\
+"""
+        )
+        self.run_script(
+            """\
 $ brz status tree
 $ echo mustignore > tree/foo
 $ brz status tree
-""")
-        except AssertionError:
-            raise KnownFailure("bug 842575")
+"""
+        )
 
 
 class TestBug788000(script.TestCaseWithTransportAndScript):
@@ -146,7 +162,8 @@ $ cd ../b
             null_output_matches_anything=True,
         )
 
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz pull
 Using saved parent location:...
 Now on revision 2.
@@ -155,13 +172,16 @@ Now on revision 2.
 2>Conflict because dir is not versioned, but has versioned children...
 2>Contents conflict in dir/file
 2>3 conflicts encountered.
-""")
-        self.run_script("""\
+"""
+        )
+        self.run_script(
+            """\
 $ brz resolve --take-other
 2>deleted dir/file.THIS
 2>deleted dir
 2>3 conflicts resolved, 0 remaining
-""")
+"""
+        )
 
 
 class TestResolveAuto(tests.TestCaseWithTransport):

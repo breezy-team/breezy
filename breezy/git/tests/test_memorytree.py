@@ -17,8 +17,9 @@
 
 """Tests for the GitMemoryTree class."""
 
+from dromedary.errors import NoSuchFile
+
 from ... import errors
-from ...transport import NoSuchFile
 from . import TestCaseWithTransport
 
 

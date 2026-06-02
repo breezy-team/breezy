@@ -17,9 +17,10 @@
 """Tests for repository revision signatures."""
 
 from breezy import errors, gpg, tests, urlutils
-from breezy.bzr.testament import Testament
-from breezy.repository import WriteGroup
 from breezy.tests import per_repository
+
+from ...bzr.testament import Testament
+from ...repository import WriteGroup
 
 
 class TestSignatures(per_repository.TestCaseWithRepository):
@@ -59,10 +60,10 @@ class TestSignatures(per_repository.TestCaseWithRepository):
                 branch.repository.store_revision_signature(
                     gpg.LoopbackGPGStrategy(None), b"FOO", b"A"
                 )
-            except errors.NoSuchRevision:
+            except errors.NoSuchRevision as err:
                 raise tests.TestNotApplicable(
                     "repository does not support signing non-presentrevisions"
-                )
+                ) from err
         # A signature without a revision should not be accessible.
         self.assertRaises(
             errors.NoSuchRevision, branch.repository.has_signature_for_revision_id, b"A"

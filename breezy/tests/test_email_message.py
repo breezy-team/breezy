@@ -22,13 +22,12 @@ from ..email_message import EmailMessage
 from ..errors import BzrBadParameterNotUnicode
 from ..smtp_connection import SMTPConnection
 
-EMPTY_MESSAGE = """\
-From: from@from.com
+EMPTY_MESSAGE = f"""From: from@from.com
 Subject: subject
 To: to@to.com
-User-Agent: Bazaar ({})
+User-Agent: Bazaar ({_breezy_version})
 
-""".format(_breezy_version)
+"""
 
 _SIMPLE_MESSAGE = """\
 MIME-Version: 1.0
@@ -48,34 +47,34 @@ SIMPLE_MESSAGE_8BIT = _SIMPLE_MESSAGE % ("8-bit", "base64", "YvRkeQ==\n")
 
 BOUNDARY = "=====123456=="
 
-_MULTIPART_HEAD = """\
-Content-Type: multipart/mixed; boundary="{boundary}"
+_MULTIPART_HEAD = f"""\
+Content-Type: multipart/mixed; boundary="{BOUNDARY}"
 MIME-Version: 1.0
 From: from@from.com
 Subject: subject
 To: to@to.com
-User-Agent: Bazaar ({version})
+User-Agent: Bazaar ({_breezy_version})
 
---{boundary}
+--{BOUNDARY}
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 body
-""".format(version=_breezy_version, boundary=BOUNDARY)
+"""
 
 
 def simple_multipart_message():
-    msg = _MULTIPART_HEAD + "--{}--\n".format(BOUNDARY)
+    msg = _MULTIPART_HEAD + f"--{BOUNDARY}--\n"
     return msg
 
 
 def complex_multipart_message(typ):
     msg = (
         _MULTIPART_HEAD
-        + """\
---{boundary}
+        + f"""\
+--{BOUNDARY}
 MIME-Version: 1.0
 Content-Type: text/%s; charset="us-ascii"; name="lines.txt"
 Content-Transfer-Encoding: 7bit
@@ -87,8 +86,8 @@ c
 d
 e
 
---{boundary}--
-""".format(boundary=BOUNDARY)
+--{BOUNDARY}--
+"""
     )
     return msg % (typ,)
 
@@ -190,7 +189,7 @@ class TestEmailMessage(tests.TestCase):
         address = "Pepe P\xe9rez <pperez@ejemplo.com>"  # unicode ok
         encoded = EmailMessage.address_to_encoded_header(address)
         # addr must be unencoded
-        self.assertTrue("pperez@ejemplo.com" in encoded)
+        self.assertIn("pperez@ejemplo.com", encoded)
         self.assertEqual(address, decode(encoded))
 
         address = b"Pepe P\xe9rez <pperez@ejemplo.com>"  # ISO-8859-1 not ok

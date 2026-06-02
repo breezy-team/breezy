@@ -16,8 +16,10 @@
 
 """Tests for VersionedFile classes."""
 
-from ... import errors, multiparent, tests
-from .. import groupcompress, versionedfile
+from bzrformats import groupcompress, multiparent, versionedfile
+from bzrformats.errors import RevisionNotPresent
+
+from ... import tests
 
 
 class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
@@ -62,7 +64,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         # If the requested key is a ghost, then we have a problem
         vf = self.make_vf()
         gen = versionedfile._MPDiffGenerator(vf, [(b"one",)])
-        self.assertRaises(errors.RevisionNotPresent, gen._find_needed_keys)
+        self.assertRaises(RevisionNotPresent, gen._find_needed_keys)
 
     def test_refcount_multiple_children(self):
         vf = self.make_three_vf()

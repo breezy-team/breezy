@@ -136,7 +136,7 @@ brz: ERROR: No changes to commit.\
         with open(file_name, "w") as f:
             f.write("hello world")
         self.run_bzr(["add"])
-        out, err = self.run_bzr(["commit", "-m", file_name])
+        _out, err = self.run_bzr(["commit", "-m", file_name])
         reflags = re.MULTILINE | re.DOTALL | re.UNICODE
         osutils.get_terminal_encoding()
         self.assertContainsRe(err, "The commit message is a file name:", flags=reflags)
@@ -214,7 +214,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertEqual(
             {
-                "Committing to: {}/".format(osutils.getcwd()),
+                f"Committing to: {osutils.getcwd()}/",
                 "added subdir",
                 "renamed hello.txt => subdir/hello.txt",
                 "Committed revision 2.",
@@ -258,11 +258,9 @@ brz: ERROR: No changes to commit.\
         a_tree.commit(message="Initial message")
 
         a_tree.branch.create_checkout("b")
-        expected = "{}/".format(osutils.abspath("a"))
+        expected = f"{osutils.abspath('a')}/"
         _out, err = self.run_bzr("commit -m blah --unchanged", working_dir="b")
-        self.assertEqual(
-            err, "Committing to: {}\nCommitted revision 2.\n".format(expected)
-        )
+        self.assertEqual(err, f"Committing to: {expected}\nCommitted revision 2.\n")
 
     def test_commit_sanitizes_CR_in_message(self):
         # See bug #433779, basically Emacs likes to pass '\r\n' style line
@@ -338,7 +336,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertEqual(
             {
-                "Committing to: {}/".format(osutils.pathjoin(osutils.getcwd(), "this")),
+                f"Committing to: {osutils.pathjoin(osutils.getcwd(), 'this')}/",
                 "modified filetomodify",
                 "added newdir",
                 "added newfile",
@@ -458,8 +456,8 @@ altered in u2
         self.build_tree(["a", "b", "c"])
         tree.smart_add(["."])
         out, err = self.run_bzr(["commit", "-m", "test", "-x", "b"])
-        self.assertFalse("added b" in out)
-        self.assertFalse("added b" in err)
+        self.assertNotIn("added b", out)
+        self.assertNotIn("added b", err)
         # If b was excluded it will still be 'added' in status.
         out, err = self.run_bzr(["added"])
         self.assertEqual("b\n", out)
@@ -471,14 +469,14 @@ altered in u2
         self.build_tree(["a", "b", "c"])
         tree.smart_add(["."])
         out, err = self.run_bzr(["commit", "-m", "test", "-x", "b", "-x", "c"])
-        self.assertFalse("added b" in out)
-        self.assertFalse("added c" in out)
-        self.assertFalse("added b" in err)
-        self.assertFalse("added c" in err)
+        self.assertNotIn("added b", out)
+        self.assertNotIn("added c", out)
+        self.assertNotIn("added b", err)
+        self.assertNotIn("added c", err)
         # If b was excluded it will still be 'added' in status.
         out, err = self.run_bzr(["added"])
-        self.assertTrue("b\n" in out)
-        self.assertTrue("c\n" in out)
+        self.assertIn("b\n", out)
+        self.assertIn("c\n", out)
         self.assertEqual("", err)
 
     def test_commit_respects_spec_for_removals(self):
@@ -580,7 +578,7 @@ altered in u2
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = dict(last_rev.properties)
         del properties["branch-nick"]
-        self.assertFalse("bugs" in properties)
+        self.assertNotIn("bugs", properties)
 
     def test_bugs_sets_property(self):
         """Commit --bugs=lp:234 sets the lp:234 revprop to 'related'."""
@@ -664,7 +662,7 @@ altered in u2
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
         self.run_bzr_error(
-            ["Unrecognized bug {}. Commit refused.".format("xxx:123")],
+            [f"Unrecognized bug {'xxx:123'}. Commit refused."],
             "commit -m add-b --fixes=xxx:123",
             working_dir="tree",
         )
@@ -729,7 +727,7 @@ altered in u2
         self.run_bzr("commit -m hello tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertFalse("author" in properties)
+        self.assertNotIn("author", properties)
 
     def test_author_sets_property(self):
         """Commit --author='John Doe <jdoe@example.com>' sets the author
@@ -809,6 +807,177 @@ altered in u2
         # some other exception
         self.assertContainsString(err, "missing a timezone offset")
 
+    def test_amend_replaces_tip(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("first")
+        old_revid = tree.last_revision()
+        self.build_tree_contents([("tree/a", b"updated\n")])
+        self.run_bzr("commit --amend -m amended tree")
+        self.assertEqual(1, tree.branch.revno())
+        new_revid = tree.last_revision()
+        self.assertNotEqual(old_revid, new_revid)
+        new_rev = tree.branch.repository.get_revision(new_revid)
+        self.assertEqual("amended", new_rev.message)
+
+    def test_amend_inherits_message(self):
+        if sys.platform == "win32":
+            self.skipTest("editor recording not implemented on Windows")
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("original message")
+        # Use an editor that leaves the pre-filled message untouched, then
+        # accept it via the "Commit message was not edited" confirmation.
+        with open("noop.sh", "wb") as f:
+            f.write(b"#!/bin/sh\n")
+        os.chmod("noop.sh", 0o755)  # noqa: S103
+        self.overrideEnv("BRZ_EDITOR", os.path.abspath("noop.sh"))
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(
+            ["commit", "--amend", "--unchanged"], working_dir="tree", stdin="y\n"
+        )
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual("original message", new_rev.message.rstrip("\n"))
+
+    def test_amend_inherits_author_and_time(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        self.run_bzr(
+            [
+                "commit",
+                "-m",
+                "first",
+                "--author",
+                "Jane <jane@example.com>",
+                "--commit-time",
+                "2009-10-10 08:00:00 +0100",
+                "tree/a",
+            ]
+        )
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(["commit", "--amend", "-m", "amended", "tree"])
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual("Jane <jane@example.com>", new_rev.properties["authors"])
+        self.assertEqual(
+            "Sat 2009-10-10 08:00:00 +0100",
+            osutils.format_date(new_rev.timestamp, new_rev.timezone),
+        )
+
+    def test_amend_inherits_bug_property(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        self.run_bzr(["commit", "-m", "first", "--fixes", "lp:42", "tree/a"])
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(["commit", "--amend", "-m", "amended", "tree"])
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertIn("bugs", new_rev.properties)
+        self.assertIn("https://launchpad.net/bugs/42", new_rev.properties["bugs"])
+
+    def test_amend_overrides_message(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("original")
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(["commit", "--amend", "-m", "replacement", "tree"])
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual("replacement", new_rev.message)
+
+    def test_amend_overrides_author(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        self.run_bzr(
+            ["commit", "-m", "first", "--author", "Jane <j@example.com>", "tree/a"]
+        )
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(
+            [
+                "commit",
+                "--amend",
+                "-m",
+                "amended",
+                "--author",
+                "Joe <joe@example.com>",
+                "tree",
+            ]
+        )
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual("Joe <joe@example.com>", new_rev.properties["authors"])
+
+    def test_amend_with_no_revisions(self):
+        self.make_branch_and_tree("tree")
+        _out, err = self.run_bzr(
+            ["commit", "--amend", "-m", "amended", "tree"], retcode=3
+        )
+        self.assertContainsString(err, "Nothing to amend")
+
+    def test_amend_editor_prepopulated_with_old_message(self):
+        if sys.platform == "win32":
+            self.skipTest("editor recording not implemented on Windows")
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("first message")
+        tree.commit("second message", allow_pointless=True)
+        # Record what the editor sees, then exit without modifying it.
+        with open("recorder.sh", "wb") as f:
+            f.write(b"#!/bin/sh\ncat $1 > recorded.txt\n")
+        os.chmod("recorder.sh", 0o755)  # noqa: S103
+        self.overrideEnv("BRZ_EDITOR", os.path.abspath("recorder.sh"))
+        self.build_tree(["tree/b"])
+        tree.add("b")
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(["commit", "--amend", "tree"], stdin="y\n")
+        with open("recorded.txt") as f:
+            recorded = f.read()
+        self.assertContainsString(recorded, "second message")
+        # The status section should reflect the contents of the new commit
+        # (modifications since the grandparent), not an empty diff against
+        # the original tip.
+        self.assertContainsString(recorded, "added:\n  b")
+        self.assertContainsString(recorded, "modified:\n  a")
+
+    def test_amend_editor_cancellation_preserves_branch(self):
+        if sys.platform == "win32":
+            self.skipTest("editor cancellation not testable on Windows")
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("kept")
+        old_revid = tree.last_revision()
+        with open("noop.sh", "wb") as f:
+            f.write(b"#!/bin/sh\n")
+        os.chmod("noop.sh", 0o755)  # noqa: S103
+        self.overrideEnv("BRZ_EDITOR", os.path.abspath("noop.sh"))
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        # Answering "no" to the "use anyway?" prompt should error out and
+        # leave the branch tip unchanged.
+        _out, err = self.run_bzr(["commit", "--amend", "tree"], retcode=3, stdin="n\n")
+        self.assertContainsString(err, "Empty commit message specified")
+        tree = tree.controldir.open_workingtree()
+        self.assertEqual(old_revid, tree.last_revision())
+
+    def test_amend_with_pending_merges_refused(self):
+        base = self.make_branch_and_tree("base")
+        self.build_tree(["base/a"])
+        base.add("a")
+        base.commit("base")
+        other = base.controldir.sprout("other").open_workingtree()
+        self.build_tree_contents([("other/a", b"other\n")])
+        other.commit("other")
+        self.build_tree_contents([("base/a", b"base change\n")])
+        base.commit("base change")
+        base.merge_from_branch(other.branch)
+        _out, err = self.run_bzr(
+            ["commit", "--amend", "-m", "amended", "base"], retcode=3
+        )
+        self.assertContainsString(err, "pending merges")
+
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
         t = self.make_branch_and_tree(".")
@@ -849,7 +1018,7 @@ altered in u2
         else:
             with open("fed.sh", "wb") as f:
                 f.write(b"#!/bin/sh\n")
-            os.chmod("fed.sh", 0o755)
+            os.chmod("fed.sh", 0o755)  # noqa: S103
             self.overrideEnv("BRZ_EDITOR", "./fed.sh")
 
     def setup_commit_with_template(self):

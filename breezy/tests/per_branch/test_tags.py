@@ -32,9 +32,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # tests...
         branch = self.make_branch("probe")
         if not branch._format.supports_tags():
-            raise tests.TestSkipped(
-                "format {} doesn't support tags".format(branch._format)
-            )
+            raise tests.TestSkipped(f"format {branch._format} doesn't support tags")
 
     def make_branch_with_revisions(self, relpath, revisions):
         builder = self.make_branch_builder(relpath)
@@ -282,16 +280,14 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         super().setUp()
         branch1 = self.make_branch("tags-probe")
         if not branch1._format.supports_tags():
-            raise tests.TestSkipped(
-                "format {} doesn't support tags".format(branch1._format)
-            )
+            raise tests.TestSkipped(f"format {branch1._format} doesn't support tags")
         branch2 = self.make_branch("bind-probe")
         try:
             branch2.bind(branch1)
-        except branch.BindingUnsupported:
+        except branch.BindingUnsupported as e:
             raise tests.TestNotApplicable(
-                "format {} doesn't support bound branches".format(branch2._format)
-            )
+                f"format {branch2._format} doesn't support bound branches"
+            ) from e
 
     def test_merge_to_propagates_tags(self):
         """merge_to(child) also merges tags to the master."""
@@ -480,7 +476,7 @@ class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
         self.branch = self.builder.get_branch()
         if not self.branch._format.supports_tags():
             raise tests.TestSkipped(
-                "format {} doesn't support tags".format(self.branch._format)
+                f"format {self.branch._format} doesn't support tags"
             )
 
     def test_no_functions(self):

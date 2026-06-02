@@ -25,7 +25,14 @@ from .test_filters import _stack_1
 
 
 class TestFilterTree(tests.TestCaseWithTransport):
+    """Tests for ContentFilterTree functionality."""
+
     def make_tree(self):
+        """Create a test tree with content filters applied.
+
+        Returns:
+            The filtered tree instance.
+        """
         self.underlying_tree = fixtures.make_branch_and_populated_tree(self)
 
         def stack_callback(path):
@@ -37,11 +44,13 @@ class TestFilterTree(tests.TestCaseWithTransport):
         return self.filter_tree
 
     def test_get_file_text(self):
+        """Test that file text is properly filtered when retrieved."""
         self.make_tree()
         self.assertEqual(self.underlying_tree.get_file_text("hello"), b"hello world")
         self.assertEqual(self.filter_tree.get_file_text("hello"), b"HELLO WORLD")
 
     def test_tar_export_content_filter_tree(self):
+        """Test that tar exports correctly apply content filters."""
         # TODO: this could usefully be run generically across all exporters.
         self.make_tree()
         export.export(self.filter_tree, "out.tgz")
@@ -49,6 +58,7 @@ class TestFilterTree(tests.TestCaseWithTransport):
         self.assertEqual(b"HELLO WORLD", ball.extractfile("out/hello").read())
 
     def test_zip_export_content_filter_tree(self):
+        """Test that zip exports correctly apply content filters."""
         self.make_tree()
         export.export(self.filter_tree, "out.zip")
         zipf = zipfile.ZipFile("out.zip", "r")

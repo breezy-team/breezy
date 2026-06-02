@@ -14,25 +14,47 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Bazaar support for Breezy."""
+
+__all__ = [
+    "BzrProber",
+    "LineEndingError",
+    "RemoteBzrProber",
+    "hashcache",
+    "register_metadir",
+    "rio",
+]
+
 from typing import TYPE_CHECKING
 
-from .. import config, controldir, errors, pyutils, registry
-from .. import transport as _mod_transport
+from bzrformats._bzr_rs import hashcache, rio
+from catalogus import pyutils
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+
+from .. import config, controldir, errors, registry
 from ..branch import format_registry as branch_format_registry
 from ..repository import format_registry as repository_format_registry
 from ..workingtree import format_registry as workingtree_format_registry
 
 if TYPE_CHECKING:
-    from .bzrdir import BzrDirFormat
+    from .bzrdir import BzrDirFormat  # noqa: F401
 
 
 class LineEndingError(errors.BzrError):
+    """Exception raised when line ending corruption is detected."""
+
     _fmt = (
         "Line ending corrupted for file: %(file)s; "
         "Maybe your files got corrupted in transport?"
     )
 
     def __init__(self, file):
+        """Create a LineEndingError exception.
+
+        Args:
+            file: The file that has corrupted line endings.
+        """
         self.file = file
 
 
@@ -46,6 +68,7 @@ class BzrProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
+        """Return the priority for this prober."""
         return 10
 
     @classmethod
@@ -53,9 +76,9 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-        except _mod_transport.NoSuchFile as e:
+        except NoSuchFile as e:
             raise errors.NotBranchError(path=transport.base) from e
-        except errors.BadHttpRequest as e:
+        except transport_errors.BadHttpRequest as e:
             if e.reason == "no such method: .bzr":
                 # hgweb
                 raise errors.NotBranchError(path=transport.base) from e
@@ -80,6 +103,7 @@ class BzrProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
+        """Return list of known .bzr formats."""
         result = []
         for _name, format in cls.formats.items():
             if callable(format):
@@ -96,19 +120,22 @@ class RemoteBzrProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
+        """Return the priority for this prober."""
         return -10
 
     @classmethod
     def probe_transport(klass, transport):
         """Return a RemoteBzrDirFormat object if it looks possible."""
+        from .smart import transport as _smart_transport
+
         try:
-            medium = transport.get_smart_medium()
+            medium = _smart_transport.get_smart_medium(transport)
         except (
             NotImplementedError,
             AttributeError,
-            errors.TransportNotPossible,
-            errors.NoSmartMedium,
-            errors.SmartProtocolError,
+            transport_errors.TransportNotPossible,
+            _smart_transport.NoSmartMedium,
+            transport_errors.SmartProtocolError,
         ) as e:
             # no smart server, so not a branch for this format type.
             raise errors.NotBranchError(path=transport.base) from e
@@ -118,7 +145,7 @@ class RemoteBzrProber(controldir.Prober):
             if medium.should_probe():
                 try:
                     server_version = medium.protocol_version()
-                except errors.SmartProtocolError as e:
+                except transport_errors.SmartProtocolError as e:
                     # Apparently there's no usable smart server there, even though
                     # the medium supports the smart protocol.
                     raise errors.NotBranchError(path=transport.base) from e
@@ -130,6 +157,7 @@ class RemoteBzrProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
+        """Return list of known remote formats."""
         from .remote import RemoteBzrDirFormat
 
         return [RemoteBzrDirFormat()]
@@ -185,8 +213,10 @@ def register_metadir(
         except ImportError as e:
             raise ImportError(f"failed to load {full_name}: {e}") from e
         except AttributeError as e:
+            import sys
+
             raise AttributeError(
-                "no factory {} in module {!r}".format(full_name, sys.modules[mod_name])
+                f"no factory {full_name} in module {sys.modules[mod_name]!r}"
             ) from e
         return factory()
 
@@ -570,3 +600,8 @@ controldir.format_registry.register_alias("bzr", "2a")
 # The current format that is made on 'bzr init'.
 format_name = config.GlobalStack().get("default_format")
 controldir.format_registry.set_default(format_name)
+
+# Smart-protocol-over-HTTP support is provided by a thin HttpTransport
+# subclass registered in breezy.transport. We don't need to import anything
+# here at module load time — the subclass module is loaded lazily on first
+# http:// or https:// access.

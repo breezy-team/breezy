@@ -165,6 +165,11 @@ commands.plugin_cmds.register_lazy("cmd_upload", [], "breezy.plugins.upload.cmds
 
 
 def auto_upload_hook(params):
+    """Hook function for automatic upload after branch tip changes.
+
+    Args:
+        params: Hook parameters containing branch information.
+    """
     import sys
 
     from ... import osutils, trace, transport, urlutils
@@ -194,6 +199,7 @@ def auto_upload_hook(params):
 
 
 def install_auto_upload_hook():
+    """Install the auto upload hook for branch tip changes."""
     hooks.install_lazy_named_hook(
         "breezy.branch",
         "Branch.hooks",
@@ -207,6 +213,16 @@ install_auto_upload_hook()
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load test modules for the upload plugin.
+
+    Args:
+        loader: Test loader.
+        basic_tests: Basic test suite.
+        pattern: Test pattern (unused).
+
+    Returns:
+        Updated test suite with plugin tests.
+    """
     # This module shouldn't define any tests but I don't know how to report
     # that. I prefer to update basic_tests with the other tests to detect
     # unwanted tests and I think that's sufficient.
@@ -214,9 +230,6 @@ def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         "tests",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

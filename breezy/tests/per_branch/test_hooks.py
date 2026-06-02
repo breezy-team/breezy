@@ -55,10 +55,7 @@ class ChangeBranchTipTestCase(tests.TestCaseWithMemoryTransport):
             # this hook, and we see both in the test environment. The remote
             # instance comes in between the clients - the client doe pre, the
             # server does pre, the server does post, the client does post.
-            if pre:
-                offset = 0
-            else:
-                offset = 1
+            offset = 0 if pre else 1
             self.assertEqual(expected_params, hook_calls[offset])
             self.assertEqual(2, len(hook_calls))
         else:
@@ -118,7 +115,7 @@ class TestOpen(tests.TestCaseWithMemoryTransport):
         # Branches opened on the server don't have comparable URLs, so we just
         # assert that it is not a RemoteBranch.
         self.assertIsInstance(b, _mod_branch.Branch)
-        self.assertFalse(isinstance(b, remote.RemoteBranch))
+        self.assertNotIsInstance(b, remote.RemoteBranch)
 
 
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):
@@ -201,10 +198,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         self.assertIsNot(hook_calls_1, hook_calls_2)
         branch.set_last_revision_info(0, revision.NULL_REVISION)
         # Both hooks are called.
-        if isinstance(branch, remote.RemoteBranch):
-            count = 2
-        else:
-            count = 1
+        count = 2 if isinstance(branch, remote.RemoteBranch) else 1
         self.assertEqual(len(hook_calls_1), count)
         self.assertEqual(len(hook_calls_2), count)
 
@@ -295,10 +289,7 @@ class TestPostChangeBranchTip(ChangeBranchTipTestCase):
         self.assertIsNot(hook_calls_1, hook_calls_2)
         branch.set_last_revision_info(0, revision.NULL_REVISION)
         # Both hooks are called.
-        if isinstance(branch, remote.RemoteBranch):
-            count = 2
-        else:
-            count = 1
+        count = 2 if isinstance(branch, remote.RemoteBranch) else 1
         self.assertEqual(len(hook_calls_1), count)
         self.assertEqual(len(hook_calls_2), count)
 
@@ -327,10 +318,7 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
         """
         # Check for the number of invocations expected. One invocation is
         # local, one is remote (if the branch is remote).
-        if smart_enabled and isinstance(branch, remote.RemoteBranch):
-            length = 2
-        else:
-            length = 1
+        length = 2 if smart_enabled and isinstance(branch, remote.RemoteBranch) else 1
         self.assertEqual(length, len(self.pre_hook_calls))
         self.assertEqual(length, len(self.post_hook_calls))
 

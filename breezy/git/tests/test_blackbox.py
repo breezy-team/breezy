@@ -143,10 +143,10 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(["info", "-v"])
         self.assertEqual(error, "")
-        self.assertTrue("Standalone tree (format: git)" in output)
-        self.assertTrue("control: Local Git Repository" in output)
-        self.assertTrue("branch: Local Git Branch" in output)
-        self.assertTrue("repository: Git Repository" in output)
+        self.assertIn("Standalone tree (format: git)", output)
+        self.assertIn("control: Local Git Repository", output)
+        self.assertIn("branch: Local Git Branch", output)
+        self.assertIn("repository: Git Repository", output)
 
     def test_push_roundtripping(self):
         self.knownFailure("roundtripping is not yet supported")
@@ -235,9 +235,10 @@ class TestGitBlackBox(ExternalBase):
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(["log"])
         self.assertEqual(error, "")
-        self.assertTrue(
-            "<The commit message>" in output,
-            "Commit message was not found in output:\n{}".format(output),
+        self.assertIn(
+            "<The commit message>",
+            output,
+            f"Commit message was not found in output:\n{output}",
         )
 
     def test_log_verbose(self):
@@ -258,7 +259,7 @@ class TestGitBlackBox(ExternalBase):
 
     def test_commit_without_revno(self):
         GitRepo.init(self.test_dir)
-        output, error = self.run_bzr(
+        _output, error = self.run_bzr(
             ["commit", "-Ocalculate_revnos=yes", "--unchanged", "-m", "one"]
         )
         self.assertContainsRe(error, "Committed revision 1.")
@@ -316,7 +317,9 @@ class TestGitBlackBox(ExternalBase):
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a"])
         tree.add(["a"])
-        output, error = self.run_bzr(["diff", "--format=git"], retcode=1)
+        output, error = self.run_bzr(
+            ["diff", "--color=never", "--format=git"], retcode=1
+        )
         self.assertEqual(error, "")
         self.assertEqual(
             output,
@@ -453,8 +456,8 @@ class TestGitBlackBox(ExternalBase):
         tree.branch.tags.set_tag("atag", revid)
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
         self.assertEqual(stderr, "")
-        self.assertTrue("refs/tags/atag -> " in stdout)
-        self.assertTrue("HEAD -> " in stdout)
+        self.assertIn("refs/tags/atag -> ", stdout)
+        self.assertIn("HEAD -> ", stdout)
 
     def test_check(self):
         r = GitRepo.init("gitr", mkdir=True)
@@ -617,11 +620,10 @@ class SwitchTests(ExternalBase):
             [
                 (
                     "source/.gitmodules",
-                    """\
-[submodule "subtree"]
+                    f"""[submodule "subtree"]
     path = subtree
-    url = {}
-""".format(subtree.user_url),
+    url = {subtree.user_url}
+""",
                 )
             ]
         )
@@ -642,7 +644,8 @@ class SwitchTests(ExternalBase):
 class SwitchScriptTests(TestCaseWithTransportAndScript):
     def test_switch_preserves(self):
         # See https://bugs.launchpad.net/brz/+bug/1820606
-        self.run_script("""
+        self.run_script(
+            """
 $ brz init --git r
 Created a standalone tree (format: git)
 $ cd r
@@ -659,7 +662,8 @@ $ brz switch -b other
 2>Switched to branch other
 $ cat file.txt
 entered on master branch
-""")
+"""
+        )
 
 
 class GrepTests(ExternalBase):
@@ -667,7 +671,7 @@ class GrepTests(ExternalBase):
         tree = self.make_branch_and_tree(".", format="git")
         self.build_tree_contents([("a", "text for a\n")])
         tree.add(["a"])
-        output, error = self.run_bzr("grep text")
+        output, error = self.run_bzr("grep --color=never text")
         self.assertEqual(output, "a:text for a\n")
         self.assertEqual(error, "")
 
@@ -721,7 +725,7 @@ class GitObjectsTests(ExternalBase):
         self.assertEqual([40, 40], [len(s) for s in shas])
         self.assertEqual(error, "")
 
-        output, error = self.run_bzr("git-object {}".format(shas[0]))
+        output, error = self.run_bzr(f"git-object {shas[0]}")
         self.assertEqual("", error)
 
     def test_in_native(self):
@@ -736,7 +740,8 @@ class GitApplyTests(ExternalBase):
         self.make_branch_and_tree(".")
 
         with open("foo.patch", "w") as f:
-            f.write("""\
+            f.write(
+                """\
 From bdefb25fab801e6af0a70e965f60cb48f2b759fa Mon Sep 17 00:00:00 2001
 From: Dmitry Bogatov <KAction@debian.org>
 Date: Fri, 8 Feb 2019 23:28:30 +0000
@@ -756,6 +761,7 @@ index 0000000..05ec0b1
 +Update standards version, no changes needed.
 +Certainty: certain
 +Fixed-Lintian-Tags: out-of-date-standards-version
-""")
+"""
+            )
         _output, error = self.run_bzr("git-apply foo.patch")
         self.assertContainsRe(error, "Committing to: .*\nCommitted revision 1.\n")

@@ -19,7 +19,8 @@
 
 from breezy import revision
 from breezy.tests import TestCaseWithTransport
-from breezy.tree import FileTimestampUnavailable
+
+from ..tree import FileTimestampUnavailable
 
 
 class TestTreeWithCommits(TestCaseWithTransport):
@@ -72,8 +73,19 @@ class TestTreeWithCommits(TestCaseWithTransport):
         self.assertEqual(revid1, tree.get_file_revision("a"))
 
     def test_get_file_mtime_ghost(self):
+        if not hasattr(self.rev_tree.root_inventory, "delete"):
+            self.skipTest("Inventory does not support delete")
         path = next(iter(self.rev_tree.all_versioned_paths()))
-        self.rev_tree.root_inventory.get_entry(
-            self.rev_tree.path2id(path)
-        ).revision = b"ghostrev"
+        # bzrformats InventoryEntry attributes are read-only and the
+        # CHKInventory wrapper does not expose mutation.  Stub out the
+        # repository's get_revision so the entry's revision lookup
+        # fails as if it were a ghost.
+        from breezy.errors import NoSuchRevision
+
+        repo = self.rev_tree._repository
+
+        def raise_no_such(_revision_id):
+            raise NoSuchRevision(repo, b"ghostrev")
+
+        self.overrideAttr(repo, "get_revision", raise_no_such)
         self.assertRaises(FileTimestampUnavailable, self.rev_tree.get_file_mtime, path)

@@ -20,7 +20,6 @@ See developers/testing.html for more explanations.
 """
 
 import doctest
-import errno
 import glob
 import logging
 import os
@@ -122,8 +121,7 @@ def _script_to_commands(text, file_name=None):
             if output is None:
                 if cmd_cur is None:
                     raise SyntaxError(
-                        "No command for line {!r}".format(line),
-                        (file_name, lineno, 1, orig),
+                        f"No command for line {line!r}", (file_name, lineno, 1, orig)
                     )
                 output = []
             output.append(line + "\n")
@@ -218,29 +216,22 @@ class ScriptRunner:
         method = getattr(self, mname, None)
         if method is None:
             raise SyntaxError(
-                'Command not found "{}"'.format(cmd[0]), (None, 1, 1, " ".join(cmd))
+                f'Command not found "{cmd[0]}"', (None, 1, 1, " ".join(cmd))
             )
-        if input is None:
-            str_input = ""
-        else:
-            str_input = "".join(input)
+        str_input = "" if input is None else "".join(input)
         args = list(self._pre_process_args(cmd[1:]))
         retcode, actual_output, actual_error = method(test_case, str_input, args)
 
         try:
             self._check_output(output, actual_output, test_case)
         except AssertionError as e:
-            raise AssertionError(str(e) + " in stdout of command {}".format(cmd))
+            raise AssertionError(str(e) + f" in stdout of command {cmd}") from e
         try:
             self._check_output(error, actual_error, test_case)
         except AssertionError as e:
-            raise AssertionError(
-                str(e) + " in stderr of running command {}".format(cmd)
-            )
+            raise AssertionError(str(e) + f" in stderr of running command {cmd}") from e
         if retcode and not error and actual_error:
-            test_case.fail(
-                "In \n\t{}\nUnexpected error: {}".format(" ".join(cmd), actual_error)
-            )
+            test_case.fail(f"In \n\t{' '.join(cmd)}\nUnexpected error: {actual_error}")
         return retcode, actual_output, actual_error
 
     def _check_output(self, expected, actual, test_case):
@@ -250,9 +241,7 @@ class ScriptRunner:
             elif expected == "...\n":
                 return
             else:
-                test_case.fail(
-                    "expected output: {!r}, but found nothing".format(expected)
-                )
+                test_case.fail(f"expected output: {expected!r}, but found nothing")
 
         null_output_matches_anything = getattr(
             self, "null_output_matches_anything", False
@@ -357,23 +346,19 @@ class ScriptRunner:
         for in_name in input_names:
             try:
                 inputs.append(self._read_input(None, in_name))
-            except OSError as e:
+            except (FileNotFoundError, ValueError):
                 # Some filenames are illegal on Windows and generate EINVAL
                 # rather than just saying the filename doesn't exist
-                if e.errno in (errno.ENOENT, errno.EINVAL):
-                    return (1, None, "{}: No such file or directory\n".format(in_name))
-                raise
+                return (1, None, f"{in_name}: No such file or directory\n")
         # Basically cat copy input to output
         output = "".join(inputs)
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except OSError as e:
-            # If out_name cannot be created, we may get 'ENOENT', however if
+        except (FileNotFoundError, ValueError):
+            # If out_name cannot be created, we may get FileNotFoundError, however if
             # out_name is something like '', we can get EINVAL
-            if e.errno in (errno.ENOENT, errno.EINVAL):
-                return 1, None, "{}: No such file or directory\n".format(out_name)
-            raise
+            return 1, None, f"{out_name}: No such file or directory\n"
         return 0, output, None
 
     def do_echo(self, test_case, input, args):
@@ -389,10 +374,8 @@ class ScriptRunner:
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except OSError as e:
-            if e.errno in (errno.ENOENT, errno.EINVAL):
-                return 1, None, "{}: No such file or directory\n".format(out_name)
-            raise
+        except (FileNotFoundError, ValueError):
+            return 1, None, f"{out_name}: No such file or directory\n"
         return 0, output, None
 
     def _get_jail_root(self, test_case):
@@ -401,7 +384,7 @@ class ScriptRunner:
     def _ensure_in_jail(self, test_case, path):
         jail_root = self._get_jail_root(test_case)
         if not osutils.is_inside(jail_root, osutils.normalizepath(path)):
-            raise ValueError("{} is not inside {}".format(path, jail_root))
+            raise ValueError(f"{path} is not inside {jail_root}")
 
     def do_cd(self, test_case, input, args):
         if len(args) > 1:
@@ -427,7 +410,7 @@ class ScriptRunner:
         err = None
 
         def error(msg, path):
-            return "rm: cannot remove '{}': {}\n".format(path, msg)
+            return f"rm: cannot remove '{path}': {msg}\n"
 
         force, recursive = False, False
         opts = None
@@ -446,32 +429,24 @@ class ScriptRunner:
             # FIXME: Should we put that in osutils ?
             try:
                 os.remove(p)
-            except OSError as e:
-                # Various OSes raises different exceptions (linux: EISDIR,
-                #   win32: EACCES, OSX: EPERM) when invoked on a directory
-                if e.errno in (errno.EISDIR, errno.EPERM, errno.EACCES):
-                    if recursive:
-                        osutils.rmtree(p)
-                    else:
-                        err = error("Is a directory", p)
-                        break
-                elif e.errno == errno.ENOENT:
-                    if not force:
-                        err = error("No such file or directory", p)
-                        break
+            except (PermissionError, IsADirectoryError):
+                if recursive:
+                    osutils.rmtree(p)
                 else:
-                    raise
-        if err:
-            retcode = 1
-        else:
-            retcode = 0
+                    err = error("Is a directory", p)
+                    break
+            except FileNotFoundError:
+                if not force:
+                    err = error("No such file or directory", p)
+                    break
+        retcode = 1 if err else 0
         return retcode, None, err
 
     def do_mv(self, test_case, input, args):
         err = None
 
         def error(msg, src, dst):
-            return "mv: cannot move {} to {}: {}\n".format(src, dst, msg)
+            return f"mv: cannot move {src} to {dst}: {msg}\n"
 
         if not args or len(args) != 2:
             raise SyntaxError("Usage: mv path1 path2")
@@ -481,15 +456,9 @@ class ScriptRunner:
             if os.path.isdir(dst):
                 real_dst = os.path.join(dst, os.path.basename(src))
             os.rename(src, real_dst)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                err = error("No such file or directory", src, dst)
-            else:
-                raise
-        if err:
-            retcode = 1
-        else:
-            retcode = 0
+        except FileNotFoundError:
+            err = error("No such file or directory", src, dst)
+        retcode = 1 if err else 0
         return retcode, None, err
 
 
