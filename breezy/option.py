@@ -542,55 +542,363 @@ class RegistryOption(Option):
         return getattr(self.registry.get_info(name), "hidden", False)
 
 
-class OptionParser(optparse.OptionParser):
-    """OptionParser that raises exceptions instead of exiting.
+class OptionParser:
+    """Carrier for the sentinel marking an unset value option.
 
-    This is used to integrate with breezy's error handling system rather
-    than having optparse call sys.exit() on errors.
+    Command-line parsing is now done by :class:`RustOptionParser`; this class
+    is retained only for the ``DEFAULT_VALUE`` sentinel, which the optparse
+    shim in :meth:`Option.add_option` (used by the completion plugins) and
+    ``commands.parse_args`` still reference.
     """
 
     DEFAULT_VALUE = object()
 
+
+class OptionValues:
+    """Holds parsed option values.
+
+    A drop-in for ``optparse.Values``: attributes hold the parsed values and
+    equality compares against another ``OptionValues`` or a plain dict (matching
+    the behaviour the option tests rely on).
+    """
+
     def __init__(self):
-        """Initialize OptionParser."""
-        optparse.OptionParser.__init__(self)
-        self.formatter = GettextIndentedHelpFormatter()
+        """Initialize with no values set."""
+
+    def __eq__(self, other):
+        """Compare values by their attribute dict, like optparse.Values."""
+        if isinstance(other, OptionValues):
+            return self.__dict__ == other.__dict__
+        elif isinstance(other, dict):
+            return self.__dict__ == other
+        else:
+            return NotImplemented
+
+    def __repr__(self):
+        """Return a debug representation of the held values."""
+        return f"OptionValues({self.__dict__!r})"
+
+
+class _OptError(Exception):
+    """Internal error raised while applying a parsed option value.
+
+    The message is reported to the user via ``RustOptionParser.error`` as a
+    CommandError, mirroring optparse's behaviour.
+    """
+
+
+class RustOptionParser:
+    """A standalone option parser backed by the Rust tokenizer.
+
+    This replaces breezy's previous ``optparse``-based ``OptionParser``. It
+    introspects breezy ``Option`` objects to build a token spec for the Rust
+    tokenizer, then applies type conversion, list handling, registry conversion
+    and custom callbacks itself, producing an :class:`OptionValues` result.
+    """
+
+    DEFAULT_VALUE = OptionParser.DEFAULT_VALUE
+
+    def __init__(self, options):
+        """Build a parser for the given breezy ``Option`` objects."""
+        self._options = options
+        self.values = OptionValues()
+        # A real optparse parser, built on demand for the completion plugins'
+        # add_option/add_option_group introspection (see _optparse).
+        self._optparse_parser = None
+        # Each spec entry is (key, long, short, negation, takes_value); each key
+        # maps to an applier callable invoked with (opt_str, value, flag_value).
+        self._specs = []
+        self._appliers = {}
+        # The values that must default to the empty list (ListOption) or the
+        # DEFAULT_VALUE sentinel (plain value options), applied up front.
+        self._defaults = {}
+        for option in options:
+            self._register(option)
+        for param_name, default in self._defaults.items():
+            setattr(self.values, param_name, default)
 
     def error(self, message):
-        """Handle option parsing errors.
-
-        Args:
-            message: Error message to report.
-
-        Raises:
-            CommandError: Always, instead of calling sys.exit().
-        """
+        """Raise a CommandError instead of exiting, like the old parser."""
         raise errors.CommandError(message)
 
+    def _optparse(self):
+        """Lazily build a real ``optparse.OptionParser`` for introspection.
 
-class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
-    """Adds gettext() call to format_option()."""
+        The Rust parser does its own tokenizing, but the bash/zsh completion
+        plugins drive options through optparse's ``add_option`` /
+        ``add_option_group`` protocol to enumerate switches. We delegate those
+        calls to a genuine optparse parser so the plugins keep working.
+        """
+        if self._optparse_parser is None:
+            self._optparse_parser = optparse.OptionParser()
+            self._optparse_parser.remove_option("--help")
+        return self._optparse_parser
 
-    def __init__(self):
-        """Initialize GettextIndentedHelpFormatter."""
-        optparse.IndentedHelpFormatter.__init__(self)
+    def add_option(self, *args, **kwargs):
+        """Add an option to the introspection parser (optparse protocol)."""
+        return self._optparse().add_option(*args, **kwargs)
 
-    def format_option(self, option):
-        """Code taken from Python's optparse.py."""
-        if option.help:
-            from .i18n import gettext
+    def add_option_group(self, *args, **kwargs):
+        """Add an option group to the introspection parser (optparse protocol)."""
+        return self._optparse().add_option_group(*args, **kwargs)
 
-            option.help = gettext(option.help)
-        return optparse.IndentedHelpFormatter.format_option(self, option)
+    def _add_spec(self, key, long, short, negation, takes_value, applier):
+        self._specs.append((key, long, short, negation, takes_value))
+        self._appliers[key] = applier
+
+    def _register(self, option):
+        if isinstance(option, ListOption):
+            self._register_list(option)
+        elif isinstance(option, RegistryOption):
+            self._register_registry(option)
+        else:
+            self._register_plain(option)
+
+    def _register_plain(self, option):
+        # The spec key is the option's long name, which is unique within a
+        # command; the applier knows which param_name to write. (Two options
+        # can share a param_name, e.g. --change writes the "revision" param.)
+        param = option._param_name
+        short = option.short_name()
+        if option.type is None:
+            # Boolean: the affirmative sets True, the negation sets False.
+            self._add_spec(
+                option.name,
+                option.name,
+                short,
+                option.get_negation_name(),
+                False,
+                self._make_bool_applier(option),
+            )
+        else:
+            self._defaults[param] = self.DEFAULT_VALUE
+            self._add_spec(
+                option.name,
+                option.name,
+                short,
+                None,
+                True,
+                self._make_value_applier(option),
+            )
+
+    def _register_list(self, option):
+        param = option._param_name
+        self._defaults[param] = []
+        self._add_spec(
+            option.name,
+            option.name,
+            option.short_name(),
+            None,
+            True,
+            self._make_list_applier(option),
+        )
+
+    def _register_registry(self, option):
+        if option.enum_switch:
+            self._add_spec(
+                option.name,
+                option.name,
+                option.short_name(),
+                None,
+                True,
+                self._make_value_applier(option),
+            )
+        if option.value_switches:
+            for key in option.registry.keys():
+                if key in option.registry.aliases():
+                    continue
+                short = None
+                if option.short_value_switches and key in option.short_value_switches:
+                    short = option.short_value_switches[key]
+                # A distinct spec key per value switch, all writing the option's
+                # param. The negation slot is unused for value switches.
+                self._add_spec(
+                    f"{option.name}\x00{key}",
+                    key,
+                    short,
+                    None,
+                    False,
+                    self._make_value_switch_applier(option, key),
+                )
+
+    def _make_bool_applier(self, option):
+        def apply(opt_str, value, flag_value):
+            setattr(self.values, option._param_name, flag_value)
+            if option.custom_callback is not None:
+                option.custom_callback(option, option._param_name, flag_value, self)
+
+        return apply
+
+    @staticmethod
+    def _option_identity(option):
+        """Render an option's identity like optparse, e.g. ``-p/--strip``."""
+        names = []
+        short = option.short_name()
+        if short is not None:
+            names.append(f"-{short}")
+        names.append(f"--{option.name}")
+        return "/".join(names)
+
+    def _make_value_applier(self, option):
+        def apply(opt_str, value, flag_value):
+            try:
+                v = option.type(value)
+            except ValueError as e:
+                raise _OptError(
+                    f"invalid value for option {self._option_identity(option)}: {value}"
+                ) from e
+            setattr(self.values, option._param_name, v)
+            if option.custom_callback is not None:
+                option.custom_callback(option, option.name, v, self)
+
+        return apply
+
+    def _make_list_applier(self, option):
+        def apply(opt_str, value, flag_value):
+            values = getattr(self.values, option._param_name)
+            if value == "-":
+                del values[:]
+            else:
+                values.append(option.type(value))
+            if option.custom_callback is not None:
+                option.custom_callback(option, option._param_name, values, self)
+
+        return apply
+
+    def _make_value_switch_applier(self, option, key):
+        def apply(opt_str, value, flag_value):
+            v = option.type(key)
+            setattr(self.values, option._param_name, v)
+            if option.custom_callback is not None:
+                option.custom_callback(option, option._param_name, v, self)
+
+        return apply
+
+    def parse_args(self, args):
+        """Parse ``args``, returning ``(values, remaining_args)``."""
+        from ._cmd_rs.optparse import tokenize_options
+
+        tokens = tokenize_options(self._specs, list(args))
+        remaining = []
+        try:
+            for token in tokens:
+                if not token.is_option:
+                    remaining.append(token.value)
+                    continue
+                applier = self._appliers[token.key]
+                applier(token.opt_str, token.value, token.flag_value)
+        except _OptError as e:
+            self.error(str(e))
+        return self.values, remaining
+
+    def format_option_help(self):
+        """Render the options help text, matching optparse's layout.
+
+        The output is "Options:" followed by each option's switches and help,
+        with registry value-switch options grouped under their title. Hidden
+        options are suppressed and help strings are translated.
+        """
+        groups = self._help_groups()
+        out = ["Options:\n"]
+        for title, entries in groups:
+            indent = 2
+            if title is not None:
+                out.append(f"{' ' * indent}{title}:\n")
+                indent += 2
+            out.append(self._format_group(entries, indent))
+        return "".join(out)
+
+    def _help_groups(self):
+        """Return ``[(title, [(option_string, help), ...]), ...]``.
+
+        The first group has a ``None`` title (the ungrouped options); each
+        registry option with value switches contributes its own titled group.
+        """
+        from .i18n import gettext
+
+        main = []
+        groups = [(None, main)]
+        for option in self._options:
+            if isinstance(option, RegistryOption) and option.value_switches:
+                entries = []
+                if option.enum_switch and not option.is_hidden(option.name):
+                    entries.append(
+                        (self._option_string(option), gettext(option.help or ""))
+                    )
+                alias_map = option.registry.alias_map()
+                for key in option.registry.keys():
+                    if key in option.registry.aliases():
+                        continue
+                    if option.is_hidden(key):
+                        continue
+                    names = [key] + [
+                        a for a in alias_map.get(key, []) if not option.is_hidden(a)
+                    ]
+                    switch = ", ".join(f"--{n}" for n in names)
+                    if (
+                        option.short_value_switches
+                        and key in option.short_value_switches
+                    ):
+                        switch = f"-{option.short_value_switches[key]}, {switch}"
+                    entries.append(
+                        (switch, gettext(option.registry.get_help(key) or ""))
+                    )
+                groups.append((option.title, entries))
+            else:
+                if option.is_hidden(option.name):
+                    continue
+                main.append((self._option_string(option), gettext(option.help or "")))
+        return groups
+
+    @staticmethod
+    def _option_string(option):
+        """Build the switch string for an option, e.g. ``-F MSGFILE, --file=MSGFILE``."""
+        if isinstance(option, RegistryOption):
+            takes_value = True
+        else:
+            takes_value = option.type is not None
+        metavar = option.argname.upper() if takes_value and option.argname else None
+        parts = []
+        short = option.short_name()
+        if short is not None:
+            parts.append(f"-{short} {metavar}" if metavar else f"-{short}")
+        parts.append(f"--{option.name}={metavar}" if metavar else f"--{option.name}")
+        return ", ".join(parts)
+
+    @staticmethod
+    def _format_group(entries, indent):
+        """Lay out ``entries`` (option_string, help) with optparse-style columns."""
+        import textwrap
+
+        width = 78
+        max_help_position = 24
+        # Help column: just past the longest option string (plus the indent and
+        # a two-space gap), capped at max_help_position, like optparse.
+        max_len = max((len(opt) + indent for opt, _ in entries), default=0)
+        help_position = min(max_len + 2, max_help_position)
+        help_width = max(width - help_position, 11)
+        out = []
+        for opt, help in entries:
+            head = f"{' ' * indent}{opt}"
+            if not help:
+                out.append(head + "\n")
+                continue
+            help_lines = textwrap.wrap(help, help_width)
+            if len(head) + 2 <= help_position:
+                # Option string and first help line share a row.
+                line = f"{head}{' ' * (help_position - len(head))}{help_lines[0]}\n"
+            else:
+                # Option string is too long; help starts on the next line.
+                line = head + "\n" + " " * help_position + help_lines[0] + "\n"
+            out.append(line)
+            for extra in help_lines[1:]:
+                out.append(" " * help_position + extra + "\n")
+        return "".join(out)
 
 
 def get_optparser(options):
-    """Generate an optparse parser for breezy-style options."""
-    parser = OptionParser()
-    parser.remove_option("--help")
-    for option in options:
-        option.add_option(parser, option.short_name())
-    return parser
+    """Generate a parser for breezy-style options."""
+    return RustOptionParser(options)
 
 
 def custom_help(name, help):
