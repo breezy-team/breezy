@@ -53,8 +53,13 @@ def build_tree_contents(template):
             os.mkdir(name)
         elif name[-1] == "@":
             os.symlink(tt[1], tt[0][:-1])
+        elif isinstance(tt[1], bytes):
+            with open(name, "wb") as f:
+                f.write(tt[1])
         else:
-            with open(name, "w" + ("b" if isinstance(tt[1], bytes) else "")) as f:
+            # newline="" disables Python's universal-newlines translation so
+            # the same byte sequence ends up on disk on POSIX and Windows.
+            with open(name, "w", newline="") as f:
                 f.write(tt[1])
 
 

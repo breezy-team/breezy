@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+from breezy import urlutils
 from breezy.tests import TestCaseWithTransport
 
 
@@ -23,7 +24,12 @@ class TestCatRevision(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
 
         out, _err = self.run_bzr(f"resolve-location {wt.branch.user_url}")
-        self.assertEqual(out, f"{wt.branch.user_url.replace('file://', '')}\n")
+        # `local_path_from_url` strips the `/` before the drive letter on
+        # Windows, matching what `brz resolve-location` emits.
+        expected = urlutils.local_path_from_url(wt.branch.user_url).replace("\\", "/")
+        if not expected.endswith("/"):
+            expected += "/"
+        self.assertEqual(out, expected + "\n")
 
     def test_parent_missing(self):
         self.make_branch_and_tree(".")

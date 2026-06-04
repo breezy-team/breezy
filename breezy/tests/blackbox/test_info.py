@@ -18,12 +18,21 @@
 """Tests for the info command of bzr."""
 
 import shutil
-import sys
 
 from dromedary import errors as transport_errors
 from dromedary import memory
 
-from breezy import branch, controldir, errors, info, osutils, tests, upgrade, urlutils
+from breezy import (
+    branch,
+    controldir,
+    errors,
+    info,
+    lock,
+    osutils,
+    tests,
+    upgrade,
+    urlutils,
+)
 from breezy.bzr import bzrdir
 
 
@@ -1312,11 +1321,9 @@ Location:
             except (transport_errors.PathNotChild, ValueError):
                 return path
 
-        if tree_locked:
-            # We expect this to fail because of locking errors.
-            # (A write-locked file cannot be read-locked
-            # in the different process -- either on win32 or on linux).
-            # This should be removed when the locking errors are fixed.
+        if tree_locked and lock.have_fcntl:
+            # fcntl write-locks are exclusive across processes, so the
+            # subprocess info call fails on POSIX.
             self.expectFailure(
                 "OS locks are exclusive for different processes (Bug #174055)",
                 self.run_brz_subprocess,
@@ -1521,9 +1528,6 @@ Repository:
                 branch_locked=True,
                 verbose=True,
             )
-
-        if sys.platform == "win32":
-            self.knownFailure('Win32 cannot run "brz info" when the tree is locked.')
 
     def test_info_stacked(self):
         # We have a mainline
