@@ -23,7 +23,7 @@ high performance in large trees with a small number of changes.
 import errno
 import os
 import shutil
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 
 from dromedary.errors import NoSuchFile
 
@@ -186,16 +186,18 @@ class Workspace:
     :param use_inotify: whether to use inotify (default: yes, if available)
     """
 
-    def __init__(self, tree, subpath="", use_inotify=None):
+    def __init__(self, tree, *, basis_tree=None, subpath="", use_inotify=None):
         """Initialize a Workspace.
 
         Args:
             tree: The working tree to operate on.
+            basis_tree: Optional basis tree to compare against.
             subpath: Path under which to consider and commit changes.
             use_inotify: Whether to use inotify (default: yes, if available).
         """
         self.tree = tree
         self.subpath = subpath
+        self._basis_tree = basis_tree
         self.use_inotify = use_inotify
         self._dirty_tracker = None
         self._es = ExitStack()
@@ -212,7 +214,7 @@ class Workspace:
             New Workspace instance.
         """
         tree, subpath = WorkingTree.open_containing(path)
-        return cls(tree, subpath, use_inotify=use_inotify)
+        return cls(tree, subpath=subpath, use_inotify=use_inotify)
 
     def __enter__(self):
         """Enter the workspace context.
@@ -237,6 +239,18 @@ class Workspace:
                 warning("Too many files open; not using inotify")
                 self._dirty_tracker = None
         return self
+
+    @contextmanager
+    def basis_tree(self):
+        """Yield the basis tree to compare against.
+
+        Yields the explicitly provided basis tree if one was passed in,
+        otherwise the working tree's own basis tree.
+        """
+        if self._basis_tree:
+            yield self._basis_tree
+            return
+        yield self.tree.basis_tree()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit the workspace context.
@@ -263,11 +277,17 @@ class Workspace:
         """Reset - revert local changes, revive deleted files, remove added."""
         if self._dirty_tracker and not self._dirty_tracker.is_dirty():
             return
-        reset_tree(self.tree, subpath=self.subpath)
+        with self.tree.lock_write():
+            reset_tree(self.tree, subpath=self.subpath)
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self) -> list[str] | None:
+    def stage(self) -> list[str] | None:
+        """Stage pending changes and return the affected paths.
+
+        Returns:
+            The list of changed paths to commit, or None to commit everything.
+        """
         changed: list[str] | None
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
@@ -287,9 +307,8 @@ class Workspace:
 
         if self.tree.supports_setting_file_ids():
             from .rename_map import RenameMap
-
-            basis_tree = self.tree.basis_tree()
-            RenameMap.guess_renames(basis_tree, self.tree, dry_run=False)
+            with self.basis_tree() as basis_tree:
+                RenameMap.guess_renames(basis_tree, self.tree, dry_run=False)
         return changed
 
     def iter_changes(self):
@@ -298,9 +317,8 @@ class Workspace:
         Yields:
             Changes between the basis tree and working tree.
         """
-        with self.tree.lock_write():
-            specific_files = self._stage()
-            basis_tree = self.tree.basis_tree()
+        with self.tree.lock_write(), self.basis_tree() as basis_tree:
+            specific_files = self.stage()
             for change in self.tree.iter_changes(
                 basis_tree,
                 specific_files=specific_files,
@@ -323,7 +341,7 @@ class Workspace:
             raise NotImplementedError(self.commit)
 
         with self.tree.lock_write():
-            specific_files = self._stage()
+            specific_files = self.stage()
 
             kwargs["specific_files"] = specific_files
             revid = self.tree.commit(**kwargs)
