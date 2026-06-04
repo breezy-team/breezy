@@ -26,6 +26,7 @@ from breezy.bzr import inventorytree
 from breezy.tests import features, per_repository
 
 from ...bzr.inventorytree import InventoryTreeChange
+from ...tree import TreeChange
 from ..test_bedding import override_whoami
 
 
@@ -199,25 +200,40 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree(".")
         self.build_tree(["foo"])
         tree.add(["foo"])
-        foo_id = tree.path2id("foo")
         rev_id = tree.commit("added foo")
         with tree.lock_write():
             builder = tree.branch.get_commit_builder([rev_id])
             try:
-                delete_change = InventoryTreeChange(
-                    foo_id,
-                    ("foo", None),
-                    True,
-                    (True, False),
-                    (tree.path2id(""), None),
-                    ("foo", None),
-                    ("file", None),
-                    (False, None),
-                )
-                list(builder.record_iter_changes(tree, rev_id, [delete_change]))
-                self.assertEqual(
-                    ("foo", None, foo_id, None), builder.get_basis_delta()[0]
-                )
+                if tree.supports_file_ids:
+                    foo_id = tree.path2id("foo")
+                    delete_change = InventoryTreeChange(
+                        foo_id,
+                        ("foo", None),
+                        True,
+                        (True, False),
+                        (tree.path2id(""), None),
+                        ("foo", None),
+                        ("file", None),
+                        (False, None),
+                    )
+                    list(builder.record_iter_changes(tree, rev_id, [delete_change]))
+                    self.assertEqual(
+                        ("foo", None, foo_id, None), builder.get_basis_delta()[0]
+                    )
+                else:
+                    delete_change = TreeChange(
+                        ("foo", None),
+                        True,
+                        (True, False),
+                        ("foo", None),
+                        ("file", None),
+                        (False, None),
+                    )
+                    list(builder.record_iter_changes(tree, rev_id, [delete_change]))
+                    (oldpath, newpath, _file_id, entry) = builder.get_basis_delta()[0]
+                    self.assertEqual("foo", oldpath)
+                    self.assertIs(None, newpath)
+                    self.assertIs(None, entry)
                 self.assertTrue(builder.any_changes())
                 builder.finish_inventory()
                 builder.commit("delete foo")
