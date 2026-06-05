@@ -20,14 +20,11 @@ __all__ = [
     "BzrProber",
     "LineEndingError",
     "RemoteBzrProber",
-    "hashcache",
     "register_metadir",
-    "rio",
 ]
 
 from typing import TYPE_CHECKING
 
-from bzrformats._bzr_rs import hashcache, rio
 from catalogus import pyutils
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile

@@ -478,7 +478,7 @@ class VersionedFileTestMixIn:
         self.assertEqualDiff(b"newline\nline", vf.get_text(b"noeol2"))
 
     def test_make_mpdiffs(self):
-        from breezy.bzr import multiparent
+        from bzrformats import multiparent
 
         vf = self.get_file("foo")
         self._setup_for_deltas(vf)
@@ -2847,7 +2847,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         )
 
     def test_make_mpdiffs(self):
-        from breezy.bzr import multiparent
+        from bzrformats import multiparent
 
         files = self.get_versionedfiles("source")
         # add texts that should trip the knit maximum delta chain threshold

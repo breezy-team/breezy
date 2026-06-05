@@ -20,8 +20,9 @@ import os
 import sys
 import time
 
+from bzrformats import hashcache
+
 from breezy import tests
-from breezy.bzr import hashcache
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 from ...bzr.workingtree import InventoryWorkingTree
