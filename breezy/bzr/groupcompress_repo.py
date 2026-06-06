@@ -21,11 +21,11 @@ import time
 
 from bzrformats import chk_map, chk_serializer, inventory, pack, versionedfile
 from bzrformats import index as _mod_index
-from bzrformats._bzr_rs import revision_bencode_serializer
 from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrformats.errors import BzrCheckError
 from bzrformats.errors import NoSuchRevision as _BzrFormatsNoSuchRevision
 from bzrformats.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
+from bzrformats.serializer import revision_bencode_serializer
 
 from .. import controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision

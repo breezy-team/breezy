@@ -31,9 +31,12 @@ from bzrformats import versionedfile
 import contextlib
 
 from bzrformats import xml5, xml6, xml7
-from bzrformats._bzr_rs import revision_serializer_v5
 from bzrformats.errors import RevisionNotPresent
-from bzrformats.serializer import InventorySerializer, RevisionSerializer
+from bzrformats.serializer import (
+    InventorySerializer,
+    RevisionSerializer,
+    revision_serializer_v5,
+)
 from dromedary.errors import NoSuchFile
 
 from .. import controldir, lockdir, trace

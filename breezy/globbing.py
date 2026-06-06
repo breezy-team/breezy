@@ -22,12 +22,11 @@ expressions.
 
 import re
 
-from bzrformats._bzr_rs import globbing as _globbing_rs
+from bzrformats.globbing import Replacer, normalize_pattern
 
 from . import lazy_regex
 from .trace import mutter, warning
 
-Replacer = _globbing_rs.Replacer
 _sub_named = Replacer()
 _sub_named.add(r"\[:digit:\]", r"\d")
 _sub_named.add(r"\[:space:\]", r"\s")
@@ -288,6 +287,3 @@ class _OrderedGlobster(Globster):
                 Globster.pattern_info[t]["translator"],
                 Globster.pattern_info[t]["prefix"],
             )
-
-
-normalize_pattern = _globbing_rs.normalize_pattern

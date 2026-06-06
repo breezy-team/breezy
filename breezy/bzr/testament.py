@@ -48,12 +48,12 @@ particular version is authentic but that it has other properties.
 The signature can be applied to either the full testament or to just a
 hash of it.
 
-The canonical text rendering is implemented in Rust
-(``bzrformats._bzr_rs.testament``); this module gathers the per-revision
+The canonical text rendering is implemented in Rust and exposed as
+``bzrformats.testament.Testament``; this module gathers the per-revision
 inventory entries from a tree and delegates serialization to it.
 """
 
-from bzrformats._bzr_rs.testament import Testament as _RsTestament
+from bzrformats.testament import Testament as _RsTestament
 
 from ..tree import Tree
 

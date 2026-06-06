@@ -41,7 +41,7 @@ class TestSerializer(TestCase):
         )
 
     def test_revision_registry(self):
-        from bzrformats._bzr_rs import (
+        from bzrformats.serializer import (
             revision_serializer_v5,
             revision_serializer_v8,
         )

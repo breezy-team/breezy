@@ -24,7 +24,7 @@ import sys
 from collections import deque
 from io import BytesIO
 
-from bzrformats._bzr_rs import smart as _smart_rs
+from bzrformats import smart as _smart_rs
 from dromedary import errors as transport_errors
 from fastbencode import bdecode_as_tuple, bencode
 
