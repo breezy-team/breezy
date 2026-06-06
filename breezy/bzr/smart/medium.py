@@ -1256,11 +1256,14 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         if self._real_medium is not None:
             return
         vendor = ssh._get_ssh_vendor() if self._vendor is None else self._vendor
+        (host, port) = transport.lookup_srv_single(
+            "_bzr+ssh._tcp", self._ssh_params.host, self._ssh_params.port
+        )
         self._ssh_connection = vendor.connect_ssh(
             self._ssh_params.username,
             self._ssh_params.password,
-            self._ssh_params.host,
-            self._ssh_params.port,
+            host,
+            port,
             command=[
                 self._ssh_params.bzr_remote_path,
                 "serve",
