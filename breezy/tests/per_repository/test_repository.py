@@ -114,7 +114,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertRepositoryAttribute("supports_random_access", (True, False))
 
     def test_attribute_format_supports_fetch_depth(self):
-        self.assertRepositoryAttribute('supports_fetch_depth', (True, False))
+        self.assertRepositoryAttribute("supports_fetch_depth", (True, False))
 
     def test_attribute_format_supports_setting_revision_ids(self):
         self.assertFormatAttribute("supports_setting_revision_ids", (True, False))
