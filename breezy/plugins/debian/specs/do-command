@@ -1,0 +1,38 @@
+Do Command
+==========
+
+Status: Partial Implementation
+Version: 0.91
+
+Rationale
+---------
+
+When a user is using merge mode and they need to do something that operates
+on the whole package it is difficult to do so as the upstream code is not
+usually there.
+
+svn-buildpackage has an svn-do script with it that supports this by exporting
+the whole package, executing a command and copying the resulting directory
+back.
+
+Design
+------
+
+For merge mode packages use the builder's export function to export to
+a temporary directory. Then execute the user's command (default to $SHELL)
+in that directory. If it returns with a non-zero exit code then consider it
+a failure and return. If not then copy the contents of debian/ back to the
+branch (taking in to account whether debian/ is in the branch, or just the
+contents).
+
+Provide an option to the user to not purge the temporary directory, as this
+will help with debugging why a command failed. Perhaps also have an option to
+consider all commands succesful.
+
+UI
+--
+
+A new command
+
+  bzr bd-do [COMMAND]
+

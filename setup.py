@@ -159,7 +159,17 @@ rust_extensions = [
     RustExtension("breezy._git_rs", "crates/git-py/Cargo.toml", binding=Binding.PyO3),
 ]
 
-entry_points = {}
+entry_points = {
+    "console_scripts": [
+        "deb-update-packaging=breezy.plugins.debian.update_packaging:main",
+        "deb-vcs-up-to-date=breezy.plugins.debian.vcs_up_to_date:main",
+        "deb-move-orphaned=breezy.plugins.debian.move_orphaned:main",
+        "deb-import-uncommitted=breezy.plugins.debian.import_uncommitted:main",
+        "deb-auto-backport=breezy.plugins.debian.merge_package:auto_backport",
+        "deb-new-upstream=breezy.plugins.debian.new_upstream:main",
+        "deb-merge=breezy.plugins.debian.merge_package:main",
+    ],
+}
 
 if (
     os.environ.get("CIBUILDWHEEL", "0") == "0"
@@ -172,7 +182,7 @@ else:
     # -lpython3.7 to link binaries against
 
     # also, disable it for PyPy. See https://foss.heptapod.net/pypy/pypy/-/issues/3286
-    entry_points.setdefault("console_scripts", []).append("brz=breezy.__main__:main")
+    entry_points["console_scripts"].append("brz=breezy.__main__:main")
 
 # std setup
 setup(
