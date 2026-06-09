@@ -25,7 +25,7 @@ classifiers = [
 ]
 requires-python = ">=3.10,<3.15"
 dependencies = [
-    "bzrformats>=3.4.4",
+    "bzrformats>=3.5.0",
     "catalogus",
     "configobj",
     "dromedary>=0.1.3",

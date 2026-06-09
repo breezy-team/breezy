@@ -490,7 +490,7 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.mkdir("revision-store")
         revision_transport = self.controldir.transport.clone("revision-store")
         # TODO permissions
-        from bzrformats._bzr_rs import revision_serializer_v5
+        from bzrformats.serializer import revision_serializer_v5
 
         from .repository import RevisionTextStore
 

@@ -41,7 +41,6 @@ from bzrformats.knit import (
 """,
 )
 from bzrformats import btree_index, xml5, xml6, xml7
-from bzrformats._bzr_rs import revision_serializer_v5
 from bzrformats.errors import BzrCheckError, RevisionNotPresent
 from bzrformats.index import (
     CombinedGraphIndex,
@@ -49,6 +48,7 @@ from bzrformats.index import (
     GraphIndexPrefixAdapter,
     InMemoryGraphIndex,
 )
+from bzrformats.serializer import revision_serializer_v5
 
 from ..bzr.vf_repository import StreamSource
 from .knitrepo import KnitRepository

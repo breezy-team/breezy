@@ -18,8 +18,8 @@ from io import BytesIO
 
 from bzrformats import inventory, serializer, xml6, xml7, xml8
 from bzrformats import xml_serializer as bzrformats_xml_serializer
-from bzrformats._bzr_rs import revision_serializer_v5, revision_serializer_v8
 from bzrformats.inventory import Inventory
+from bzrformats.serializer import revision_serializer_v5, revision_serializer_v8
 from bzrformats.xml5 import inventory_serializer_v5
 
 import breezy.osutils
