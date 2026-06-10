@@ -349,7 +349,7 @@ class GitDir(ControlDir):
             depth=depth,
         )
         result_branch = source_branch.sprout(
-            result, revision_id=revision_id, repository=result_repo, depth=depth
+            result, revision_id=revision_id, repository=result_repo
         )
         if (
             create_tree_if_local

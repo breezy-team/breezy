@@ -1097,7 +1097,7 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.FetchDepthUnsupported:
             self.assertFalse(tree.branch.repository.supports_fetch_depth)
         else:
-            self.assertEqual({rev2}, target.open_repository().all_revision_ids())
+            self.assertEqual({rev2}, set(target.open_repository().all_revision_ids()))
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.

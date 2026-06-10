@@ -491,6 +491,10 @@ class InterFromGitRepository(InterRepository):
     def _target_has_shas(self, shas):
         raise NotImplementedError(self._target_has_shas)
 
+    def _target_shallow(self):
+        """Return the set of SHA1s that form the target's shallow boundary."""
+        return set()
+
     def get_determine_wants_heads(self, wants, include_tags=False, tag_selector=None):
         """Get a determine_wants function for specific heads.
 
@@ -523,7 +527,12 @@ class InterFromGitRepository(InterRepository):
                     if sha == ZERO_SHA:
                         continue
                     potential.add(sha)
-            return list(potential - self._target_has_shas(potential))
+            have = self._target_has_shas(potential)
+            if depth is not None:
+                # Commits present only as a shallow boundary must stay in the
+                # wants so the fetch can deepen past them.
+                have -= self._target_shallow()
+            return list(potential - have)
 
         return determine_wants
 
@@ -897,6 +906,9 @@ class InterGitGitRepository(InterFromGitRepository):
             Set of SHA1s that are present in the target.
         """
         return {sha for sha in shas if sha in self.target._git.object_store}
+
+    def _target_shallow(self):
+        return set(self.target._git.get_shallow())
 
     def fetch(
         self,
