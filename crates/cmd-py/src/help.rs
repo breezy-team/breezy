@@ -1,8 +1,8 @@
-use breezy::help::Section;
+use breezy_cli::help::Section;
 use pyo3::prelude::*;
 
 #[pyclass]
-struct DynamicHelpTopic(std::sync::Arc<breezy::help::DynamicHelpTopic>);
+struct DynamicHelpTopic(std::sync::Arc<breezy_cli::help::DynamicHelpTopic>);
 
 #[pymethods]
 impl DynamicHelpTopic {
@@ -35,7 +35,7 @@ impl DynamicHelpTopic {
 }
 
 #[pyclass]
-struct StaticHelpTopic(&'static breezy::help::HelpTopic);
+struct StaticHelpTopic(&'static breezy_cli::help::HelpTopic);
 
 #[pymethods]
 impl StaticHelpTopic {
@@ -87,11 +87,11 @@ impl HelpTopicRegistry {
         section: Option<&str>,
     ) -> PyResult<()> {
         let contents = if let Ok(contents) = contents.extract::<String>(py) {
-            breezy::help::HelpContents::Closure(Box::new(move |_| contents.clone()))
+            breezy_cli::help::HelpContents::Closure(Box::new(move |_| contents.clone()))
         } else {
             let f = contents.extract::<Py<PyAny>>(py)?;
             let name = name.to_string();
-            breezy::help::HelpContents::Closure(Box::new(move |h| {
+            breezy_cli::help::HelpContents::Closure(Box::new(move |h| {
                 Python::attach(|py| match f.call1(py, (h,)) {
                     Ok(s) => s.extract::<String>(py).unwrap(),
                     Err(e) => {
@@ -101,7 +101,7 @@ impl HelpTopicRegistry {
                 })
             }))
         };
-        let topic = breezy::help::DynamicHelpTopic {
+        let topic = breezy_cli::help::DynamicHelpTopic {
             name: name.to_string(),
             contents,
             summary: summary.to_string(),
@@ -114,7 +114,7 @@ impl HelpTopicRegistry {
                 .transpose()?
                 .unwrap_or(Section::List),
         };
-        breezy::help::register_topic(topic);
+        breezy_cli::help::register_topic(topic);
         Ok(())
     }
 
@@ -139,10 +139,10 @@ impl HelpTopicRegistry {
 
     #[pyo3(signature = (name))]
     fn get<'a>(&self, py: Python<'a>, name: &str) -> PyResult<Option<Bound<'a, PyAny>>> {
-        if let Some(topic) = breezy::help::get_dynamic_topic(name) {
+        if let Some(topic) = breezy_cli::help::get_dynamic_topic(name) {
             Ok(Some(Bound::new(py, DynamicHelpTopic(topic))?.into_any()))
         } else {
-            breezy::help::get_static_topic(name)
+            breezy_cli::help::get_static_topic(name)
                 .map(|topic| Ok(Bound::new(py, StaticHelpTopic(topic))?.into_any()))
                 .transpose()
         }
@@ -170,9 +170,9 @@ impl HelpTopicRegistry {
     }
 
     fn keys(&self) -> Vec<String> {
-        breezy::help::iter_static_topics()
+        breezy_cli::help::iter_static_topics()
             .map(|t| t.name.to_string())
-            .chain(breezy::help::iter_dynamic_topics().map(|t| t.name.to_string()))
+            .chain(breezy_cli::help::iter_dynamic_topics().map(|t| t.name.to_string()))
             .collect()
     }
 
@@ -180,11 +180,11 @@ impl HelpTopicRegistry {
         let section = section
             .try_into()
             .expect("invalid section name passed to get_topics_for_section");
-        breezy::help::iter_static_topics()
+        breezy_cli::help::iter_static_topics()
             .filter(|t| t.section == section)
             .map(|t| t.name.to_string())
             .chain(
-                breezy::help::iter_dynamic_topics()
+                breezy_cli::help::iter_dynamic_topics()
                     .filter(|t| t.section == section)
                     .map(|t| t.name.to_string()),
             )
@@ -195,12 +195,12 @@ impl HelpTopicRegistry {
 #[pyfunction]
 fn _format_see_also(topics: Vec<String>) -> String {
     let topics_ref = topics.iter().map(|t| t.as_str()).collect::<Vec<_>>();
-    breezy::help::format_see_also(topics_ref.as_slice())
+    breezy_cli::help::format_see_also(topics_ref.as_slice())
 }
 
 #[pyfunction]
 fn known_env_variables() -> Vec<(String, String)> {
-    breezy::help::KNOWN_ENV_VARIABLES
+    breezy_cli::help::KNOWN_ENV_VARIABLES
         .iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))
         .collect()

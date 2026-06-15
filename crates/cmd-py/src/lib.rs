@@ -31,57 +31,57 @@ fn map_gettext_error(err: gettext::Error) -> PyErr {
 
 #[pyfunction(name = "disable_i18n")]
 fn i18n_disable_i18n() {
-    breezy::i18n::disable();
+    breezy_cli::i18n::disable();
 }
 
 #[pyfunction(name = "dgettext")]
 fn i18n_dgettext(domain: &str, msgid: &str) -> PyResult<String> {
-    Ok(breezy::i18n::dgettext(domain, msgid))
+    Ok(breezy_cli::i18n::dgettext(domain, msgid))
 }
 
 #[pyfunction(name = "install")]
 fn i18n_install(lang: &str, locale_base: PathBuf) -> PyResult<()> {
-    breezy::i18n::install(lang, locale_base).map_err(map_gettext_error)?;
+    breezy_cli::i18n::install(lang, locale_base).map_err(map_gettext_error)?;
     Ok(())
 }
 
 #[pyfunction(name = "install_zzz")]
 fn i18n_install_zzz() -> PyResult<()> {
-    breezy::i18n::install_zzz();
+    breezy_cli::i18n::install_zzz();
     Ok(())
 }
 
 #[pyfunction(name = "install_zzz_for_doc")]
 fn i18n_install_zzz_for_doc() -> PyResult<()> {
-    breezy::i18n::install_zzz_for_doc();
+    breezy_cli::i18n::install_zzz_for_doc();
     Ok(())
 }
 
 #[pyfunction(name = "install_plugin")]
 #[pyo3(signature = (name, locale_base = None))]
 fn i18n_install_plugin(name: &str, locale_base: Option<PathBuf>) -> PyResult<()> {
-    breezy::i18n::install_plugin(name, locale_base).map_err(map_gettext_error)?;
+    breezy_cli::i18n::install_plugin(name, locale_base).map_err(map_gettext_error)?;
     Ok(())
 }
 
 #[pyfunction(name = "gettext")]
 fn i18n_gettext(msgid: &str) -> PyResult<String> {
-    Ok(breezy::i18n::gettext(msgid))
+    Ok(breezy_cli::i18n::gettext(msgid))
 }
 
 #[pyfunction(name = "ngettext")]
 fn i18n_ngettext(msgid: &str, msgid_plural: &str, n: u32) -> PyResult<String> {
-    Ok(breezy::i18n::ngettext(msgid, msgid_plural, n))
+    Ok(breezy_cli::i18n::ngettext(msgid, msgid_plural, n))
 }
 
 #[pyfunction(name = "gettext_per_paragraph")]
 fn i18n_gettext_per_paragraph(text: &str) -> PyResult<String> {
-    Ok(breezy::i18n::gettext_per_paragraph(text))
+    Ok(breezy_cli::i18n::gettext_per_paragraph(text))
 }
 
 #[pyfunction(name = "zzz")]
 fn i18n_zzz(msgid: &str) -> PyResult<String> {
-    Ok(breezy::i18n::zzz(msgid))
+    Ok(breezy_cli::i18n::zzz(msgid))
 }
 
 #[pyfunction]
@@ -476,7 +476,7 @@ fn parse_rcp_location(location: &str) -> PyResult<(String, Option<String>, Strin
 
 #[pyfunction]
 fn help_as_plain_text(text: &str) -> PyResult<String> {
-    Ok(breezy::help::help_as_plain_text(text))
+    Ok(breezy_cli::help::help_as_plain_text(text))
 }
 
 #[pyfunction]
@@ -489,18 +489,18 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
         return Ok("".to_string());
     }
 
-    Ok(breezy::help::format_see_also(see_also.unwrap().as_slice()))
+    Ok(breezy_cli::help::format_see_also(see_also.unwrap().as_slice()))
 }
 
 mod help;
 
-use breezy::command::Command as _;
-use breezy::pycommand::PyCommand;
+use breezy_cli::command::Command as _;
+use breezy_cli::pycommand::PyCommand;
 
 /// A Rust view onto a Python `Command` object.
 ///
 /// This wraps a Python command in the Rust [`PyCommand`] and exposes the
-/// [`breezy::command::Command`] trait methods back to Python. It exists so the
+/// [`breezy_cli::command::Command`] trait methods back to Python. It exists so the
 /// Rust command trait can be exercised against the real Python command classes
 /// while the infrastructure is migrated; it is not yet used by the command
 /// dispatch path.
@@ -560,8 +560,8 @@ fn gettext_format(py: Python<'_>, template: &str, args: (String, String)) -> PyR
     translated.call_method1("format", args)?.extract::<String>()
 }
 
-fn arg_match_error_to_py(py: Python<'_>, err: breezy::command::ArgMatchError) -> PyErr {
-    use breezy::command::ArgMatchError;
+fn arg_match_error_to_py(py: Python<'_>, err: breezy_cli::command::ArgMatchError) -> PyErr {
+    use breezy_cli::command::ArgMatchError;
     let msg = match err {
         ArgMatchError::NeedsOneOrMore { cmd, argname } => {
             gettext_format(py, "command {0!r} needs one or more {1}", (cmd, argname))
@@ -591,8 +591,8 @@ fn match_argform<'py>(
     takes_args: Vec<String>,
     args: Vec<String>,
 ) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
-    use breezy::command::ArgValue;
-    let matched = breezy::command::match_argform(cmd, &takes_args, args)
+    use breezy_cli::command::ArgValue;
+    let matched = breezy_cli::command::match_argform(cmd, &takes_args, args)
         .map_err(|e| arg_match_error_to_py(py, e))?;
     let dict = pyo3::types::PyDict::new(py);
     for (key, value) in matched {
@@ -608,19 +608,19 @@ fn match_argform<'py>(
 /// Convert a squished class name (``cmd_foo_bar``) to a command name (``foo-bar``).
 #[pyfunction]
 fn unsquish_command_name(name: &str) -> String {
-    breezy::command::unsquish_command_name(name)
+    breezy_cli::command::unsquish_command_name(name)
 }
 
 /// Convert a command name (``foo-bar``) to a squished class name (``cmd_foo_bar``).
 #[pyfunction]
 fn squish_command_name(name: &str) -> String {
-    breezy::command::squish_command_name(name)
+    breezy_cli::command::squish_command_name(name)
 }
 
 /// Build a command's single-line usage grammar from its name and ``takes_args``.
 #[pyfunction]
 fn usage(name: &str, takes_args: Vec<String>) -> String {
-    breezy::command::usage(name, &takes_args)
+    breezy_cli::command::usage(name, &takes_args)
 }
 
 /// Split help text into ``(summary, sections, order)``.
@@ -637,7 +637,7 @@ fn get_help_parts<'py>(
     Bound<'py, pyo3::types::PyDict>,
     Bound<'py, pyo3::types::PyList>,
 )> {
-    let (summary, ordered) = breezy::command::split_help_parts(text);
+    let (summary, ordered) = breezy_cli::command::split_help_parts(text);
     let sections = pyo3::types::PyDict::new(py);
     let order = pyo3::types::PyList::empty(py);
     for (label, body) in ordered {
@@ -663,7 +663,7 @@ fn guess_command(
     candidates: Vec<String>,
     overrides: Vec<(String, f64)>,
 ) -> Option<String> {
-    breezy::command::guess_command(cmd_name, &candidates, &overrides)
+    breezy_cli::command::guess_command(cmd_name, &candidates, &overrides)
 }
 
 /// The master options parsed from the front of a ``brz`` command line.
@@ -671,7 +671,7 @@ fn guess_command(
 /// Exposes the parsed flags to Python as read-only attributes; the caller
 /// applies the side effects (debug flags, ``BRZ_CONCURRENCY``, config overrides).
 #[pyclass(name = "MasterOptions", frozen)]
-struct PyMasterOptions(breezy::command::MasterOptions);
+struct PyMasterOptions(breezy_cli::command::MasterOptions);
 
 #[pymethods]
 impl PyMasterOptions {
@@ -728,7 +728,7 @@ impl PyMasterOptions {
 /// argument, matching the Python behaviour.
 #[pyfunction]
 fn scan_master_options(argv: Vec<String>) -> PyResult<(PyMasterOptions, Vec<String>)> {
-    let (opts, remaining) = breezy::command::scan_master_options(argv).map_err(|e| {
+    let (opts, remaining) = breezy_cli::command::scan_master_options(argv).map_err(|e| {
         pyo3::exceptions::PyIndexError::new_err(format!("missing argument for {}", e.option))
     })?;
     Ok((PyMasterOptions(opts), remaining))
@@ -741,7 +741,7 @@ fn scan_master_options(argv: Vec<String>) -> PyResult<(PyMasterOptions, Vec<Stri
 /// the command's exit code.
 #[pyfunction]
 fn run_bzr(argv: Vec<String>, ctx: &Bound<'_, PyAny>) -> PyResult<i32> {
-    breezy::pycommand::run_bzr(argv, ctx)
+    breezy_cli::pycommand::run_bzr(argv, ctx)
 }
 
 /// Run the native Rust ``rocks`` command, writing its message to `outf`.
@@ -750,7 +750,7 @@ fn run_bzr(argv: Vec<String>, ctx: &Bound<'_, PyAny>) -> PyResult<i32> {
 /// original Python command) and written to the supplied output stream.
 #[pyfunction]
 fn run_rocks(py: Python<'_>, outf: &Bound<'_, PyAny>) -> PyResult<()> {
-    let message = breezy::command::CmdRocks::message();
+    let message = breezy_cli::command::CmdRocks::message();
     let translated = py
         .import("breezy.i18n")?
         .call_method1("gettext", (message,))?;
@@ -784,7 +784,7 @@ fn tokenize_options(
     specs: Vec<(String, String, Option<char>, Option<String>, bool)>,
     argv: Vec<String>,
 ) -> PyResult<Vec<PyOptionToken>> {
-    use breezy::optparse::{OptionKind, OptionSpec, Spec, Token};
+    use breezy_cli::optparse::{OptionKind, OptionSpec, Spec, Token};
     let options = specs
         .into_iter()
         .map(|(key, long, short, negation, takes_value)| OptionSpec {
@@ -800,7 +800,7 @@ fn tokenize_options(
         })
         .collect();
     let spec = Spec::from_options(options);
-    let tokens = breezy::optparse::tokenize(&spec, argv)
+    let tokens = breezy_cli::optparse::tokenize(&spec, argv)
         .map_err(|e| CommandError::new_err(e.to_string()))?;
     Ok(tokens
         .into_iter()

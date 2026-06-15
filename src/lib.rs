@@ -6,24 +6,6 @@
     semicolon_in_expressions_from_macros
 )]
 
-/// Internationalization support.
-pub mod i18n;
-
-#[cfg(not(feature = "i18n"))]
-pub mod i18n {
-    pub fn gettext(msgid: &str) -> String {
-        msgid.to_string()
-    }
-
-    pub fn nggettext(msgid: &str, msgid_plural: &str, n: usize) -> String {
-        if n == 1 {
-            msgid.to_string()
-        } else {
-            msgid_plural.to_string()
-        }
-    }
-}
-
 /// Bedding utilities for configuration and cache directories.
 pub mod bedding;
 pub mod bugtracker;
@@ -34,8 +16,6 @@ pub mod branch;
 pub mod controldir;
 /// Forge integration traits and types.
 pub mod forge;
-/// Help system and documentation utilities.
-pub mod help;
 /// Location parsing and conversion utilities.
 pub mod location;
 /// Lock directory management.
@@ -57,12 +37,6 @@ pub mod tree;
 /// Tree builder utilities.
 pub mod treebuilder;
 
-/// Command trait and infrastructure.
-pub mod command;
-
-/// Command-line option parsing (a replacement for Python's optparse).
-pub mod optparse;
-
 #[cfg(feature = "pyo3")]
 /// Python bindings for Tree.
 pub mod pytree;
@@ -70,10 +44,6 @@ pub mod pytree;
 #[cfg(feature = "pyo3")]
 /// Python bindings for Branch.
 pub mod pybranch;
-
-#[cfg(feature = "pyo3")]
-/// Python bindings for Command.
-pub mod pycommand;
 
 #[cfg(feature = "pyo3")]
 /// Python bindings for Forge.

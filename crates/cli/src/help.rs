@@ -19,7 +19,7 @@ pub enum HelpContents {
 macro_rules! help_topic_file {
     ($filename:expr) => {
         HelpContents::Text(include_str!(concat!(
-            "../breezy/help_topics/en/",
+            "../../../breezy/help_topics/en/",
             $filename,
             ".txt"
         )))
