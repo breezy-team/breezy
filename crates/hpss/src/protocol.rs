@@ -82,7 +82,8 @@ pub fn deserialise_offsets(text: &[u8]) -> Result<Vec<(u64, u64)>, ProtocolError
             .iter()
             .position(|&b| b == b',')
             .ok_or_else(|| ProtocolError::BadOffset(line.to_vec()))?;
-        let start = parse_u64(&line[..comma]).ok_or_else(|| ProtocolError::BadOffset(line.to_vec()))?;
+        let start =
+            parse_u64(&line[..comma]).ok_or_else(|| ProtocolError::BadOffset(line.to_vec()))?;
         let length =
             parse_u64(&line[comma + 1..]).ok_or_else(|| ProtocolError::BadOffset(line.to_vec()))?;
         offsets.push((start, length));

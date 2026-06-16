@@ -1322,26 +1322,23 @@ class _ProtocolThreeEncoder:
         self._write_func(bytes)
 
     def _write_headers(self, headers):
-        self._write_prefixed_bencode(headers)
+        self._write_func(_hpss_rs._v3_headers(list(headers.items())))
 
     def _write_structure(self, args):
-        self._write_func(b"s")
         utf8_args = []
         for arg in args:
             if isinstance(arg, str):
                 utf8_args.append(arg.encode("utf8"))
             else:
                 utf8_args.append(arg)
-        self._write_prefixed_bencode(utf8_args)
+        self._write_func(_hpss_rs._v3_structure(utf8_args))
 
     def _write_end(self):
         self._write_func(b"e")
         self.flush()
 
     def _write_prefixed_body(self, bytes):
-        self._write_func(b"b")
-        self._write_func(struct.pack("!L", len(bytes)))
-        self._write_func(bytes)
+        self._write_func(_hpss_rs._v3_prefixed_body(bytes))
 
     def _write_chunked_body_start(self):
         self._write_func(b"oC")
