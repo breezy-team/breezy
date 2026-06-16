@@ -1,0 +1,8 @@
+[package]
+name = "breezy-hpss"
+version = { workspace = true }
+edition = "2021"
+description = "High-performance smart server (HPSS) protocol for breezy"
+license = "GPL-2.0-or-later"
+
+[lib]

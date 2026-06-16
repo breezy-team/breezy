@@ -157,6 +157,9 @@ rust_extensions = [
         "breezy.zlib_util", "crates/zlib-util-py/Cargo.toml", binding=Binding.PyO3
     ),
     RustExtension("breezy._git_rs", "crates/git-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension(
+        "breezy._hpss_rs", "crates/hpss-py/Cargo.toml", binding=Binding.PyO3
+    ),
 ]
 
 entry_points = {}
