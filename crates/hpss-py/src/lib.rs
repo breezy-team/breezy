@@ -10,6 +10,7 @@ use pyo3::types::{PyBytes, PyTuple};
 
 use breezy_hpss::body;
 use breezy_hpss::protocol;
+use breezy_hpss::protocol3;
 
 fn protocol_err(py: Python<'_>, e: protocol::ProtocolError) -> PyErr {
     match e {
@@ -87,6 +88,27 @@ fn serialise_offsets<'py>(py: Python<'py>, offsets: Vec<(u64, u64)>) -> Bound<'p
 #[pyo3(name = "_deserialise_offsets")]
 fn deserialise_offsets(py: Python<'_>, text: &[u8]) -> PyResult<Vec<(u64, u64)>> {
     protocol::deserialise_offsets(text).map_err(|e| protocol_err(py, e))
+}
+
+/// v3 framing: a length-prefixed bencode dict of byte-string header pairs.
+#[pyfunction]
+#[pyo3(name = "_v3_headers")]
+fn v3_headers<'py>(py: Python<'py>, headers: Vec<(Vec<u8>, Vec<u8>)>) -> Bound<'py, PyBytes> {
+    PyBytes::new(py, &protocol3::headers(&headers))
+}
+
+/// v3 framing: a `s` marker plus length-prefixed bencode list of byte args.
+#[pyfunction]
+#[pyo3(name = "_v3_structure")]
+fn v3_structure<'py>(py: Python<'py>, args: Vec<Vec<u8>>) -> Bound<'py, PyBytes> {
+    PyBytes::new(py, &protocol3::structure(&args))
+}
+
+/// v3 framing: a `b` marker plus length-prefixed raw body bytes.
+#[pyfunction]
+#[pyo3(name = "_v3_prefixed_body")]
+fn v3_prefixed_body<'py>(py: Python<'py>, body: &[u8]) -> Bound<'py, PyBytes> {
+    PyBytes::new(py, &protocol3::prefixed_body(body))
 }
 
 /// Decoder for length-prefixed bulk data (smart protocol v1 and v2).
@@ -191,6 +213,9 @@ fn _hpss_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(encode_bulk_data, m)?)?;
     m.add_function(wrap_pyfunction!(serialise_offsets, m)?)?;
     m.add_function(wrap_pyfunction!(deserialise_offsets, m)?)?;
+    m.add_function(wrap_pyfunction!(v3_headers, m)?)?;
+    m.add_function(wrap_pyfunction!(v3_structure, m)?)?;
+    m.add_function(wrap_pyfunction!(v3_prefixed_body, m)?)?;
     m.add_class::<PyLengthPrefixedBodyDecoder>()?;
     m.add_class::<PyChunkedBodyDecoder>()?;
     Ok(())

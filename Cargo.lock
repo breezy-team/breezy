@@ -214,6 +214,9 @@ dependencies = [
 [[package]]
 name = "breezy-hpss"
 version = "3.4.0"
+dependencies = [
+ "bendy",
+]
 
 [[package]]
 name = "breezy-osutils"
