@@ -21,16 +21,13 @@ client and server.
 import _thread
 import struct
 import sys
-from collections import deque
 from io import BytesIO
 
 from bzrformats import smart as _smart_rs
 from dromedary import errors as transport_errors
-from fastbencode import bdecode_as_tuple, bencode
-
-from breezy import _hpss_rs
 
 import breezy
+from breezy import _hpss_rs
 
 from ... import debug, errors, osutils
 from ...trace import log_exception_quietly, mutter
@@ -1152,7 +1149,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     def _extract_prefixed_bencoded_data(self):
         prefixed_bytes = self._extract_length_prefixed_bytes()
         try:
-            decoded = bdecode_as_tuple(prefixed_bytes)
+            decoded = _hpss_rs._bdecode_as_tuple(prefixed_bytes)
         except ValueError as e:
             raise transport_errors.SmartProtocolError(
                 f"Bytes {prefixed_bytes!r} not bencoded"
@@ -1317,7 +1314,7 @@ class _ProtocolThreeEncoder:
         self._write_func(MESSAGE_VERSION_THREE)
 
     def _write_prefixed_bencode(self, structure):
-        bytes = bencode(structure)
+        bytes = _hpss_rs._bencode(structure)
         self._write_func(struct.pack("!L", len(bytes)))
         self._write_func(bytes)
 
