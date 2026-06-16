@@ -234,7 +234,7 @@ dependencies = [
  "num_cpus",
  "path-clean",
  "pyo3",
- "rand 0.9.4",
+ "rand 0.10.1",
  "regex",
  "sha1 0.11.0",
  "termion",
