@@ -66,8 +66,15 @@ pub fn headers(headers: &[(Vec<u8>, Vec<u8>)]) -> Vec<u8> {
 /// `_write_structure`: a `s` marker followed by a length-prefixed bencode list
 /// of the (already utf8-encoded) arguments.
 pub fn structure(args: &[Vec<u8>]) -> Vec<u8> {
+    structure_value(&bytes_list(args))
+}
+
+/// `_write_structure` for an arbitrary list `Value`. Response args are usually
+/// byte strings but may contain integers or nested structures, so the encoder
+/// must accept any bencode-able list (matching the original `bencode(args)`).
+pub fn structure_value(args: &Value) -> Vec<u8> {
     let mut out = vec![b's'];
-    out.extend_from_slice(&prefixed_bencode(&bytes_list(args)));
+    out.extend_from_slice(&prefixed_bencode(args));
     out
 }
 
@@ -274,6 +281,20 @@ mod tests {
         let len = u32::from_be_bytes(s[1..5].try_into().unwrap()) as usize;
         assert_eq!(&s[5..], b"l5:error3:msge");
         assert_eq!(len, s.len() - 5);
+    }
+
+    #[test]
+    fn structure_value_with_nested_and_int() {
+        // Response args are not always flat byte lists: they may carry integers
+        // or nested structures. "s" + prefix + bencode([b"ok", [b"a"], 3]).
+        let value = Value::List(vec![
+            Value::Bytes(Cow::Owned(b"ok".to_vec())),
+            Value::List(vec![Value::Bytes(Cow::Owned(b"a".to_vec()))]),
+            Value::Integer(3),
+        ]);
+        let s = structure_value(&value);
+        assert_eq!(&s[..1], b"s");
+        assert_eq!(&s[5..], b"l2:okl1:aei3ee");
     }
 
     #[test]
