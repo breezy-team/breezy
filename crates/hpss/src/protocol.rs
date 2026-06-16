@@ -5,6 +5,10 @@
 pub enum ProtocolError {
     /// A request line was not newline-terminated.
     NotTerminated(Vec<u8>),
+    /// A chunked body had a header other than "chunked".
+    BadChunkedHeader(Vec<u8>),
+    /// A chunk length prefix was not valid hexadecimal.
+    BadChunkLength(Vec<u8>),
 }
 
 /// Decode a byte string into a tuple of fields.
