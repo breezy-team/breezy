@@ -6,7 +6,7 @@
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyTuple};
+use pyo3::types::{PyBytes, PyDict, PyInt, PyTuple};
 
 use breezy_hpss::body;
 use breezy_hpss::protocol;
@@ -88,6 +88,95 @@ fn serialise_offsets<'py>(py: Python<'py>, offsets: Vec<(u64, u64)>) -> Bound<'p
 #[pyo3(name = "_deserialise_offsets")]
 fn deserialise_offsets(py: Python<'_>, text: &[u8]) -> PyResult<Vec<(u64, u64)>> {
     protocol::deserialise_offsets(text).map_err(|e| protocol_err(py, e))
+}
+
+/// Convert a decoded bencode value to a Python object, mapping lists to
+/// tuples (matching `fastbencode.bdecode_as_tuple`).
+fn decoded_to_py<'py>(py: Python<'py>, d: &protocol3::Decoded) -> PyResult<Bound<'py, PyAny>> {
+    match d {
+        protocol3::Decoded::Bytes(b) => Ok(PyBytes::new(py, b).into_any()),
+        protocol3::Decoded::Integer(text) => match text.parse::<i64>() {
+            Ok(n) => Ok(PyInt::new(py, n).into_any()),
+            // Out of i64 range: build the unbounded Python int from its decimal
+            // text. bendy guarantees `text` is a valid integer token.
+            Err(_) => {
+                let int_type = py.get_type::<PyInt>();
+                Ok(int_type.call1((text.as_str(),))?)
+            }
+        },
+        protocol3::Decoded::List(items) => {
+            let elems: PyResult<Vec<_>> = items.iter().map(|e| decoded_to_py(py, e)).collect();
+            Ok(PyTuple::new(py, elems?)?.into_any())
+        }
+        protocol3::Decoded::Dict(pairs) => {
+            let dict = PyDict::new(py);
+            for (k, v) in pairs {
+                dict.set_item(PyBytes::new(py, k), decoded_to_py(py, v)?)?;
+            }
+            Ok(dict.into_any())
+        }
+    }
+}
+
+/// Decode bencoded bytes, with lists as tuples (`bdecode_as_tuple`). Raises
+/// ValueError on malformed input.
+#[pyfunction]
+#[pyo3(name = "_bdecode_as_tuple")]
+fn bdecode_as_tuple<'py>(py: Python<'py>, data: &[u8]) -> PyResult<Bound<'py, PyAny>> {
+    match protocol3::bdecode(data) {
+        Ok(decoded) => decoded_to_py(py, &decoded),
+        Err(protocol3::BdecodeError(msg)) => Err(PyValueError::new_err(msg)),
+    }
+}
+
+/// Convert a Python object (bytes/str/int/list/tuple/dict) into a bencode
+/// `Value`. str is utf8-encoded; dict keys must be bytes or str.
+fn py_to_value(obj: &Bound<'_, PyAny>) -> PyResult<protocol3::Value<'static>> {
+    use std::borrow::Cow;
+    if let Ok(b) = obj.cast::<PyBytes>() {
+        return Ok(protocol3::Value::Bytes(Cow::Owned(b.as_bytes().to_vec())));
+    }
+    if let Ok(s) = obj.extract::<String>() {
+        // bytes were handled above, so a plain str lands here.
+        return Ok(protocol3::Value::Bytes(Cow::Owned(s.into_bytes())));
+    }
+    if let Ok(i) = obj.extract::<i64>() {
+        return Ok(protocol3::Value::Integer(i));
+    }
+    if let Ok(seq) = obj.cast::<PyTuple>() {
+        let items: PyResult<Vec<_>> = seq.iter().map(|e| py_to_value(&e)).collect();
+        return Ok(protocol3::Value::List(items?));
+    }
+    if let Ok(seq) = obj.cast::<pyo3::types::PyList>() {
+        let items: PyResult<Vec<_>> = seq.iter().map(|e| py_to_value(&e)).collect();
+        return Ok(protocol3::Value::List(items?));
+    }
+    if let Ok(dict) = obj.cast::<PyDict>() {
+        let mut map = std::collections::BTreeMap::new();
+        for (k, v) in dict.iter() {
+            let key = if let Ok(b) = k.cast::<PyBytes>() {
+                b.as_bytes().to_vec()
+            } else {
+                k.extract::<String>()
+                    .map_err(|_| PyValueError::new_err("dict key must be bytes or str"))?
+                    .into_bytes()
+            };
+            map.insert(Cow::Owned(key), py_to_value(&v)?);
+        }
+        return Ok(protocol3::Value::Dict(map));
+    }
+    Err(PyValueError::new_err(format!(
+        "cannot bencode object of type {}",
+        obj.get_type().name()?
+    )))
+}
+
+/// Encode a Python structure to canonical bencode bytes (`bencode`).
+#[pyfunction]
+#[pyo3(name = "_bencode")]
+fn bencode<'py>(py: Python<'py>, obj: &Bound<'py, PyAny>) -> PyResult<Bound<'py, PyBytes>> {
+    let value = py_to_value(obj)?;
+    Ok(PyBytes::new(py, &protocol3::bencode(&value)))
 }
 
 /// v3 framing: a length-prefixed bencode dict of byte-string header pairs.
@@ -213,6 +302,8 @@ fn _hpss_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(encode_bulk_data, m)?)?;
     m.add_function(wrap_pyfunction!(serialise_offsets, m)?)?;
     m.add_function(wrap_pyfunction!(deserialise_offsets, m)?)?;
+    m.add_function(wrap_pyfunction!(bdecode_as_tuple, m)?)?;
+    m.add_function(wrap_pyfunction!(bencode, m)?)?;
     m.add_function(wrap_pyfunction!(v3_headers, m)?)?;
     m.add_function(wrap_pyfunction!(v3_structure, m)?)?;
     m.add_function(wrap_pyfunction!(v3_prefixed_body, m)?)?;

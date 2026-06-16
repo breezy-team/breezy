@@ -7,8 +7,9 @@
 //! bencode is provided by the `bendy` crate, which enforces the same canonical
 //! form (sorted dict keys, no leading zeros) as fastbencode.
 
+use bendy::decoding::{Decoder, Object};
 use bendy::encoding::Encoder;
-use bendy::value::Value;
+pub use bendy::value::Value;
 use std::borrow::Cow;
 
 /// Maximum bencode nesting depth. `Value` reports a static depth of 0, so the
@@ -86,9 +87,148 @@ pub const ERROR_STATUS: &[u8] = b"oE";
 /// `_write_success_status`.
 pub const SUCCESS_STATUS: &[u8] = b"oS";
 
+/// A decoded bencode value.
+///
+/// Lists are kept distinct from dicts so the binding can map lists to Python
+/// tuples (matching `fastbencode.bdecode_as_tuple`). Integers are kept as their
+/// textual token to preserve arbitrary precision, since Python ints are
+/// unbounded but `bendy`'s own integer type is not.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Decoded {
+    Bytes(Vec<u8>),
+    /// The integer's decimal text (e.g. `-7`, `123...`).
+    Integer(String),
+    List(Vec<Decoded>),
+    Dict(Vec<(Vec<u8>, Decoded)>),
+}
+
+/// Failure to decode bencoded bytes. Carries a message mirroring the
+/// `ValueError` text that `fastbencode.bdecode_as_tuple` would raise.
+#[derive(Debug, PartialEq, Eq)]
+pub struct BdecodeError(pub String);
+
+/// Decode bencoded bytes, rejecting trailing junk (like `bdecode_as_tuple`).
+///
+/// `bendy` enforces canonical form: sorted dict keys, no leading zeros, no
+/// negative zero. These match fastbencode's checks.
+pub fn bdecode(bytes: &[u8]) -> Result<Decoded, BdecodeError> {
+    let mut decoder = Decoder::new(bytes).with_max_depth(MAX_DEPTH);
+    let obj = decoder
+        .next_object()
+        .map_err(|e| BdecodeError(e.to_string()))?
+        .ok_or_else(|| BdecodeError("stream underflow".into()))?;
+    let decoded = decode_object(obj)?;
+    // Reject trailing data after a complete object.
+    let trailing = decoder
+        .next_object()
+        .map_err(|e| BdecodeError(e.to_string()))?
+        .is_some();
+    if trailing {
+        return Err(BdecodeError("junk in stream".into()));
+    }
+    Ok(decoded)
+}
+
+fn decode_object(obj: Object<'_, '_>) -> Result<Decoded, BdecodeError> {
+    match obj {
+        Object::Bytes(b) => Ok(Decoded::Bytes(b.to_vec())),
+        Object::Integer(text) => Ok(Decoded::Integer(text.to_string())),
+        Object::List(mut list) => {
+            let mut items = Vec::new();
+            while let Some(item) = list
+                .next_object()
+                .map_err(|e| BdecodeError(e.to_string()))?
+            {
+                items.push(decode_object(item)?);
+            }
+            Ok(Decoded::List(items))
+        }
+        Object::Dict(mut dict) => {
+            let mut pairs = Vec::new();
+            while let Some((key, value)) =
+                dict.next_pair().map_err(|e| BdecodeError(e.to_string()))?
+            {
+                pairs.push((key.to_vec(), decode_object(value)?));
+            }
+            Ok(Decoded::Dict(pairs))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn b(s: &[u8]) -> Decoded {
+        Decoded::Bytes(s.to_vec())
+    }
+    fn i(s: &str) -> Decoded {
+        Decoded::Integer(s.to_string())
+    }
+
+    #[test]
+    fn bdecode_scalars() {
+        assert_eq!(bdecode(b"5:hello"), Ok(b(b"hello")));
+        assert_eq!(bdecode(b"0:"), Ok(b(b"")));
+        assert_eq!(bdecode(b"i42e"), Ok(i("42")));
+        assert_eq!(bdecode(b"i-7e"), Ok(i("-7")));
+    }
+
+    #[test]
+    fn bdecode_big_int_preserved() {
+        let big = "123456789012345678901234567890";
+        assert_eq!(bdecode(format!("i{big}e").as_bytes()), Ok(i(big)));
+    }
+
+    #[test]
+    fn bdecode_list_and_nesting() {
+        assert_eq!(bdecode(b"le"), Ok(Decoded::List(vec![])));
+        assert_eq!(
+            bdecode(b"l1:a1:be"),
+            Ok(Decoded::List(vec![b(b"a"), b(b"b")]))
+        );
+        assert_eq!(
+            bdecode(b"l1:ali1ei2eee"),
+            Ok(Decoded::List(vec![
+                b(b"a"),
+                Decoded::List(vec![i("1"), i("2")])
+            ]))
+        );
+    }
+
+    #[test]
+    fn bdecode_dict() {
+        assert_eq!(bdecode(b"de"), Ok(Decoded::Dict(vec![])));
+        assert_eq!(
+            bdecode(b"d1:a1:be"),
+            Ok(Decoded::Dict(vec![(b"a".to_vec(), b(b"b"))]))
+        );
+        assert_eq!(
+            bdecode(b"d1:al1:xee"),
+            Ok(Decoded::Dict(vec![(
+                b"a".to_vec(),
+                Decoded::List(vec![b(b"x")])
+            )]))
+        );
+    }
+
+    #[test]
+    fn bdecode_rejects_trailing_junk() {
+        assert_eq!(
+            bdecode(b"i1ei2e"),
+            Err(BdecodeError("junk in stream".into()))
+        );
+    }
+
+    #[test]
+    fn bdecode_rejects_malformed() {
+        // Empty, leading zeros, unsorted/duplicate keys, truncation all error.
+        assert!(bdecode(b"").is_err());
+        assert!(bdecode(b"i03e").is_err());
+        assert!(bdecode(b"d1:b1:21:a1:1e").is_err());
+        assert!(bdecode(b"5:ab").is_err());
+        assert!(bdecode(b"x").is_err());
+    }
 
     #[test]
     fn bencode_list_and_dict() {
