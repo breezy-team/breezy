@@ -8,4 +8,5 @@
 //! `bzrformats.smart`) and are re-exported there; this crate owns the
 //! breezy-specific protocol logic that is not part of bzrformats.
 
+pub mod body;
 pub mod protocol;
