@@ -186,11 +186,16 @@ fn v3_headers<'py>(py: Python<'py>, headers: Vec<(Vec<u8>, Vec<u8>)>) -> Bound<'
     PyBytes::new(py, &protocol3::headers(&headers))
 }
 
-/// v3 framing: a `s` marker plus length-prefixed bencode list of byte args.
+/// v3 framing: a `s` marker plus length-prefixed bencode list of the args.
+///
+/// `args` is any iterable; elements are usually byte strings but may be
+/// integers or nested structures, matching the original `bencode(args)`.
 #[pyfunction]
 #[pyo3(name = "_v3_structure")]
-fn v3_structure<'py>(py: Python<'py>, args: Vec<Vec<u8>>) -> Bound<'py, PyBytes> {
-    PyBytes::new(py, &protocol3::structure(&args))
+fn v3_structure<'py>(py: Python<'py>, args: &Bound<'py, PyAny>) -> PyResult<Bound<'py, PyBytes>> {
+    let items: PyResult<Vec<_>> = args.try_iter()?.map(|e| py_to_value(&e?)).collect();
+    let value = protocol3::Value::List(items?);
+    Ok(PyBytes::new(py, &protocol3::structure_value(&value)))
 }
 
 /// v3 framing: a `b` marker plus length-prefixed raw body bytes.
