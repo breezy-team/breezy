@@ -232,26 +232,38 @@ dependencies = [
  "breezy-osutils",
  "chrono",
  "dirs",
- "encoding",
- "gettext",
- "inventory",
- "lazy_static",
  "log",
  "nix",
  "once_cell",
- "patiencediff",
  "percent-encoding",
  "pyo3",
  "regex",
  "serde",
  "serde_yaml",
- "textwrap",
  "url",
 ]
 
 [[package]]
 name = "breezy-annotate"
 version = "3.4.0"
+
+[[package]]
+name = "breezy-cli"
+version = "3.4.0"
+dependencies = [
+ "breezy",
+ "encoding",
+ "gettext",
+ "inventory",
+ "lazy_static",
+ "log",
+ "once_cell",
+ "patiencediff",
+ "pyo3",
+ "regex",
+ "textwrap",
+ "url",
+]
 
 [[package]]
 name = "breezy-git"
@@ -405,6 +417,7 @@ name = "cmd-py"
 version = "3.4.0"
 dependencies = [
  "breezy",
+ "breezy-cli",
  "gettext",
  "log",
  "pyo3",
