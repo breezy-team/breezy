@@ -18,6 +18,10 @@ fn protocol_err(py: Python<'_>, e: protocol::ProtocolError) -> PyErr {
         }
         protocol::ProtocolError::BadChunkedHeader(prefix)
         | protocol::ProtocolError::BadChunkLength(prefix) => smart_protocol_error(py, &prefix),
+        // Mirrors int()/split() failures in the Python _deserialise_offsets.
+        protocol::ProtocolError::BadOffset(line) => {
+            PyValueError::new_err(format!("invalid readv offset line: {line:?}"))
+        }
     }
 }
 
@@ -62,6 +66,27 @@ fn decode_tuple<'py>(
 #[pyo3(name = "_encode_tuple")]
 fn encode_tuple<'py>(py: Python<'py>, args: Vec<Vec<u8>>) -> Bound<'py, PyBytes> {
     PyBytes::new(py, &protocol::encode_tuple(args))
+}
+
+/// Encode bulk data as a length-prefixed chunk (`_encode_bulk_data`).
+#[pyfunction]
+#[pyo3(name = "_encode_bulk_data")]
+fn encode_bulk_data<'py>(py: Python<'py>, body: &[u8]) -> Bound<'py, PyBytes> {
+    PyBytes::new(py, &protocol::encode_bulk_data(body))
+}
+
+/// Serialise readv `(start, length)` offsets (`_serialise_offsets`).
+#[pyfunction]
+#[pyo3(name = "_serialise_offsets")]
+fn serialise_offsets<'py>(py: Python<'py>, offsets: Vec<(u64, u64)>) -> Bound<'py, PyBytes> {
+    PyBytes::new(py, &protocol::serialise_offsets(&offsets))
+}
+
+/// Parse readv offsets serialised by `_serialise_offsets` (`_deserialise_offsets`).
+#[pyfunction]
+#[pyo3(name = "_deserialise_offsets")]
+fn deserialise_offsets(py: Python<'_>, text: &[u8]) -> PyResult<Vec<(u64, u64)>> {
+    protocol::deserialise_offsets(text).map_err(|e| protocol_err(py, e))
 }
 
 /// Decoder for length-prefixed bulk data (smart protocol v1 and v2).
@@ -163,6 +188,9 @@ impl PyChunkedBodyDecoder {
 fn _hpss_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(decode_tuple, m)?)?;
     m.add_function(wrap_pyfunction!(encode_tuple, m)?)?;
+    m.add_function(wrap_pyfunction!(encode_bulk_data, m)?)?;
+    m.add_function(wrap_pyfunction!(serialise_offsets, m)?)?;
+    m.add_function(wrap_pyfunction!(deserialise_offsets, m)?)?;
     m.add_class::<PyLengthPrefixedBodyDecoder>()?;
     m.add_class::<PyChunkedBodyDecoder>()?;
     Ok(())
