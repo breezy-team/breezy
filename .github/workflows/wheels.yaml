@@ -90,6 +90,9 @@ jobs:
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
           CIBW_SKIP_LINUX: '*-musllinux_*'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY="1" MACOSX_DEPLOYMENT_TARGET="10.15"'
+          # Statically link liblzma rather than the Homebrew dylib, whose
+          # minimum target outpaces MACOSX_DEPLOYMENT_TARGET and breaks delocate.
+          CIBW_ENVIRONMENT_MACOS: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY="1" MACOSX_DEPLOYMENT_TARGET="10.15" LZMA_API_STATIC="1"'
           CIBW_BEFORE_BUILD: >
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
