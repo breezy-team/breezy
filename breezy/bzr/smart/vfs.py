@@ -27,6 +27,7 @@ protocol, as implemented in bzr 0.11 and later.
 import os
 
 from ... import urlutils
+from ..._hpss_rs import _deserialise_offsets
 from . import request
 
 
@@ -348,22 +349,9 @@ class ReadvRequest(VfsRequest):
     def _deserialise_offsets(self, text):
         """Deserialise offset,length pairs from text.
 
-        Args:
-            text: Text containing offset,length pairs separated by newlines.
-
-        Returns:
-            List of (offset, length) tuples.
-
-        Note:
-            XXX: FIXME this should be on the protocol object.
+        XXX: FIXME this should be on the protocol object.
         """
-        offsets = []
-        for line in text.split(b"\n"):
-            if not line:
-                continue
-            start, length = line.split(b",")
-            offsets.append((int(start), int(length)))
-        return offsets
+        return _deserialise_offsets(text)
 
 
 class RenameRequest(VfsRequest):

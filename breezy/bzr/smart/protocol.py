@@ -184,35 +184,17 @@ class SmartProtocolBase:
         r"""Encode binary data as a length-prefixed bulk data chunk.
 
         The smart protocol uses a simple length-prefixed format for bulk data:
-        - Length as decimal digits followed by newline
-        - The actual data bytes
-        - "done\n" terminator
-
-        Args:
-            body: Binary data to encode as a bulk data chunk.
-
-        Returns:
-            Encoded bulk data as bytes, ready to send over the wire.
+        a decimal length, a newline, the data, then a "done\n" terminator.
         """
-        return b"".join((b"%d\n" % len(body), body, b"done\n"))
+        return _hpss_rs._encode_bulk_data(body)
 
     def _serialise_offsets(self, offsets):
         """Serialize a list of readv offsets for transmission.
 
-        Readv operations allow efficient reading of multiple byte ranges
-        from a remote resource. Each offset is encoded as "start,length"
-        with offsets separated by newlines.
-
-        Args:
-            offsets: Iterable of (start, length) tuples specifying byte ranges.
-
-        Returns:
-            Serialized offsets as bytes, with each offset on a separate line.
+        Each (start, length) offset is encoded as "start,length", with offsets
+        separated by newlines.
         """
-        txt = []
-        for start, length in offsets:
-            txt.append(b"%d,%d" % (start, length))
-        return b"\n".join(txt)
+        return _hpss_rs._serialise_offsets(offsets)
 
 
 class SmartServerRequestProtocolOne(SmartProtocolBase):
@@ -1329,10 +1311,7 @@ class _ProtocolThreeEncoder:
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
-        txt = []
-        for start, length in offsets:
-            txt.append(b"%d,%d" % (start, length))
-        return b"\n".join(txt)
+        return _hpss_rs._serialise_offsets(offsets)
 
     def _write_protocol_version(self):
         self._write_func(MESSAGE_VERSION_THREE)

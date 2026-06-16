@@ -9,6 +9,8 @@ pub enum ProtocolError {
     BadChunkedHeader(Vec<u8>),
     /// A chunk length prefix was not valid hexadecimal.
     BadChunkLength(Vec<u8>),
+    /// A serialised readv offset line was malformed.
+    BadOffset(Vec<u8>),
 }
 
 /// Decode a byte string into a tuple of fields.
@@ -47,6 +49,49 @@ where
     }
     out.push(b'\n');
     out
+}
+
+/// Encode bulk data as a length-prefixed chunk: decimal length + `\n`, the
+/// data, then `done\n`. Mirrors `SmartProtocolBase._encode_bulk_data`.
+pub fn encode_bulk_data(body: &[u8]) -> Vec<u8> {
+    let mut out = format!("{}\n", body.len()).into_bytes();
+    out.extend_from_slice(body);
+    out.extend_from_slice(b"done\n");
+    out
+}
+
+/// Serialise readv `(start, length)` offsets as newline-separated
+/// `start,length` lines. Mirrors `SmartProtocolBase._serialise_offsets`.
+pub fn serialise_offsets(offsets: &[(u64, u64)]) -> Vec<u8> {
+    let lines: Vec<String> = offsets
+        .iter()
+        .map(|(start, length)| format!("{start},{length}"))
+        .collect();
+    lines.join("\n").into_bytes()
+}
+
+/// Parse readv offsets serialised by [`serialise_offsets`]. Blank lines are
+/// skipped. Mirrors `vfs._deserialise_offsets`.
+pub fn deserialise_offsets(text: &[u8]) -> Result<Vec<(u64, u64)>, ProtocolError> {
+    let mut offsets = Vec::new();
+    for line in text.split(|&b| b == b'\n') {
+        if line.is_empty() {
+            continue;
+        }
+        let comma = line
+            .iter()
+            .position(|&b| b == b',')
+            .ok_or_else(|| ProtocolError::BadOffset(line.to_vec()))?;
+        let start = parse_u64(&line[..comma]).ok_or_else(|| ProtocolError::BadOffset(line.to_vec()))?;
+        let length =
+            parse_u64(&line[comma + 1..]).ok_or_else(|| ProtocolError::BadOffset(line.to_vec()))?;
+        offsets.push((start, length));
+    }
+    Ok(offsets)
+}
+
+fn parse_u64(bytes: &[u8]) -> Option<u64> {
+    std::str::from_utf8(bytes).ok()?.parse().ok()
 }
 
 #[cfg(test)]
@@ -95,6 +140,36 @@ mod tests {
         assert_eq!(
             decode_tuple(Some(&encoded)),
             Ok(Some(vec![b"foo".to_vec(), b"bar".to_vec()]))
+        );
+    }
+
+    #[test]
+    fn bulk_data() {
+        assert_eq!(encode_bulk_data(b"hello"), b"5\nhellodone\n");
+        assert_eq!(encode_bulk_data(b""), b"0\ndone\n");
+    }
+
+    #[test]
+    fn offsets_roundtrip() {
+        let offsets = [(1u64, 2u64), (30, 40)];
+        let encoded = serialise_offsets(&offsets);
+        assert_eq!(encoded, b"1,2\n30,40");
+        assert_eq!(deserialise_offsets(&encoded), Ok(offsets.to_vec()));
+    }
+
+    #[test]
+    fn offsets_empty() {
+        assert_eq!(serialise_offsets(&[]), b"");
+        assert_eq!(deserialise_offsets(b""), Ok(vec![]));
+        // Trailing/blank lines are skipped.
+        assert_eq!(deserialise_offsets(b"1,2\n\n"), Ok(vec![(1, 2)]));
+    }
+
+    #[test]
+    fn offsets_malformed() {
+        assert_eq!(
+            deserialise_offsets(b"oops"),
+            Err(ProtocolError::BadOffset(b"oops".to_vec()))
         );
     }
 }
