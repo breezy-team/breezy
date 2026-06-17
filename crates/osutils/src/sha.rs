@@ -4,9 +4,8 @@ use std::io::Read;
 use std::path::Path;
 
 pub fn sha_file(f: &mut dyn Read) -> Result<String, std::io::Error> {
-    let mut s = Sha1::new();
-    std::io::copy(f, &mut s)?;
-    Ok(format!("{:x}", s.finalize()))
+    let (_, sha) = size_sha_file(f)?;
+    Ok(sha)
 }
 
 pub fn size_sha_file(f: &mut dyn Read) -> Result<(usize, String), std::io::Error> {
@@ -22,7 +21,7 @@ pub fn size_sha_file(f: &mut dyn Read) -> Result<(usize, String), std::io::Error
         s.update(&buffer[..bytes_read]);
         size += bytes_read;
     }
-    Ok((size, format!("{:x}", s.finalize())))
+    Ok((size, hex::encode(s.finalize())))
 }
 
 pub fn size_sha_chunks(chunks: impl Iterator<Item = Vec<u8>>) -> (usize, String) {
@@ -32,7 +31,7 @@ pub fn size_sha_chunks(chunks: impl Iterator<Item = Vec<u8>>) -> (usize, String)
         s.update(&chunk);
         size += chunk.len();
     }
-    (size, format!("{:x}", s.finalize()))
+    (size, hex::encode(s.finalize()))
 }
 
 pub fn sha_file_by_name<P: AsRef<Path>>(path: P) -> Result<String, std::io::Error> {
@@ -49,12 +48,36 @@ where
     for string in strings {
         s.update(string.as_ref());
     }
-    format!("{:x}", s.finalize())
+    hex::encode(s.finalize())
 }
 
 pub fn sha_string(string: &[u8]) -> String {
     let mut s = Sha1::new();
     s.update(string);
 
-    format!("{:x}", s.finalize())
+    hex::encode(s.finalize())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn known_digests() {
+        assert_eq!(sha_string(b""), "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+        assert_eq!(
+            sha_string(b"abc"),
+            "a9993e364706816aba3e25717850c26c9cd0d89d"
+        );
+        assert_eq!(
+            sha_chunks([b"ab".as_slice(), b"c".as_slice()]),
+            "a9993e364706816aba3e25717850c26c9cd0d89d"
+        );
+
+        let mut r = std::io::Cursor::new(b"abc".to_vec());
+        assert_eq!(
+            size_sha_file(&mut r).unwrap(),
+            (3, "a9993e364706816aba3e25717850c26c9cd0d89d".to_string())
+        );
+    }
 }
