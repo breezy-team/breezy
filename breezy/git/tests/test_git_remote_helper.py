@@ -19,13 +19,13 @@
 """Tests for the git remote helper."""
 
 import os
+import site
 import subprocess
-import sys
 from io import BytesIO
 
 from dulwich.repo import Repo
 
-from ...tests import TestCaseWithTransport
+from ...tests import TestCaseWithTransport, python_executable, subprocess_pythonpath
 from ...tests.features import PathFeature
 from ..git_remote_helper import RemoteHelper, fetch, open_local_dir
 from ..object_store import get_object_store
@@ -80,7 +80,7 @@ class FetchTests(TestCaseWithTransport):
         out = self.fetch([(git_sha1, "HEAD")])
         self.assertEqual(out, b"\n")
         r = Repo("local")
-        self.assertTrue(git_sha1 in r.object_store)
+        self.assertIn(git_sha1, r.object_store)
         self.assertEqual({}, r.get_refs())
 
 
@@ -93,9 +93,20 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         remote_dir = remote_tree.controldir
         env = dict(os.environ)
         env["GIT_DIR"] = local_path
-        env["PYTHONPATH"] = ":".join(sys.path)
+        env["PYTHONPATH"] = subprocess_pythonpath()
+        # ``HOME`` is overridden to a tempdir for the duration of the
+        # test, hiding the user-site directory; pin
+        # ``PYTHONUSERBASE`` so editable installs (whose `.pth` lives
+        # there) keep working in the spawned subprocess.
+        if site.USER_BASE is not None:
+            env["PYTHONUSERBASE"] = site.USER_BASE
         p = subprocess.Popen(
-            [sys.executable, git_remote_bzr_path, local_path, remote_dir.user_url],
+            [
+                python_executable(),
+                git_remote_bzr_path,
+                local_path,
+                remote_dir.user_url,
+            ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -103,9 +114,7 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         )
         (out, err) = p.communicate(b"capabilities\n")
         lines = out.splitlines()
-        self.assertIn(
-            b"push", lines, "no 'push' in {!r}, error: {!r}".format(lines, err)
-        )
+        self.assertIn(b"push", lines, f"no 'push' in {lines!r}, error: {err!r}")
         self.assertEqual(
             b"git-remote-bzr is experimental and has not been optimized "
             b"for performance. Use 'brz fast-export' and 'git fast-import' "
@@ -128,9 +137,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
         base = b"fetch\noption\npush\n"
-        self.assertTrue(
-            capabs in (base + b"\n", base + b"import\nrefspec *:*\n\n"), capabs
-        )
+        self.assertIn(capabs, (base + b"\n", base + b"import\nrefspec *:*\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()

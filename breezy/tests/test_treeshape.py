@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for tree shape helpers and test utilities."""
 
 import os
 
@@ -22,6 +23,8 @@ from breezy.tests import features
 
 
 class TestTreeShape(tests.TestCaseWithTransport):
+    """Test cases for tree shape testing utilities."""
+
     def test_build_tree(self):
         """Test tree-building test helper."""
         self.build_tree_contents(
@@ -36,6 +39,7 @@ class TestTreeShape(tests.TestCaseWithTransport):
         self.assertFileEqual(b"hello", ".bzr/README")
 
     def test_build_tree_symlink(self):
+        """Test that build_tree_contents can create symlinks correctly."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.build_tree_contents([("link@", "target")])
         self.assertEqual("target", os.readlink("link"))

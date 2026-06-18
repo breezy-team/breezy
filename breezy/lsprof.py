@@ -1,7 +1,16 @@
-# this is copied from the lsprof distro because somehow
-# it is not installed by distutils
-# I made one modification to profile so that it returns a pair
-# instead of just the Stats object
+"""Line-by-line profiler for Python.
+
+This module provides a line-by-line profiler for Python programs. It is based on
+the lsprof profiler from the Python distribution, with modifications to support
+Breezy's profiling needs.
+
+The main entry point is the profile() function, which profiles a callable and
+returns both the function's result and profiling statistics.
+
+Note: This module is copied from the lsprof distribution because it is not
+installed by distutils. The main modification is that profile() returns a pair
+(result, stats) instead of just the Stats object.
+"""
 
 import _thread
 import codecs
@@ -106,6 +115,16 @@ class BzrProfiler:
             self.__class__.profiler_lock.release()
 
     def _thread_profile(self, f, *args, **kwds):
+        """Profile function for new threads.
+
+        This method is called when a new thread starts executing. It creates
+        a new Profiler instance for the thread and enables profiling.
+
+        Args:
+            f: The function being profiled.
+            *args: Positional arguments for the function.
+            **kwds: Keyword arguments for the function.
+        """
         # we lose the first profile point for a new thread in order to
         # trampoline a new Profile object into place
         thr = _thread.get_ident()
@@ -123,6 +142,12 @@ class Stats:
     """
 
     def __init__(self, data, threads):
+        """Initialize a Stats instance.
+
+        Args:
+            data: The profiling data collected by the profiler.
+            threads: A dictionary mapping thread IDs to thread-specific Stats objects.
+        """
         self.data = data
         self.threads = threads
 
@@ -132,7 +157,7 @@ class Stats:
         :param crit: the data attribute used as the sort key.
         """
         if crit not in profiler_entry.__dict__ or crit == "code":
-            raise ValueError("Can't sort by {}".format(crit))
+            raise ValueError(f"Can't sort by {crit}")
 
         key_func = operator.attrgetter(crit)
         self.data.sort(key=key_func, reverse=reverse)
@@ -147,7 +172,7 @@ class Stats:
         :param top: only output the top n entries.
             The default value of None means output all data.
         :param file: the output file; if None, output will
-            default to stdout.
+        default to stdout.
         """
         if file is None:
             file = sys.stdout
@@ -182,11 +207,11 @@ class Stats:
                     file.write(
                         cols
                         % (
-                            "+{}".format(se.callcount),
+                            f"+{se.callcount}",
                             se.reccallcount,
                             se.totaltime,
                             se.inlinetime,
-                            "+{}".format(label(se.code)),
+                            f"+{label(se.code)}",
                         )
                     )
 
@@ -256,6 +281,11 @@ class _CallTreeFilter:
     out_file: TextIO
 
     def __init__(self, data):
+        """Initialize a _CallTreeFilter instance.
+
+        Args:
+            data: The profiling data to convert to callgrind format.
+        """
         self.data = data
 
     def output(self, out_file):
@@ -266,6 +296,11 @@ class _CallTreeFilter:
             self._entry(entry)
 
     def _print_summary(self):
+        """Print the summary line for callgrind format.
+
+        This calculates and outputs the maximum cost (total time) across all
+        profiling entries.
+        """
         max_cost = 0
         for entry in self.data:
             totaltime = int(entry.totaltime * 1000)
@@ -273,42 +308,48 @@ class _CallTreeFilter:
         self.out_file.write("summary: %d\n" % (max_cost,))
 
     def _entry(self, entry):
+        """Output a single profiling entry in callgrind format.
+
+        Args:
+            entry: A profiler_entry object containing profiling data for a
+                single function.
+        """
         out_file = self.out_file
         code = entry.code
         inlinetime = int(entry.inlinetime * 1000)
         if isinstance(code, str):
             out_file.write("fi=~\n")
         else:
-            out_file.write("fi={}\n".format(code.co_filename))
-        out_file.write("fn={}\n".format(label(code, True)))
+            out_file.write(f"fi={code.co_filename}\n")
+        out_file.write(f"fn={label(code, True)}\n")
         if isinstance(code, str):
-            out_file.write("0  {}\n".format(inlinetime))
+            out_file.write(f"0  {inlinetime}\n")
         else:
             out_file.write("%d %d\n" % (code.co_firstlineno, inlinetime))
         # recursive calls are counted in entry.calls
-        if entry.calls:
-            calls = entry.calls
-        else:
-            calls = []
-        if isinstance(code, str):
-            lineno = 0
-        else:
-            lineno = code.co_firstlineno
+        calls = entry.calls if entry.calls else []
+        lineno = 0 if isinstance(code, str) else code.co_firstlineno
         for subentry in calls:
             self._subentry(lineno, subentry)
         out_file.write("\n")
 
     def _subentry(self, lineno, subentry):
+        """Output a called function entry in callgrind format.
+
+        Args:
+            lineno: The line number in the calling function.
+            subentry: A profiler_entry object for the called function.
+        """
         out_file = self.out_file
         code = subentry.code
         totaltime = int(subentry.totaltime * 1000)
         if isinstance(code, str):
             out_file.write("cfi=~\n")
-            out_file.write("cfn={}\n".format(label(code, True)))
+            out_file.write(f"cfn={label(code, True)}\n")
             out_file.write("calls=%d 0\n" % (subentry.callcount,))
         else:
-            out_file.write("cfi={}\n".format(code.co_filename))
-            out_file.write("cfn={}\n".format(label(code, True)))
+            out_file.write(f"cfi={code.co_filename}\n")
+            out_file.write(f"cfn={label(code, True)}\n")
             out_file.write("calls=%d %d\n" % (subentry.callcount, code.co_firstlineno))
         out_file.write("%d %d\n" % (lineno, totaltime))
 
@@ -317,6 +358,16 @@ _fn2mod: dict[str, object] = {}
 
 
 def label(code, calltree=False):
+    """Generate a human-readable label for a code object.
+
+    Args:
+        code: A code object or string. If a string, it is returned as-is.
+        calltree: If True, format the label for callgrind output.
+
+    Returns:
+        A string label in the format "module:line(function)" or
+        "function module:line" if calltree is True.
+    """
     if isinstance(code, str):
         return code
     try:
@@ -333,7 +384,7 @@ def label(code, calltree=False):
                 mname = _fn2mod[code.co_filename] = k
                 break
         else:
-            mname = _fn2mod[code.co_filename] = "<{}>".format(code.co_filename)
+            mname = _fn2mod[code.co_filename] = f"<{code.co_filename}>"
     if calltree:
         return "%s %s:%d" % (code.co_name, mname, code.co_firstlineno)
     else:
@@ -341,6 +392,10 @@ def label(code, calltree=False):
 
 
 def main():
+    """Command-line interface for the lsprof profiler.
+
+    Profiles a Python script and prints the results to stdout.
+    """
     sys.argv = sys.argv[1:]
     if not sys.argv:
         sys.stderr.write("usage: lsprof.py <script> <arguments...>\n")

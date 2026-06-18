@@ -18,7 +18,6 @@ import contextlib
 import os
 import re
 import subprocess
-import sys
 import tempfile
 from io import BytesIO
 
@@ -54,8 +53,8 @@ def external_udiff_lines(old, new, use_stringio=False):
         output = tempfile.TemporaryFile()
     try:
         diff.external_diff("old", old, "new", new, output, diff_opts=["-u"])
-    except errors.NoDiff:
-        raise tests.TestSkipped('external "diff" not present to test')
+    except errors.NoDiff as err:
+        raise tests.TestSkipped('external "diff" not present to test') from err
     output.seek(0, 0)
     lines = output.readlines()
     output.close()
@@ -74,9 +73,7 @@ class StubO:
     def check_types(self, testcase, expected_type):
         testcase.assertFalse(
             any(not isinstance(o, expected_type) for o in self.write_record),
-            "Not all writes of type {}: {!r}".format(
-                expected_type.__name__, self.write_record
-            ),
+            f"Not all writes of type {expected_type.__name__}: {self.write_record!r}",
         )
 
 
@@ -97,8 +94,8 @@ class TestDiffOptionsScenarios(tests.TestCase):
     def test_unified_not_added(self):
         # Verify that for all valid style options, '-u' is not
         # appended to option list.
-        ret_opts = diff.default_style_unified(diff_opts=["{}".format(self.style)])
-        self.assertEqual(["{}".format(self.style)], ret_opts)
+        ret_opts = diff.default_style_unified(diff_opts=[f"{self.style}"])
+        self.assertEqual([f"{self.style}"], ret_opts)
 
 
 class TestDiff(tests.TestCase):
@@ -128,17 +125,17 @@ class TestDiff(tests.TestCase):
         ## "expected no-nl, got %r" % lines[5]
 
     def check_patch(self, lines):
-        self.assertTrue(len(lines) > 1)
+        self.assertGreater(len(lines), 1)
         ## "Not enough lines for a file header for patch:\n%s" % "".join(lines)
         self.assertTrue(lines[0].startswith(b"---"))
         ## 'No orig line for patch:\n%s' % "".join(lines)
         self.assertTrue(lines[1].startswith(b"+++"))
         ## 'No mod line for patch:\n%s' % "".join(lines)
-        self.assertTrue(len(lines) > 2)
+        self.assertGreater(len(lines), 2)
         ## "No hunks for patch:\n%s" % "".join(lines)
         self.assertTrue(lines[2].startswith(b"@@"))
         ## "No hunk header for patch:\n%s" % "".join(lines)
-        self.assertTrue(b"@@" in lines[2][2:])
+        self.assertIn(b"@@", lines[2][2:])
         ## "Unterminated hunk header for patch:\n%s" % "".join(lines)
 
     def test_binary_lines(self):
@@ -416,10 +413,7 @@ class TestDiffFiles(tests.TestCaseInTempDir):
 
 def get_diff_as_string(tree1, tree2, specific_files=None, working_tree=None):
     output = BytesIO()
-    if working_tree is not None:
-        extra_trees = (working_tree,)
-    else:
-        extra_trees = ()
+    extra_trees = (working_tree,) if working_tree is not None else ()
     diff.show_diff_trees(
         tree1,
         tree2,
@@ -1038,7 +1032,10 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
     def test_execute(self):
         output = BytesIO()
         diff_obj = diff.DiffFromTool(
-            [sys.executable, "-c", 'print("{old_path} {new_path}")'], None, None, output
+            [tests.python_executable(), "-c", 'print("{old_path} {new_path}")'],
+            None,
+            None,
+            output,
         )
         self.addCleanup(diff_obj.finish)
         diff_obj._execute("old", "new")
@@ -1068,7 +1065,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
         diff_obj = diff.DiffFromTool(
-            [sys.executable, "-c", 'print "{old_path} {new_path}"'],
+            [tests.python_executable(), "-c", 'print "{old_path} {new_path}"'],
             basis_tree,
             tree,
             output,
@@ -1081,7 +1078,11 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.assertReadableByAttrib(tree.basedir, "file", r"work\\tree\\file$")
 
     def assertReadableByAttrib(self, cwd, relpath, regex):
-        proc = subprocess.Popen(["attrib", relpath], stdout=subprocess.PIPE, cwd=cwd)
+        proc = subprocess.Popen(
+            ["attrib", relpath],  # noqa: S607
+            stdout=subprocess.PIPE,
+            cwd=cwd,
+        )
         (result, _err) = proc.communicate()
         self.assertContainsRe(result.replace("\r\n", "\n"), regex)
 
@@ -1104,7 +1105,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = diff.DiffFromTool(
-            [sys.executable, "-c", 'print "{old_path} {new_path}"'],
+            [tests.python_executable(), "-c", 'print "{old_path} {new_path}"'],
             old_tree,
             tree,
             output,
@@ -1135,7 +1136,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             dirname = scenario["info"]["directory"]
             filename = scenario["info"]["filename"]
 
-            self.overrideAttr(diffobj, "_fenc", lambda: encoding)
+            self.overrideAttr(diffobj, "_fenc", lambda: encoding)  # noqa: B023
             relpath = dirname + "/" + filename
             fullpath = diffobj._safe_filename("safe", relpath)
             self.assertEqual(fullpath, fullpath.encode(encoding).decode(encoding))
@@ -1150,12 +1151,9 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             dirname = scenario["info"]["directory"]
             filename = scenario["info"]["filename"]
 
-            if encoding == "iso-8859-1":
-                encoding = "iso-8859-2"
-            else:
-                encoding = "iso-8859-1"
+            encoding = "iso-8859-2" if encoding == "iso-8859-1" else "iso-8859-1"
 
-            self.overrideAttr(diffobj, "_fenc", lambda: encoding)
+            self.overrideAttr(diffobj, "_fenc", lambda: encoding)  # noqa: B023
             relpath = dirname + "/" + filename
             fullpath = diffobj._safe_filename("safe", relpath)
             self.assertEqual(fullpath, fullpath.encode(encoding).decode(encoding))
@@ -1173,9 +1171,14 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
 
     def test_basic(self):
         tree = self.make_branch_and_tree("tree")
-        (old_tree, new_tree, old_branch, new_branch, specific_files, extra_trees) = (
-            self.call_gtabtd(["tree"], None, None, None)
-        )
+        (
+            old_tree,
+            new_tree,
+            old_branch,
+            new_branch,
+            specific_files,
+            extra_trees,
+        ) = self.call_gtabtd(["tree"], None, None, None)
 
         self.assertIsInstance(old_tree, revisiontree.RevisionTree)
         self.assertEqual(_mod_revision.NULL_REVISION, old_tree.get_revision_id())
@@ -1197,9 +1200,14 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
             revisionspec.RevisionSpec.from_string("1"),
             revisionspec.RevisionSpec.from_string("2"),
         ]
-        (old_tree, new_tree, old_branch, new_branch, specific_files, extra_trees) = (
-            self.call_gtabtd(["tree"], revisions, None, None)
-        )
+        (
+            old_tree,
+            new_tree,
+            old_branch,
+            new_branch,
+            specific_files,
+            extra_trees,
+        ) = self.call_gtabtd(["tree"], revisions, None, None)
 
         self.assertIsInstance(old_tree, revisiontree.RevisionTree)
         self.assertEqual(b"old-id", old_tree.get_revision_id())

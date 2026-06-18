@@ -16,11 +16,13 @@
 
 """Tests for repositories that support CHK indices."""
 
-from breezy import errors, osutils, repository
-from breezy.bzr import btree_index
+from bzrformats import btree_index
+from bzrformats.errors import BzrCheckError
+from bzrformats.versionedfile import VersionedFiles
+
+from breezy import osutils, repository
 from breezy.bzr.remote import RemoteRepository
 from breezy.bzr.tests.per_repository_chk import TestCaseWithRepositoryCHK
-from breezy.bzr.versionedfile import VersionedFiles
 from breezy.tests import TestNotApplicable
 
 
@@ -161,9 +163,9 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
-        self.assertRaises(errors.BzrCheckError, reopened_repo.commit_write_group)
+        self.assertRaises(BzrCheckError, reopened_repo.commit_write_group)
         reopened_repo.abort_write_group()
 
     def test_missing_chk_root_for_unchanged_inventory(self):
@@ -220,9 +222,9 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
-        self.assertRaises(errors.BzrCheckError, reopened_repo.commit_write_group)
+        self.assertRaises(BzrCheckError, reopened_repo.commit_write_group)
         reopened_repo.abort_write_group()
 
     def test_missing_chk_leaf_for_inventory(self):
@@ -268,9 +270,9 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
-        self.assertRaises(errors.BzrCheckError, reopened_repo.commit_write_group)
+        self.assertRaises(BzrCheckError, reopened_repo.commit_write_group)
         reopened_repo.abort_write_group()
 
     def test_missing_chk_root_for_parent_inventory(self):
@@ -310,9 +312,9 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
-        self.assertRaises(errors.BzrCheckError, reopened_repo.commit_write_group)
+        self.assertRaises(BzrCheckError, reopened_repo.commit_write_group)
         reopened_repo.abort_write_group()
 
     def make_branch_with_multiple_chk_nodes(self):
@@ -328,14 +330,14 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                     "add",
                     (
                         "file-" + name,
-                        ("file-{}-id".format(name)).encode(),
+                        (f"file-{name}-id").encode(),
                         "file",
-                        ("content {}\n".format(name)).encode(),
+                        f"content {name}\n".encode(),
                     ),
                 )
             )
             file_modifies.append(
-                ("modify", ("file-" + name, ("new content {}\n".format(name)).encode()))
+                ("modify", ("file-" + name, f"new content {name}\n".encode()))
             )
         builder.build_snapshot(
             None,
@@ -378,7 +380,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # Make sure the presence of the missing data in a fallback does not
         # avoid the error.
         repo.add_fallback_repository(b.repository)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
-        self.assertRaises(errors.BzrCheckError, reopened_repo.commit_write_group)
+        self.assertRaises(BzrCheckError, reopened_repo.commit_write_group)
         reopened_repo.abort_write_group()

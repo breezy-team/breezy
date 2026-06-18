@@ -169,12 +169,12 @@ class TestExport(TestCaseWithTransport):
 
     def run_tar_export_disk_and_stdout(self, extension, tarfile_flags):
         self.make_basic_tree()
-        fname = "test.{}".format(extension)
-        self.run_bzr("export -d tree {}".format(fname))
-        mode = "r|{}".format(tarfile_flags)
+        fname = f"test.{extension}"
+        self.run_bzr(f"export -d tree {fname}")
+        mode = f"r|{tarfile_flags}"
         with tarfile.open(fname, mode=mode) as ball:
             self.assertTarANameAndContent(ball, root="test/")
-        content = self.run_bzr_raw("export -d tree --format={} -".format(extension))[0]
+        content = self.run_bzr_raw(f"export -d tree --format={extension} -")[0]
         with tarfile.open(mode=mode, fileobj=BytesIO(content)) as ball:
             self.assertTarANameAndContent(ball, root="")
 

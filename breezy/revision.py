@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Revision object and related functions."""
+
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
@@ -55,6 +57,7 @@ class Revision:
     timezone: int
 
     def __init__(self, revision_id: RevisionID, properties=None, **args) -> None:
+        """Create a Revision object."""
         self.revision_id = revision_id
         if properties is None:
             self.properties = {}
@@ -68,15 +71,18 @@ class Revision:
         self.__dict__.update(args)
 
     def __repr__(self):
+        """Return a string representation of the Revision."""
         return "<Revision id {}>".format(self.revision_id)
 
     def datetime(self):
+        """Return the timestamp as a datetime object."""
         import datetime
 
         # TODO: Handle timezone.
         return datetime.datetime.fromtimestamp(self.timestamp)
 
     def __eq__(self, other):
+        """Compare two Revision objects."""
         if not isinstance(other, Revision):
             return False
         return (
@@ -91,6 +97,7 @@ class Revision:
         )
 
     def __ne__(self, other):
+        """Check if two Revision objects are not equal."""
         return not self.__eq__(other)
 
     def _check_properties(self):
@@ -104,6 +111,14 @@ class Revision:
                 raise ValueError(
                     "invalid property value {!r} for {!r}".format(value, name)
                 )
+
+    def get_history(self, repository):
+        """Return the canonical line-of-history for this revision.
+
+        If ghosts are present this may differ in result from a ghost-free
+        repository.
+        """
+        return get_history(repository, self)
 
     def get_summary(self):
         """Get the first line of the log message for this revision.
@@ -126,7 +141,7 @@ class Revision:
         authors = self.properties.get("authors", None)
         if authors is None:
             author = self.properties.get("author", self.committer)
-            if author is None:
+            if not author:
                 return []
             return [author]
         else:
@@ -137,6 +152,25 @@ class Revision:
         return iter_bugs(self)
 
 
+def get_history(repository, current_revision):
+    """Return the canonical line-of-history for ``current_revision``.
+
+    If ghosts are present this may differ in result from a ghost-free
+    repository.
+    """
+    reversed_result = []
+    while current_revision is not None:
+        reversed_result.append(current_revision.revision_id)
+        if not len(current_revision.parent_ids):
+            reversed_result.append(None)
+            current_revision = None
+        else:
+            next_revision_id = current_revision.parent_ids[0]
+            current_revision = repository.get_revision(next_revision_id)
+    reversed_result.reverse()
+    return reversed_result
+
+
 def iter_bugs(revision):
     """Iterate over the bugs associated with a revision."""
     bug_property = revision.properties.get("bugs", None)
@@ -144,34 +178,13 @@ def iter_bugs(revision):
         return iter([])
     from . import bugtracker
 
-    return bugtracker.decode_bug_urls(bug_property)
-
-
-def get_history(repository, revision_id: RevisionID) -> list[RevisionID | None]:
-    """Return the canonical line-of-history ending at `revision_id`.
-
-    Walks the left-most parent back to a parentless ancestor. The
-    result is ordered from the root to `revision_id`, with a leading
-    `None` when the oldest ancestor has no parents. If ghosts are
-    present this may differ from a ghost-free repository.
-    """
-    reversed_result: list[RevisionID | None] = []
-    current_id: RevisionID | None = revision_id
-    while current_id is not None:
-        reversed_result.append(current_id)
-        rev = repository.get_revision(current_id)
-        if not rev.parent_ids:
-            reversed_result.append(None)
-            current_id = None
-        else:
-            current_id = rev.parent_ids[0]
-    reversed_result.reverse()
-    return reversed_result
+    return bugtracker.decode_bug_urls(bug_property.splitlines())
 
 
 def iter_ancestors(
     revision_id: RevisionID, revision_source, only_present: bool = False
 ):
+    """Iterate over ancestors of a revision."""
     ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:
@@ -226,7 +239,7 @@ def is_reserved_id(revision_id: RevisionID) -> bool:
     Returns:
       True if the revision is reserved, False otherwise
     """
-    return isinstance(revision_id, bytes) and revision_id.endswith(b":")
+    return revision_id.endswith(b":")
 
 
 def check_not_reserved_id(revision_id: RevisionID) -> None:
@@ -236,6 +249,7 @@ def check_not_reserved_id(revision_id: RevisionID) -> None:
 
 
 def is_null(revision_id: RevisionID) -> bool:
+    """Check if a revision ID is the null revision ID."""
     if revision_id is None:
         raise ValueError(
             "NULL_REVISION should be used for the null revision instead of None."

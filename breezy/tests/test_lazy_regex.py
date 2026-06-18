@@ -130,5 +130,5 @@ class TestLazyCompile(tests.TestCase):
         # some compiled regexes.
         lazy_pattern = lazy_regex.lazy_compile("[,;]+")
         pickled = pickle.dumps(lazy_pattern)
-        unpickled_lazy_pattern = pickle.loads(pickled)
+        unpickled_lazy_pattern = pickle.loads(pickled)  # noqa: S301
         self.assertEqual(["x", "y", "z"], unpickled_lazy_pattern.split("x,y;z"))

@@ -18,7 +18,8 @@
 
 from breezy import errors, tests
 from breezy.tests import lock_helpers, per_branch
-from breezy.tests.matchers import *
+
+from ..matchers import *  # noqa: F403
 
 
 class TestBranchLocking(per_branch.TestCaseWithBranch):
@@ -46,9 +47,9 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
             b.control_files = lock_helpers.LockWrapper(
                 self.locks, b.control_files, "bc"
             )
-        except AttributeError:
+        except AttributeError as e:
             # RemoteBranch seems to trigger this.
-            raise tests.TestSkipped("Could not instrument branch control files.")
+            raise tests.TestSkipped("Could not instrument branch control files.") from e
         if self.combined_control:
             # instrument the repository control files too to ensure its worked
             # with correctly. When they are not shared, we trust the repository

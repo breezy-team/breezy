@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__doc__ = """Generate a shell function for bash command line completion.
+"""Generate a shell function for bash command line completion.
 
 This plugin provides a command called bash-completion that generates a
 bash completion function for bzr. See its documentation for details.
@@ -31,12 +31,19 @@ commands.plugin_cmds.register_lazy(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests for the bash completion plugin.
+
+    Args:
+        loader: The test loader instance.
+        basic_tests: The basic test suite to add tests to.
+        pattern: The pattern to match test files (unused).
+
+    Returns:
+        The enhanced test suite with bash completion plugin tests added.
+    """
     testmod_names = [
         "tests",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

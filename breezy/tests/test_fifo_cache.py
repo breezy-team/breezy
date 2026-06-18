@@ -25,7 +25,7 @@ class TestFIFOCache(tests.TestCase):
     def test_add_is_present(self):
         c = fifo_cache.FIFOCache()
         c[1] = 2
-        self.assertTrue(1 in c)
+        self.assertIn(1, c)
         self.assertEqual(1, len(c))
         self.assertEqual(2, c[1])
         self.assertEqual(2, c.get(1))
@@ -45,7 +45,7 @@ class TestFIFOCache(tests.TestCase):
     def test_missing(self):
         c = fifo_cache.FIFOCache()
         self.assertRaises(KeyError, c.__getitem__, 1)
-        self.assertFalse(1 in c)
+        self.assertNotIn(1, c)
         self.assertEqual(0, len(c))
         self.assertEqual(None, c.get(1))
         self.assertEqual(None, c.get(1, None))
@@ -237,7 +237,7 @@ class TestFIFOSizeCache(tests.TestCase):
     def test_add_is_present(self):
         c = fifo_cache.FIFOSizeCache()
         c[1] = "2"
-        self.assertTrue(1 in c)
+        self.assertIn(1, c)
         self.assertEqual(1, len(c))
         self.assertEqual("2", c[1])
         self.assertEqual("2", c.get(1))
@@ -252,7 +252,7 @@ class TestFIFOSizeCache(tests.TestCase):
     def test_missing(self):
         c = fifo_cache.FIFOSizeCache()
         self.assertRaises(KeyError, c.__getitem__, 1)
-        self.assertFalse(1 in c)
+        self.assertNotIn(1, c)
         self.assertEqual(0, len(c))
         self.assertEqual(None, c.get(1))
         self.assertEqual(None, c.get(1, None))

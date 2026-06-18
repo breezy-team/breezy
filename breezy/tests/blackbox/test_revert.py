@@ -20,8 +20,9 @@ import os
 
 import breezy.osutils
 from breezy.tests import TestCaseWithTransport
-from breezy.trace import mutter
-from breezy.workingtree import WorkingTree
+
+from ...trace import mutter
+from ...workingtree import WorkingTree
 
 
 class TestRevert(TestCaseWithTransport):
@@ -65,7 +66,7 @@ class TestRevert(TestCaseWithTransport):
         mutter("cd dir\n")
 
         self.assertEqual("1\n", self.run_bzr("revno")[0])
-        self.run_bzr("revert {} file".format(param))
+        self.run_bzr(f"revert {param} file")
         with open("file", "rb") as f:
             self.assertEqual(b"spam", f.read())
 

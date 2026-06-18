@@ -28,7 +28,7 @@ class DirtyTrackerTests(TestCaseWithTransport):
         super().setUp()
         self.tree = self.make_branch_and_tree("tree")
         try:
-            from breezy.dirty_tracker import DirtyTracker
+            from ..dirty_tracker import DirtyTracker
         except ModuleNotFoundError as e:
             if e.name == "pyinotify":
                 self.skipTest("pyinotify not available")
@@ -43,109 +43,75 @@ class DirtyTrackerTests(TestCaseWithTransport):
             self.skipTest("Too many open files")
 
     def test_regular_file_added(self):
-        try:
-            with self.tracker:
-                self.build_tree_contents([("tree/foo", "bar")])
-                self.assertTrue(self.tracker.is_dirty())
-                self.assertEqual(self.tracker.relpaths(), {"foo"})
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.build_tree_contents([("tree/foo", "bar")])
+            self.assertTrue(self.tracker.is_dirty())
+            self.assertEqual(self.tracker.relpaths(), {"foo"})
 
     def test_many_added(self):
-        try:
-            with self.tracker:
-                self.build_tree_contents(
-                    [("tree/f%d" % d, "content") for d in range(100)]
-                )
-                self.assertTrue(self.tracker.is_dirty())
-                self.assertEqual(
-                    self.tracker.relpaths(), {"f%d" % d for d in range(100)}
-                )
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.build_tree_contents([("tree/f%d" % d, "content") for d in range(100)])
+            self.assertTrue(self.tracker.is_dirty())
+            self.assertEqual(self.tracker.relpaths(), {"f%d" % d for d in range(100)})
 
     def test_regular_file_in_subdir_added(self):
-        try:
-            with self.tracker:
-                self.build_tree_contents([("tree/foo/",), ("tree/foo/blah", "bar")])
-                self.assertTrue(self.tracker.is_dirty())
-                self.assertEqual(self.tracker.relpaths(), {"foo", "foo/blah"})
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.build_tree_contents([("tree/foo/",), ("tree/foo/blah", "bar")])
+            self.assertTrue(self.tracker.is_dirty())
+            self.assertEqual(self.tracker.relpaths(), {"foo", "foo/blah"})
 
     def test_directory_added(self):
-        try:
-            with self.tracker:
-                self.build_tree_contents([("tree/foo/",)])
-                self.assertTrue(self.tracker.is_dirty())
-                self.assertEqual(self.tracker.relpaths(), {"foo"})
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.build_tree_contents([("tree/foo/",)])
+            self.assertTrue(self.tracker.is_dirty())
+            self.assertEqual(self.tracker.relpaths(), {"foo"})
 
     def test_file_removed(self):
-        try:
-            with self.tracker:
-                self.build_tree_contents([("tree/foo", "foo")])
-                self.assertTrue(self.tracker.is_dirty())
-                self.tracker.mark_clean()
-                self.build_tree_contents([("tree/foo", "bar")])
-                self.assertTrue(self.tracker.is_dirty())
-                self.assertEqual(self.tracker.relpaths(), {"foo"})
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.build_tree_contents([("tree/foo", "foo")])
+            self.assertTrue(self.tracker.is_dirty())
+            self.tracker.mark_clean()
+            self.build_tree_contents([("tree/foo", "bar")])
+            self.assertTrue(self.tracker.is_dirty())
+            self.assertEqual(self.tracker.relpaths(), {"foo"})
 
     def test_control_file(self):
-        try:
-            with self.tracker:
-                self.tree.commit("Some change")
-                self.assertFalse(self.tracker.is_dirty())
-                self.assertEqual(self.tracker.relpaths(), set())
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.tree.commit("Some change")
+            self.assertFalse(self.tracker.is_dirty())
+            self.assertEqual(self.tracker.relpaths(), set())
 
     def test_renamed(self):
-        try:
-            with self.tracker:
-                self.build_tree_contents([("tree/foo", "bar")])
-                self.tracker.mark_clean()
-                self.assertFalse(self.tracker.is_dirty())
-                os.rename("tree/foo", "tree/bar")
-                self.assertTrue(self.tracker.is_dirty())
-                self.assertEqual(self.tracker.relpaths(), {"foo", "bar"})
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.build_tree_contents([("tree/foo", "bar")])
+            self.tracker.mark_clean()
+            self.assertFalse(self.tracker.is_dirty())
+            os.rename("tree/foo", "tree/bar")
+            self.assertTrue(self.tracker.is_dirty())
+            self.assertEqual(self.tracker.relpaths(), {"foo", "bar"})
 
     def test_deleted(self):
-        try:
-            with self.tracker:
-                self.build_tree_contents([("tree/foo", "bar")])
-                self.tracker.mark_clean()
-                self.assertFalse(self.tracker.is_dirty())
-                os.unlink("tree/foo")
-                self.assertTrue(self.tracker.is_dirty(), self.tracker._paths)
-                self.assertEqual(self.tracker.relpaths(), {"foo"})
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.build_tree_contents([("tree/foo", "bar")])
+            self.tracker.mark_clean()
+            self.assertFalse(self.tracker.is_dirty())
+            os.unlink("tree/foo")
+            self.assertTrue(self.tracker.is_dirty(), self.tracker._paths)
+            self.assertEqual(self.tracker.relpaths(), {"foo"})
 
     def test_added_then_deleted(self):
-        try:
-            with self.tracker:
-                self.tracker.mark_clean()
-                self.assertFalse(self.tracker.is_dirty())
-                self.build_tree_contents([("tree/foo", "bar")])
-                os.unlink("tree/foo")
-                self.assertFalse(self.tracker.is_dirty())
-                self.assertEqual(self.tracker.relpaths(), set())
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.tracker.mark_clean()
+            self.assertFalse(self.tracker.is_dirty())
+            self.build_tree_contents([("tree/foo", "bar")])
+            os.unlink("tree/foo")
+            self.assertFalse(self.tracker.is_dirty())
+            self.assertEqual(self.tracker.relpaths(), set())
 
     def test_file_modified(self):
         self.build_tree_contents([("tree/foo", "bla")])
-        try:
-            with self.tracker:
-                self.assertFalse(self.tracker.is_dirty())
-                self.build_tree_contents([("tree/foo", "bar")])
-                self.assertTrue(self.tracker.is_dirty())
-                self.assertEqual(self.tracker.relpaths(), {"foo"})
-        except breezy.dirty_tracker.TooManyOpenFiles:
-            self.skipTest("Too many open files")
+        with self.tracker:
+            self.assertFalse(self.tracker.is_dirty())
+            self.build_tree_contents([("tree/foo", "bar")])
+            self.assertTrue(self.tracker.is_dirty())
+            self.assertEqual(self.tracker.relpaths(), {"foo"})

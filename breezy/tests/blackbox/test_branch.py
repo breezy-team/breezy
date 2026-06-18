@@ -22,13 +22,14 @@ import os
 from breezy import branch, controldir, errors, tests
 from breezy import revision as _mod_revision
 from breezy.bzr import bzrdir
-from breezy.bzr.knitrepo import RepositoryFormatKnit1
 from breezy.tests import fixtures, test_server
 from breezy.tests.blackbox import test_switch
-from breezy.tests.features import HardlinkFeature
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.urlutils import local_path_to_url, strip_trailing_slash
-from breezy.workingtree import WorkingTree
+
+from ...bzr.knitrepo import RepositoryFormatKnit1
+from ...urlutils import local_path_to_url, strip_trailing_slash
+from ...workingtree import WorkingTree
+from ..features import HardlinkFeature
+from ..test_sftp_transport import TestCaseWithSFTPServer
 
 
 class TestBranch(tests.TestCaseWithTransport):
@@ -83,9 +84,7 @@ class TestBranch(tests.TestCaseWithTransport):
         os.mkdir("b")
         tree = self.example_branch("b/a", format="development-colo")
         tree.controldir.create_branch(name="somecolo")
-        out, err = self.run_bzr(
-            "branch {},branch=somecolo".format(local_path_to_url("b/a"))
-        )
+        out, err = self.run_bzr(f"branch {local_path_to_url('b/a')},branch=somecolo")
         self.assertEqual("", out)
         self.assertEqual("Branched 0 revisions.\n", err)
         self.assertPathExists("a")
@@ -95,9 +94,7 @@ class TestBranch(tests.TestCaseWithTransport):
         os.mkdir("b")
         tree = self.example_branch("b/a", format="development-colo")
         tree.controldir.create_branch(name="somecolo")
-        out, err = self.run_bzr(
-            "branch -b somecolo {}".format(local_path_to_url("b/a"))
-        )
+        out, err = self.run_bzr(f"branch -b somecolo {local_path_to_url('b/a')}")
         self.assertEqual("", out)
         self.assertEqual("Branched 0 revisions.\n", err)
         self.assertPathExists("a")
@@ -115,10 +112,7 @@ class TestBranch(tests.TestCaseWithTransport):
             c = f.read(1)
             f.seek(-5, os.SEEK_END)
             # Make sure we inject a value different than the one we just read
-            if c == b"\xff":
-                corrupt = b"\x00"
-            else:
-                corrupt = b"\xff"
+            corrupt = b"\x00" if c == b"\xff" else b"\xff"
             f.write(corrupt)  # make sure we corrupt something
         self.run_bzr_error(
             ["Corruption while decompressing repository file"], "branch a b", retcode=3
@@ -521,7 +515,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             "  Branch format 7\n"
             "Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n"
             "This may take some time. Upgrade the repositories to the same format for better performance.\n"
-            "Created new stacked branch referring to {}.\n".format(trunk.base),
+            f"Created new stacked branch referring to {trunk.base}.\n",
             err,
         )
 
@@ -536,7 +530,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             "  Branch format 7\n"
             "Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n"
             "This may take some time. Upgrade the repositories to the same format for better performance.\n"
-            "Created new stacked branch referring to {}.\n".format(trunk.base),
+            f"Created new stacked branch referring to {trunk.base}.\n",
             err,
         )
 

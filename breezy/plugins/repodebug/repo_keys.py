@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Repository debugging command for dumping versioned file keys.
+
+This module provides a command to inspect and dump the keys stored in a
+repository's versioned files, which is useful for debugging repository
+internals.
+"""
+
 from ... import controldir
 from ...commands import Command
 
@@ -30,6 +37,13 @@ class cmd_repo_keys(Command):
     takes_args = ["repo_location", "versioned_file"]
 
     def run(self, repo_location, versioned_file):
+        """Execute the repo-keys command.
+
+        Args:
+            repo_location: Path to the repository location.
+            versioned_file: Name of the versioned file attribute in the repository
+                (e.g., 'texts', 'inventories', 'revisions').
+        """
         repo = controldir.ControlDir.open(repo_location).open_repository()
         with repo.lock_read():
             vf = getattr(repo, versioned_file)

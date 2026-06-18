@@ -306,15 +306,15 @@ class TestMergeDirective1(tests.TestCase, TestMergeDirective):
         message=None,
     ):
         return merge_directive.MergeDirective(
-            revision_id,
-            testament_sha1,
-            time,
-            timezone,
-            target_branch,
-            patch,
-            patch_type,
-            source_branch,
-            message,
+            revision_id=revision_id,
+            testament_sha1=testament_sha1,
+            time=time,
+            timezone=timezone,
+            target_branch=target_branch,
+            patch=patch,
+            patch_type=patch_type,
+            source_branch=source_branch,
+            message=message,
         )
 
     @staticmethod
@@ -335,11 +335,11 @@ class TestMergeDirective1(tests.TestCase, TestMergeDirective):
             patch_type="bundle",
         )
         md = merge_directive.MergeDirective(
-            b"example:",
-            b"sha1",
-            time,
-            timezone,
-            "http://example.com",
+            revision_id=b"example:",
+            testament_sha1=b"sha1",
+            time=time,
+            timezone=timezone,
+            target_branch="http://example.com",
             source_branch="http://example.org",
             patch=b"",
             patch_type="diff",
@@ -375,16 +375,16 @@ class TestMergeDirective2(tests.TestCase, TestMergeDirective):
         else:
             bundle = None
         return merge_directive.MergeDirective2(
-            revision_id,
-            testament_sha1,
-            time,
-            timezone,
-            target_branch,
-            patch,
-            source_branch,
-            message,
-            bundle,
-            base_revision_id,
+            revision_id=revision_id,
+            testament_sha1=testament_sha1,
+            time=time,
+            timezone=timezone,
+            target_branch=target_branch,
+            patch=patch,
+            source_branch=source_branch,
+            message=message,
+            bundle=bundle,
+            base_revision_id=base_revision_id,
         )
 
     @staticmethod
@@ -857,15 +857,15 @@ class TestMergeDirective1Branch(tests.TestCaseWithTransport, TestMergeDirectiveB
             )
         with repository.lock_write():
             return merge_directive.MergeDirective.from_objects(
-                repository,
-                revision_id,
-                time,
-                timezone,
-                target_branch,
-                patch_type,
-                local_target_branch,
-                public_branch,
-                message,
+                repository=repository,
+                revision_id=revision_id,
+                time=time,
+                timezone=timezone,
+                target_branch=target_branch,
+                patch_type=patch_type,
+                local_target_branch=local_target_branch,
+                public_branch=public_branch,
+                message=message,
             )
 
     def make_merge_directive(
@@ -881,15 +881,15 @@ class TestMergeDirective1Branch(tests.TestCaseWithTransport, TestMergeDirectiveB
         message=None,
     ):
         return merge_directive.MergeDirective(
-            revision_id,
-            testament_sha1,
-            time,
-            timezone,
-            target_branch,
-            patch,
-            patch_type,
-            source_branch,
-            message,
+            revision_id=revision_id,
+            testament_sha1=testament_sha1,
+            time=time,
+            timezone=timezone,
+            target_branch=target_branch,
+            patch=patch,
+            patch_type=patch_type,
+            source_branch=source_branch,
+            message=message,
         )
 
 
@@ -915,19 +915,19 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport, TestMergeDirectiveB
     ):
         include_patch = patch_type in ("bundle", "diff")
         include_bundle = patch_type == "bundle"
-        self.assertTrue(patch_type in ("bundle", "diff", None))
+        self.assertIn(patch_type, ("bundle", "diff", None))
         return merge_directive.MergeDirective2.from_objects(
-            repository,
-            revision_id,
-            time,
-            timezone,
-            target_branch,
-            include_patch,
-            include_bundle,
-            local_target_branch,
-            public_branch,
-            message,
-            base_revision_id,
+            repository=repository,
+            revision_id=revision_id,
+            time=time,
+            timezone=timezone,
+            target_branch=target_branch,
+            include_patch=include_patch,
+            include_bundle=include_bundle,
+            local_target_branch=local_target_branch,
+            public_branch=public_branch,
+            message=message,
+            base_revision_id=base_revision_id,
         )
 
     def make_merge_directive(
@@ -949,16 +949,16 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport, TestMergeDirectiveB
         else:
             bundle = None
         return merge_directive.MergeDirective2(
-            revision_id,
-            testament_sha1,
-            time,
-            timezone,
-            target_branch,
-            patch,
-            source_branch,
-            message,
-            bundle,
-            base_revision_id,
+            revision_id=revision_id,
+            testament_sha1=testament_sha1,
+            time=time,
+            timezone=timezone,
+            target_branch=target_branch,
+            patch=patch,
+            source_branch=source_branch,
+            message=message,
+            bundle=bundle,
+            base_revision_id=base_revision_id,
         )
 
     def test_base_revision(self):
@@ -1074,11 +1074,11 @@ class TestBodyHook(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree("foo")
         tree.commit("foo")
         directive = merge_directive.MergeDirective2(
-            tree.branch.last_revision(),
-            b"sha",
-            0,
-            0,
-            b"sha",
+            revision_id=tree.branch.last_revision(),
+            testament_sha1=b"sha",
+            time=0,
+            timezone=0,
+            target_branch="target-branch",
             source_branch=tree.branch.base,
             base_revision_id=tree.branch.last_revision(),
             message="This code rox",

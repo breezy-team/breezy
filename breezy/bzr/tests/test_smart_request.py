@@ -18,10 +18,14 @@
 
 import threading
 
+from dromedary.errors import NoSuchFile
+
 from breezy import errors, transport
-from breezy.bzr.bzrdir import BzrDir
 from breezy.bzr.smart import request
+from breezy.errors import GhostRevisionsHaveNoRevno
 from breezy.tests import TestCase, TestCaseWithMemoryTransport
+
+from ..bzrdir import BzrDir
 
 
 class NoBodyRequest(request.SmartServerRequest):
@@ -35,7 +39,7 @@ class DoErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do()."""
 
     def do(self):
-        raise transport.NoSuchFile("xyzzy")
+        raise NoSuchFile("xyzzy")
 
 
 class DoUnexpectedErrorRequest(request.SmartServerRequest):
@@ -53,7 +57,7 @@ class ChunkErrorRequest(request.SmartServerRequest):
         pass
 
     def do_chunk(self, bytes):
-        raise transport.NoSuchFile("xyzzy")
+        raise NoSuchFile("xyzzy")
 
 
 class EndErrorRequest(request.SmartServerRequest):
@@ -68,7 +72,7 @@ class EndErrorRequest(request.SmartServerRequest):
         pass
 
     def do_end(self):
-        raise transport.NoSuchFile("xyzzy")
+        raise NoSuchFile("xyzzy")
 
 
 class CheckJailRequest(request.SmartServerRequest):
@@ -130,7 +134,7 @@ class TestSmartRequest(TestCase):
         if unclassified_requests:
             self.fail(
                 "These requests were not categorized as safe/unsafe"
-                " to retry: {}".format(unclassified_requests)
+                f" to retry: {unclassified_requests}"
             )
 
 
@@ -189,9 +193,7 @@ class TestRequestHanderErrorTranslation(TestCase):
         self.assertEqual(expected_tuple, request._translate_error(error))
 
     def test_NoSuchFile(self):
-        self.assertTranslationEqual(
-            (b"NoSuchFile", b"path"), transport.NoSuchFile("path")
-        )
+        self.assertTranslationEqual((b"NoSuchFile", b"path"), NoSuchFile("path"))
 
     def test_LockContention(self):
         # For now, LockContentions are always transmitted with no details.
@@ -213,7 +215,7 @@ class TestRequestHanderErrorTranslation(TestCase):
     def test_GhostRevisionsHaveNoRevno(self):
         self.assertTranslationEqual(
             (b"GhostRevisionsHaveNoRevno", b"revid1", b"revid2"),
-            errors.GhostRevisionsHaveNoRevno(b"revid1", b"revid2"),
+            GhostRevisionsHaveNoRevno(b"revid1", b"revid2"),
         )
 
     def test_generic_Exception(self):

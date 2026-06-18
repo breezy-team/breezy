@@ -159,9 +159,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_custom_no_clean_in_template(self):
         def should_not_be_called(self):
-            raise AssertionError(
-                "Method on {!r} should not have been used".format(self)
-            )
+            raise AssertionError(f"Method on {self!r} should not have been used")
 
         self.overrideAttr(
             VersionInfoBuilder, "_extract_file_revisions", should_not_be_called

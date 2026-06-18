@@ -13,8 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-r"""FastImport Plugin.
-=================
+r"""FastImport Plugin
+=================.
 
 The fastimport plugin provides stream-based importing and exporting of
 data into and out of Bazaar. As well as enabling interchange between
@@ -59,7 +59,12 @@ from ...commands import plugin_cmds
 
 
 def load_fastimport():
-    """Load the fastimport module or raise an appropriate exception."""
+    """Load the fastimport module or raise an appropriate exception.
+
+    Raises:
+        DependencyNotPresent: If the fastimport module is not installed or
+            if the installed version is less than 0.9.8.
+    """
     try:
         import fastimport
     except ModuleNotFoundError:
@@ -67,7 +72,7 @@ def load_fastimport():
 
         raise DependencyNotPresent(
             "fastimport", "fastimport requires the fastimport python module"
-        )
+        ) from e
     if fastimport.__version__ < (0, 9, 8):
         from ...errors import DependencyNotPresent
 
@@ -79,6 +84,11 @@ def load_fastimport():
 
 
 def test_suite():
+    """Return the test suite for the fastimport plugin.
+
+    Returns:
+        TestSuite: A test suite containing all tests for the fastimport plugin.
+    """
     from . import tests
 
     return tests.test_suite()
@@ -88,6 +98,4 @@ for name in [
     "fast_import",
     "fast_export",
 ]:
-    plugin_cmds.register_lazy(
-        "cmd_{}".format(name), [], "breezy.plugins.fastimport.cmds"
-    )
+    plugin_cmds.register_lazy(f"cmd_{name}", [], "breezy.plugins.fastimport.cmds")

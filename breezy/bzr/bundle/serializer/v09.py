@@ -14,12 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Serializer for bundle format 0.9.
+
+This module provides serialization support for bzr bundle format version 0.9,
+which includes support for rich root data used in nested-trees work.
+"""
+
 from ...testament import StrictTestament3
 from ..bundle_data import BundleInfo
 from . import _get_bundle_header
 from .v08 import BundleReader, BundleSerializerV08
-
-"""Serializer for bundle format 0.9"""
 
 
 class BundleSerializerV09(BundleSerializerV08):
@@ -32,6 +36,11 @@ class BundleSerializerV09(BundleSerializerV08):
     """
 
     def check_compatible(self):
+        """Check compatibility between source and target repositories.
+
+        For format 0.9, no compatibility checks are needed as it supports
+        both repositories with and without rich root data.
+        """
         pass
 
     def _write_main_header(self):

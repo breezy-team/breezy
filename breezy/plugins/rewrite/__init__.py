@@ -21,7 +21,8 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from ... import transport as _mod_transport
+from dromedary.errors import NoSuchFile
+
 from ...bzr.bzrdir import BzrFormat
 from ...commands import plugin_cmds
 
@@ -41,10 +42,20 @@ for cmd in [
     "pseudonyms",
     "rebase_foreign",
 ]:
-    plugin_cmds.register_lazy("cmd_{}".format(cmd), [], __name__ + ".commands")
+    plugin_cmds.register_lazy(f"cmd_{cmd}", [], __name__ + ".commands")
 
 
 def show_rebase_summary(params):
+    """Show rebase status summary in the status output.
+
+    This function is called as a post_status hook to display information
+    about any ongoing rebase operation when running 'brz status'.
+
+    Args:
+        params: Status hook parameters containing new_tree and to_file attributes.
+            The new_tree is the working tree being examined, and to_file is
+            where status output should be written.
+    """
     if getattr(params.new_tree, "_format", None) is None:
         return
     features = getattr(params.new_tree._format, "features", None)
@@ -57,7 +68,7 @@ def show_rebase_summary(params):
     state = RebaseState1(params.new_tree)
     try:
         replace_map = state.read_plan()[1]
-    except _mod_transport.NoSuchFile:
+    except NoSuchFile:
         return
     todo = list(rebase_todo(params.new_tree.branch.repository, replace_map))
     params.to_file.write(f"Rebase in progress. ({len(todo)} revisions left)\n")
@@ -71,12 +82,22 @@ install_lazy_named_hook(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load test suite for the rewrite plugin.
+
+    This function is called by the test framework to discover and load
+    all tests for this plugin.
+
+    Args:
+        loader: The test loader instance used to load test modules.
+        basic_tests: The test suite to which discovered tests should be added.
+        pattern: Pattern for matching test files (unused in this implementation).
+
+    Returns:
+        TestSuite: The test suite containing all tests for this plugin.
+    """
     testmod_names = [
         "tests",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

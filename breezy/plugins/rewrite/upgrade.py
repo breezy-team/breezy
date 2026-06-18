@@ -33,6 +33,11 @@ class UpgradeChangesContent(BzrError):
     _fmt = """Upgrade will change contents in revision %(revid)s. Use --allow-changes to override."""
 
     def __init__(self, revid):
+        """Initialize the error with the revision ID that has content changes.
+
+        Args:
+            revid: The revision ID that would have content changes during upgrade.
+        """
         self.revid = revid
 
 
@@ -171,10 +176,7 @@ def create_upgrade_plan(
             newrev = repository.get_revision(newrevid)
             check_revision_changed(oldrev, newrev)
 
-    if revision_id is None:
-        heads = repository.all_revision_ids()
-    else:
-        heads = [revision_id]
+    heads = repository.all_revision_ids() if revision_id is None else [revision_id]
 
     plan = generate_transpose_plan(
         graph.iter_ancestry(heads), upgrade_map, graph, determine_new_revid
@@ -220,6 +222,6 @@ def upgrade_repository(
         )
         if verbose:
             for revid in rebase_todo(repository, plan):
-                trace.note("{} -> {}".format(revid, plan[revid][0]))
+                trace.note(f"{revid} -> {plan[revid][0]}")
         rebase(repository, plan, CommitBuilderRevisionRewriter(repository))
         return revid_renames

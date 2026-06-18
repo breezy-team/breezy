@@ -22,19 +22,26 @@ from . import TestCase
 
 
 class SampleUnlockError(Exception):
+    """Sample exception for testing purposes."""
+
     pass
 
 
 class TestOnlyRaisesDecorator(TestCase):
+    """Tests for the only_raises decorator functionality."""
+
     def raise_ZeroDivisionError(self):
+        """Test helper method that raises ZeroDivisionError."""
         1 / 0  # noqa: B018
 
     def test_raises_approved_error(self):
+        """Test that approved errors are raised normally."""
         decorator = decorators.only_raises(ZeroDivisionError)
         decorated_meth = decorator(self.raise_ZeroDivisionError)
         self.assertRaises(ZeroDivisionError, decorated_meth)
 
     def test_quietly_logs_unapproved_errors(self):
+        """Test that unapproved errors are logged instead of raised."""
         decorator = decorators.only_raises(IOError)
         decorated_meth = decorator(self.raise_ZeroDivisionError)
         self.assertLogsError(ZeroDivisionError, decorated_meth)

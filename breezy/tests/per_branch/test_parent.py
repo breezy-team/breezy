@@ -19,8 +19,9 @@ import sys
 
 import breezy.errors
 from breezy import urlutils
-from breezy.osutils import getcwd
 from breezy.tests import TestCaseWithTransport, TestNotApplicable, TestSkipped
+
+from ...osutils import getcwd
 
 """Tests for Branch parent URL"""
 

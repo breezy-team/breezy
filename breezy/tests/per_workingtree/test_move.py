@@ -18,10 +18,13 @@
 
 import os
 
+from bzrformats import errors as bzrformats_errors
+
 from breezy import errors, osutils, tests
 from breezy.tests import features
-from breezy.tests.matchers import HasLayout, HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ..matchers import HasLayout, HasPathRelations
 
 
 class TestMove(TestCaseWithWorkingTree):
@@ -550,7 +553,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.add(["a"])
         if tree.has_versioned_directories():
             e = self.assertRaises(errors.BzrMoveFailedError, tree.move, ["a"], "\xa7")
-            self.assertIsInstance(e.extra, errors.NotVersionedError)
+            self.assertIsInstance(e.extra, bzrformats_errors.NotVersionedError)
             self.assertEqual(e.extra.path, "\xa7")
         else:
             tree.move(["a"], "\xa7")
@@ -562,5 +565,5 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree(["\xa7", "dir/"])
         tree.add("dir")
         e = self.assertRaises(errors.BzrMoveFailedError, tree.move, ["\xa7"], "dir")
-        self.assertIsInstance(e.extra, errors.NotVersionedError)
+        self.assertIsInstance(e.extra, bzrformats_errors.NotVersionedError)
         self.assertEqual(e.extra.path, "\xa7")

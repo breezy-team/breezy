@@ -161,7 +161,7 @@ pub.publish(
 
 rubber_argv = [
     "--pdf",  # use pdflatex to produce PDF
-    "--short",  # Display LaTeX’s error messages one error per line.
+    "--short",  # Display LaTeX's error messages one error per line.
     texpath,
 ]
 

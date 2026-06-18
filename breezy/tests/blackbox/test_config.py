@@ -225,13 +225,13 @@ class TestConfigDisplayWithPolicy(tests.TestCaseWithTransport):
     def test_location_with_policy(self):
         # LocationConfig is the only one dealing with policies so far.
         self.make_branch_and_tree("tree")
-        config_text = """\
-[{dir}]
+        config_text = f"""\
+[{self.test_dir}]
 url = dir
 url:policy = appendpath
-[{dir}/tree]
+[{self.test_dir}/tree]
 url = tree
-""".format(dir=self.test_dir)
+"""
         # We don't use the config directly so we save it to disk
         config.LocationConfig.from_string(config_text, "tree", save=True)
         # policies are displayed with their options since they are part of

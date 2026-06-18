@@ -68,7 +68,7 @@ class EmailMessage:
         self._headers["To"] = ", ".join(to_addresses)
         self._headers["From"] = self.address_to_encoded_header(from_address)
         self._headers["Subject"] = Header(safe_unicode(subject))
-        self._headers["User-Agent"] = "Bazaar ({})".format(_breezy_version)
+        self._headers["User-Agent"] = f"Bazaar ({_breezy_version})"
 
     def add_inline_attachment(self, body, filename=None, mime_subtype="plain"):
         """Add an inline attachment to the message.
@@ -115,7 +115,7 @@ class EmailMessage:
 
                 if filename is not None:
                     content_type = payload["Content-Type"]
-                    content_type += '; name="{}"'.format(filename)
+                    content_type += f'; name="{filename}"'
                     payload.replace_header("Content-Type", content_type)
 
                 payload["Content-Disposition"] = "inline"
@@ -142,6 +142,12 @@ class EmailMessage:
         return self._headers.get(header, None)
 
     def __setitem__(self, header, value):
+        """Set a header in the message.
+
+        Args:
+            header: The header name to set.
+            value: The value to set for the header.
+        """
         return self._headers.__setitem__(header, value)
 
     @staticmethod

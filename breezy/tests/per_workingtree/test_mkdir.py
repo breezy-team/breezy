@@ -18,7 +18,6 @@
 """Tests for interface conformance of 'workingtree.put_mkdir'."""
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.workingtree import SettingFileIdUnsupported
 
 
 class TestMkdir(TestCaseWithWorkingTree):
@@ -34,9 +33,7 @@ class TestMkdir(TestCaseWithWorkingTree):
         t.lock_write()
         self.addCleanup(t.unlock)
         if not t.supports_setting_file_ids():
-            self.assertRaises(
-                (SettingFileIdUnsupported, TypeError), t.mkdir, "path", b"my-id"
-            )
+            self.assertRaises(TypeError, t.mkdir, "path", file_id=b"my-id")
         else:
             file_id = t.mkdir("path", b"my-id")
             self.assertEqual(b"my-id", file_id)

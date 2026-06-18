@@ -365,7 +365,8 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
 class TestBind(script.TestCaseWithTransportAndScript):
     def test_bind_when_bound(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz init trunk
 ...
 $ brz init copy
@@ -374,13 +375,16 @@ $ cd copy
 $ brz bind ../trunk
 $ brz bind
 2>brz: ERROR: Branch is already bound
-""")
+"""
+        )
 
     def test_bind_before_bound(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz init trunk
 ...
 $ cd trunk
 $ brz bind
 2>brz: ERROR: No location supplied and no previous location known
-""")
+"""
+        )

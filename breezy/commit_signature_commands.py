@@ -25,13 +25,14 @@ from .option import Option
 
 
 class cmd_sign_my_commits(Command):
-    __doc__ = """Sign all commits by a given committer.
+    """Sign all commits by a given committer.
 
     If location is not specified the local tree is used.
     If committer is not specified the default committer is used.
 
     This does not sign commits that already have signatures.
     """
+
     # Note that this signs everything on the branch's ancestry
     # (both mainline and merged), but not other revisions that may be in the
     # repository
@@ -46,6 +47,19 @@ class cmd_sign_my_commits(Command):
     takes_args = ["location?", "committer?"]
 
     def run(self, location=None, committer=None, dry_run=False):
+        """Sign all commits by the specified committer.
+
+        Args:
+            location: The location of the branch to sign commits in. If None,
+                uses the current directory.
+            committer: The email address of the committer whose commits should
+                be signed. If None, uses the email from branch config.
+            dry_run: If True, only print which revisions would be signed
+                without actually signing them.
+
+        Returns:
+            None
+        """
         if location is None:
             bzrdir = controldir.ControlDir.open_containing(".")[0]
         else:
@@ -76,7 +90,7 @@ class cmd_sign_my_commits(Command):
                         continue
                     # We have a revision without a signature who has a
                     # matching committer, start signing
-                    self.outf.write("{}\n".format(rev_id))
+                    self.outf.write(f"{rev_id}\n")
                     count += 1
                     if not dry_run:
                         repo.sign_revision(rev_id, gpg_strategy)
@@ -86,7 +100,7 @@ class cmd_sign_my_commits(Command):
 
 
 class cmd_verify_signatures(Command):
-    __doc__ = """Verify all commit signatures.
+    """Verify all commit signatures.
 
     Verifies that all commits in the branch are signed by known GnuPG keys.
     """
@@ -105,6 +119,20 @@ class cmd_verify_signatures(Command):
     takes_args = ["location?"]
 
     def run(self, acceptable_keys=None, revision=None, verbose=None, location="."):
+        """Verify signatures on commits in the branch.
+
+        Args:
+            acceptable_keys: Comma separated list of GPG key patterns which are
+                acceptable for verification. If None, all keys are acceptable.
+            revision: Specific revision or revision range to verify. If None,
+                verifies all revisions in the branch.
+            verbose: If True, show detailed information about each signature.
+            location: The location of the branch to verify. Defaults to current
+                directory.
+
+        Returns:
+            int: 0 if all commits are signed with verifiable keys, 1 otherwise.
+        """
         bzrdir = controldir.ControlDir.open_containing(location)[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
@@ -114,9 +142,19 @@ class cmd_verify_signatures(Command):
         gpg_strategy.set_acceptable_keys(acceptable_keys)
 
         def write(string):
+            """Write a line to stdout.
+
+            Args:
+                string: The string to write.
+            """
             self.outf.write(string + "\n")
 
         def write_verbose(string):
+            """Write an indented verbose line to stdout.
+
+            Args:
+                string: The string to write with indentation.
+            """
             self.outf.write("  " + string + "\n")
 
         self.add_cleanup(repo.lock_read().unlock)

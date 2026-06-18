@@ -16,8 +16,9 @@
 
 
 from breezy import tests, workingtree
-from breezy.bzr.knitpack_repo import RepositoryFormatKnitPack4
-from breezy.bzr.knitrepo import RepositoryFormatKnit4
+
+from ...bzr.knitpack_repo import RepositoryFormatKnitPack4
+from ...bzr.knitrepo import RepositoryFormatKnit4
 
 
 class TestSplit(tests.TestCaseWithTransport):

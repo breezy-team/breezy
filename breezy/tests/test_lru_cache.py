@@ -22,36 +22,35 @@ from .. import lru_cache, tests
 def walk_lru(lru):
     """Test helper to walk the LRU list and assert its consistency."""
     node = lru._most_recently_used
-    if node is not None:
-        if node.prev is not None:
-            raise AssertionError(
-                "the _most_recently_used entry is not"
-                " supposed to have a previous entry"
-                " {}".format(node)
-            )
+    if node is not None and node.prev is not None:
+        raise AssertionError(
+            "the _most_recently_used entry is not"
+            " supposed to have a previous entry"
+            f" {node}"
+        )
     while node is not None:
         if node.next_key is lru_cache._null_key:
             if node is not lru._least_recently_used:
                 raise AssertionError(
-                    "only the last node should have no next value: {}".format(node)
+                    f"only the last node should have no next value: {node}"
                 )
             node_next = None
         else:
             node_next = lru._cache[node.next_key]
             if node_next.prev is not node:
                 raise AssertionError(
-                    "inconsistency found, node.next.prev != node: {}".format(node)
+                    f"inconsistency found, node.next.prev != node: {node}"
                 )
         if node.prev is None:
             if node is not lru._most_recently_used:
                 raise AssertionError(
                     "only the _most_recently_used should"
-                    " not have a previous node: {}".format(node)
+                    f" not have a previous node: {node}"
                 )
         else:
             if node.prev.next_key != node.key:
                 raise AssertionError(
-                    "inconsistency found, node.prev.next != node: {}".format(node)
+                    f"inconsistency found, node.prev.next != node: {node}"
                 )
         yield node
         node = node_next
@@ -73,18 +72,18 @@ class TestLRUCache(tests.TestCase):
     def test_missing(self):
         cache = lru_cache.LRUCache(max_cache=10)
 
-        self.assertFalse("foo" in cache)
+        self.assertNotIn("foo", cache)
         self.assertRaises(KeyError, cache.__getitem__, "foo")
 
         cache["foo"] = "bar"
         self.assertEqual("bar", cache["foo"])
-        self.assertTrue("foo" in cache)
-        self.assertFalse("bar" in cache)
+        self.assertIn("foo", cache)
+        self.assertNotIn("bar", cache)
 
     def test_map_None(self):
         # Make sure that we can properly map None as a key.
         cache = lru_cache.LRUCache(max_cache=10)
-        self.assertFalse(None in cache)
+        self.assertNotIn(None, cache)
         cache[None] = 1
         self.assertEqual(1, cache[None])
         cache[None] = 2
@@ -110,8 +109,8 @@ class TestLRUCache(tests.TestCase):
         # With a max cache of 1, adding 'baz' should pop out 'foo'
         cache["baz"] = "biz"
 
-        self.assertFalse("foo" in cache)
-        self.assertTrue("baz" in cache)
+        self.assertNotIn("foo", cache)
+        self.assertIn("baz", cache)
 
         self.assertEqual("biz", cache["baz"])
 
@@ -127,7 +126,7 @@ class TestLRUCache(tests.TestCase):
         # This must kick out 'foo' because it was the last accessed
         cache["nub"] = "in"
 
-        self.assertFalse("foo" in cache)
+        self.assertNotIn("foo", cache)
 
     def test_len(self):
         cache = lru_cache.LRUCache(max_cache=10, after_cleanup_count=10)

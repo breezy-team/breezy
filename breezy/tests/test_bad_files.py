@@ -35,6 +35,8 @@ def verify_status(tester, tree, value):
 
 
 class TestBadFiles(TestCaseWithTransport):
+    """Tests for handling unsupported file types in the working tree."""
+
     def test_bad_files(self):
         """Test that bzr will ignore files it doesn't like."""
         self.requireFeature(OsFifoFeature)

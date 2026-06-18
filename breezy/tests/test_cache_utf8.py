@@ -28,37 +28,37 @@ class TestEncodeCache(TestCase):
 
     def check_encode(self, rev_id):
         rev_id_utf8 = rev_id.encode("utf-8")
-        self.assertFalse(rev_id in cache_utf8._unicode_to_utf8_map)
-        self.assertFalse(rev_id_utf8 in cache_utf8._utf8_to_unicode_map)
+        self.assertNotIn(rev_id, cache_utf8._unicode_to_utf8_map)
+        self.assertNotIn(rev_id_utf8, cache_utf8._utf8_to_unicode_map)
 
         # After a single encode, the mapping should exist for
         # both directions
         self.assertEqual(rev_id_utf8, cache_utf8.encode(rev_id))
-        self.assertTrue(rev_id in cache_utf8._unicode_to_utf8_map)
-        self.assertTrue(rev_id_utf8 in cache_utf8._utf8_to_unicode_map)
+        self.assertIn(rev_id, cache_utf8._unicode_to_utf8_map)
+        self.assertIn(rev_id_utf8, cache_utf8._utf8_to_unicode_map)
 
         self.assertEqual(rev_id, cache_utf8.decode(rev_id_utf8))
 
         cache_utf8.clear_encoding_cache()
-        self.assertFalse(rev_id in cache_utf8._unicode_to_utf8_map)
-        self.assertFalse(rev_id_utf8 in cache_utf8._utf8_to_unicode_map)
+        self.assertNotIn(rev_id, cache_utf8._unicode_to_utf8_map)
+        self.assertNotIn(rev_id_utf8, cache_utf8._utf8_to_unicode_map)
 
     def check_decode(self, rev_id):
         rev_id_utf8 = rev_id.encode("utf-8")
-        self.assertFalse(rev_id in cache_utf8._unicode_to_utf8_map)
-        self.assertFalse(rev_id_utf8 in cache_utf8._utf8_to_unicode_map)
+        self.assertNotIn(rev_id, cache_utf8._unicode_to_utf8_map)
+        self.assertNotIn(rev_id_utf8, cache_utf8._utf8_to_unicode_map)
 
         # After a single decode, the mapping should exist for
         # both directions
         self.assertEqual(rev_id, cache_utf8.decode(rev_id_utf8))
-        self.assertTrue(rev_id in cache_utf8._unicode_to_utf8_map)
-        self.assertTrue(rev_id_utf8 in cache_utf8._utf8_to_unicode_map)
+        self.assertIn(rev_id, cache_utf8._unicode_to_utf8_map)
+        self.assertIn(rev_id_utf8, cache_utf8._utf8_to_unicode_map)
 
         self.assertEqual(rev_id_utf8, cache_utf8.encode(rev_id))
         cache_utf8.clear_encoding_cache()
 
-        self.assertFalse(rev_id in cache_utf8._unicode_to_utf8_map)
-        self.assertFalse(rev_id_utf8 in cache_utf8._utf8_to_unicode_map)
+        self.assertNotIn(rev_id, cache_utf8._unicode_to_utf8_map)
+        self.assertNotIn(rev_id_utf8, cache_utf8._utf8_to_unicode_map)
 
     def test_ascii(self):
         self.check_decode("all_ascii_characters123123123")
@@ -84,7 +84,7 @@ class TestEncodeCache(TestCase):
     def test_cached_utf8(self):
         x = "\xb5yy\xe5zz".encode()
         y = "\xb5yy\xe5zz".encode()
-        self.assertFalse(x is y)
+        self.assertIsNot(x, y)
         xp = cache_utf8.get_cached_utf8(x)
         yp = cache_utf8.get_cached_utf8(y)
 

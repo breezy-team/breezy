@@ -96,4 +96,4 @@ not yet been ported to Python 3 and Breezy.
 
 If you wish to write your own plugins, it is not difficult to do.
 See `Writing a plugin <writing a plugin.html>`_ in the appendices to get
-started. See http://doc.bazaar.canonical.com/plugins/en/ for details.
+started. See https://www.breezy-vcs.org/doc/plugins/en/ for details.

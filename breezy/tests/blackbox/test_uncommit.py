@@ -19,10 +19,11 @@
 import os
 
 from breezy import uncommit
-from breezy.bzr.bzrdir import BzrDirMetaFormat1
-from breezy.errors import BoundBranchOutOfDate
 from breezy.tests import TestCaseWithTransport
-from breezy.tests.script import ScriptRunner, run_script
+
+from ...bzr.bzrdir import BzrDirMetaFormat1
+from ...errors import BoundBranchOutOfDate
+from ..script import ScriptRunner, run_script
 
 
 class TestUncommit(TestCaseWithTransport):
@@ -42,7 +43,7 @@ class TestUncommit(TestCaseWithTransport):
         wt = self.create_simple_tree()
 
         os.chdir("tree")
-        out, err = self.run_bzr("uncommit --dry-run --force")
+        out, _err = self.run_bzr("uncommit --dry-run --force")
         self.assertContainsRe(out, "Dry-run")
         self.assertNotContainsRe(out, "initial commit")
         self.assertContainsRe(out, "second commit")
@@ -51,7 +52,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual([b"a2"], wt.get_parent_ids())
 
         # Uncommit, don't prompt
-        out, err = self.run_bzr("uncommit --force")
+        out, _err = self.run_bzr("uncommit --force")
         self.assertNotContainsRe(out, "initial commit")
         self.assertContainsRe(out, "second commit")
 
@@ -90,7 +91,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual([b"a2"], checkout_tree.get_parent_ids())
 
         os.chdir("checkout")
-        out, err = self.run_bzr("uncommit --dry-run --force")
+        out, _err = self.run_bzr("uncommit --dry-run --force")
         self.assertContainsRe(out, "Dry-run")
         self.assertNotContainsRe(out, "initial commit")
         self.assertContainsRe(out, "second commit")

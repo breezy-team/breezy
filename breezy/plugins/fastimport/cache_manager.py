@@ -56,6 +56,13 @@ class _Cleanup:
 
 
 class CacheManager:
+    """Manages various caches for the fast-import functionality.
+
+    This class handles caching of blobs, inventories, marks, and other data
+    to improve performance during import operations. It includes both memory
+    and disk-based caching strategies.
+    """
+
     _small_blob_threshold = 25 * 1024
     _sticky_cache_size = 300 * 1024 * 1024
     _sticky_flushed_size = 100 * 1024 * 1024
@@ -115,6 +122,18 @@ class CacheManager:
         self.reftracker = RefTracker()
 
     def add_mark(self, mark, commit_id):
+        """Add a mapping from a mark to a commit ID.
+
+        Args:
+            mark: The mark identifier (should not start with ':').
+            commit_id: The commit ID to associate with the mark.
+
+        Returns:
+            True if the mark already existed, False otherwise.
+
+        Raises:
+            ValueError: If the mark starts with ':'.
+        """
         if mark.startswith(b":"):
             raise ValueError(mark)
         is_new = mark in self.marks
@@ -161,12 +180,8 @@ class CacheManager:
                 size = size / 1024
                 unit = "G"
         note(
-            "    %-12s: %8.1f %s (%d %s)",
-            label,
-            size,
-            unit,
-            count,
-            single_plural(count, "item", "items"),
+            "    %-12s: %8.1f %s (%d %s)"
+            % (label, size, unit, count, single_plural(count, "item", "items"))
         )
 
     def clear_all(self):
@@ -225,11 +240,8 @@ class CacheManager:
             del blob
             count += 1
         trace.note(
-            "flushed %d/%d blobs w/ %.1fMB (%.1fMB small) to disk",
-            count,
-            total_blobs,
-            bytes / 1024.0 / 1024,
-            n_small_bytes / 1024.0 / 1024,
+            "flushed %d/%d blobs w/ %.1fMB (%.1fMB small) to disk"
+            % (count, total_blobs, bytes / 1024.0 / 1024, n_small_bytes / 1024.0 / 1024)
         )
 
     def store_blob(self, id, data):

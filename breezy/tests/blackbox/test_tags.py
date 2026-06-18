@@ -18,11 +18,12 @@
 
 from breezy import branch as _mod_branch
 from breezy import errors, tag
-from breezy.branch import Branch
 from breezy.bzr import branch as bzrbranch
 from breezy.bzr import bzrdir
 from breezy.tests import TestCaseWithTransport, script
-from breezy.workingtree import WorkingTree
+
+from ...branch import Branch
+from ...workingtree import WorkingTree
 
 
 class TestTagging(TestCaseWithTransport):
@@ -52,7 +53,7 @@ class TestTagging(TestCaseWithTransport):
         t = self.make_branch_and_tree("branch")
         t.commit(allow_pointless=True, message="initial commit", rev_id=b"first-revid")
         # make a tag through the command line
-        out, err = self.run_bzr("tag -d branch NEWTAG")
+        _out, err = self.run_bzr("tag -d branch NEWTAG")
         self.assertContainsRe(err, "Created tag NEWTAG.")
         # tag should be observable through the api
         self.assertEqual(t.branch.tags.get_tag_dict(), {"NEWTAG": b"first-revid"})
@@ -65,9 +66,9 @@ class TestTagging(TestCaseWithTransport):
         self.run_bzr(["tag", "-d", "branch", "tag3", "-rrevid:first-revid"])
         self.assertEqual(t.branch.tags.lookup_tag("tag3"), b"first-revid")
         # can also delete an existing tag
-        out, err = self.run_bzr("tag --delete -d branch tag2")
+        _out, _err = self.run_bzr("tag --delete -d branch tag2")
         # cannot replace an existing tag normally
-        out, err = self.run_bzr("tag -d branch NEWTAG -r0", retcode=3)
+        _out, err = self.run_bzr("tag -d branch NEWTAG -r0", retcode=3)
         self.assertContainsRe(err, "Tag NEWTAG already exists\\.")
         # ... but can if you use --force
         _out, err = self.run_bzr("tag -d branch NEWTAG --force -r0")
@@ -77,8 +78,8 @@ class TestTagging(TestCaseWithTransport):
         t = self.make_branch_and_tree("branch")
         t.commit(allow_pointless=True, message="initial commit", rev_id=b"first-revid")
         t.commit(allow_pointless=True, message="second commit", rev_id=b"second-revid")
-        out, err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
-        out, err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
+        _out, _err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
+        _out, err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
         self.assertContainsRe(err, "Tag NEWTAG already exists for that revision\\.")
         _out, err = self.run_bzr("tag -rrevid:second-revid -d branch NEWTAG", retcode=3)
         self.assertContainsRe(err, "Tag NEWTAG already exists\\.")
@@ -400,9 +401,7 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(
             out,
             "^"
-            + "".join(
-                ["tag {} +{}\n".format(revno, revno) for revno in expected_revnos]
-            )
+            + "".join([f"tag {revno} +{revno}\n" for revno in expected_revnos])
             + "$",
         )
 
@@ -416,7 +415,7 @@ class TestTagging(TestCaseWithTransport):
         b1.tags.set_tag(tagname, b"revid1")
         b2.tags.set_tag(tagname, b"revid2")
         # push should give a warning about the tags
-        out, err = self.run_bzr("push -d one two", encoding="utf-8")
+        out, _err = self.run_bzr("push -d one two", encoding="utf-8")
         self.assertContainsRe(out, "Conflicting tags:\n.*" + tagname)
         # pull should give a warning about the tags
         out, _err = self.run_bzr("pull -d one two", encoding="utf-8", retcode=1)

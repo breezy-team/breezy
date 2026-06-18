@@ -16,20 +16,22 @@
 
 """Tests for the branch open with specific URL policy code."""
 
+from dromedary import (
+    Transport,
+    chroot,
+    register_transport,
+    register_transport_proto,
+    unregister_transport,
+)
+from dromedary.errors import RedirectRequested
+
 from .. import urlutils
 from ..branch import Branch
 from ..bzr import BzrProber
 from ..bzr.branch import BranchReferenceFormat
 from ..controldir import ControlDir, ControlDirFormat
-from ..errors import NotBranchError, RedirectRequested
-from ..transport import (
-    Transport,
-    chroot,
-    get_transport,
-    register_transport,
-    register_transport_proto,
-    unregister_transport,
-)
+from ..errors import NotBranchError
+from ..transport import get_transport
 from ..url_policy_open import (
     BadUrl,
     BranchLoopError,

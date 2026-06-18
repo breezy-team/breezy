@@ -20,6 +20,7 @@ Written by Alexander Belchenko.
 Dependency: ctypes
 """
 
+import contextlib
 import os
 import shutil
 import sys
@@ -29,8 +30,8 @@ import sys
 
 VERSION = "1.5.20070131"
 
-USAGE = """Brz postinstall helper for win32 installation
-Usage: {} [options]
+USAGE = f"""Brz postinstall helper for win32 installation
+Usage: {os.path.basename(sys.argv[0])} [options]
 
 OPTIONS:
     -h, --help                  - help message
@@ -45,7 +46,7 @@ OPTIONS:
     --add-shell-menu            - add shell context menu to start brz session
     --delete-shell-menu         - delete context menu from shell
     --check-mfc71               - check if MFC71.DLL present in system
-""".format(os.path.basename(sys.argv[0]))
+"""
 
 # Windows version
 _major, _minor, _build, _platform, _text = sys.getwindowsversion()
@@ -79,6 +80,17 @@ VERSION_FORMAT = "%-50s%s"
 
 
 def main():
+    """Main function for Brz Windows post-installation setup.
+
+    Handles various post-installation tasks for Brz on Windows including:
+    - Updating start_brz.bat script paths
+    - Adding/removing Brz directory from system PATH
+    - Adding/removing shell context menu entries
+    - Checking for required MFC71.DLL library
+
+    Returns:
+        int: OK (0) on success, ERROR (1) on failure.
+    """
     import ctypes
     import getopt
     import locale
@@ -174,7 +186,7 @@ def main():
                 r'.*(?<!\\)brz\.exe([ "].*)?$', s.rstrip("\r\n"), re.IGNORECASE
             ):
                 content[ix] = s.replace(
-                    "brz.exe", '"{}"'.format(os.path.join(brz_dir, "brz.exe"))
+                    "brz.exe", f'"{os.path.join(brz_dir, "brz.exe")}"'
                 )
             elif s.find(r"C:\Program Files\Breezy") != -1:
                 content[ix] = s.replace(r"C:\Program Files\Breezy", brz_dir)
@@ -238,7 +250,7 @@ def main():
             if f_change:
                 path_u = os.pathsep.join(path_list)
                 if dry_run:
-                    print("*** Registry key {}\\{}".format(hkey_str[key], subkey))
+                    print(f"*** Registry key {hkey_str[key]}\\{subkey}")
                     print("*** Modify PATH variable. New value:")
                     print(path_u)
                 else:
@@ -256,6 +268,14 @@ def main():
         abak = "C:\\autoexec.bak"
 
         def backup_autoexec_bat(name, backupname, dry_run):
+            """Create a backup copy of autoexec.bat file.
+
+            Args:
+                name (str): Path to the original autoexec.bat file.
+                backupname (str): Path where the backup should be created.
+                dry_run (bool): If True, only print what would be done without
+                    actually creating the backup.
+            """
             # backup autoexec.bat
             if os.path.isfile(name):
                 if not dry_run:
@@ -265,10 +285,7 @@ def main():
 
         GetShortPathName = ctypes.windll.kernel32.GetShortPathNameA
         buf = ctypes.create_string_buffer(260)
-        if GetShortPathName(brz_dir, buf, 260):
-            brz_dir_8_3 = buf.value
-        else:
-            brz_dir_8_3 = brz_dir
+        brz_dir_8_3 = buf.value if GetShortPathName(brz_dir, buf, 260) else brz_dir
         pattern = "SET PATH=%PATH%;" + brz_dir_8_3
 
         # search pattern
@@ -288,7 +305,7 @@ def main():
                         if i.rstrip("\r\n") != pattern:
                             f.write(i)
             else:
-                print("*** Remove line <{}> from autoexec.bat".format(pattern))
+                print(f"*** Remove line <{pattern}> from autoexec.bat")
 
         elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
@@ -297,7 +314,7 @@ def main():
                     f.write(pattern)
                     f.write("\n")
             else:
-                print("*** Add line <{}> to autoexec.bat".format(pattern))
+                print(f"*** Add line <{pattern}> to autoexec.bat")
 
     if add_shell_menu and not delete_shell_menu:
         hkey = None
@@ -328,15 +345,11 @@ def main():
             _winreg.CloseKey(hkey)
 
     if delete_shell_menu:
-        try:
+        with contextlib.suppress(OSError):
             _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT, r"Folder\shell\brz\command")
-        except OSError:
-            pass
 
-        try:
+        with contextlib.suppress(OSError):
             _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT, r"Folder\shell\brz")
-        except OSError:
-            pass
 
     if check_mfc71:
         try:

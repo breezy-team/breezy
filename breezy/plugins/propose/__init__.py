@@ -33,6 +33,11 @@ plugin_cmds.register_lazy("cmd_web_open", [], __name__ + ".cmds")
 
 
 def test_suite():
+    """Load and return the test suite for the propose plugin.
+
+    Returns:
+        unittest.TestSuite: A test suite containing all tests for the propose plugin.
+    """
     from unittest import TestSuite
 
     from .tests import test_suite

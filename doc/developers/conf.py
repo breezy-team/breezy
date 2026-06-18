@@ -1,3 +1,8 @@
+"""Breezy developer documentation build configuration file.
+
+This file is execfile()d with the current directory set to its containing dir.
+Created by sphinx-quickstart on Tue Jul 21 17:04:52 2009.
+"""
 #
 # Breezy documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 21 17:04:52 2009.
@@ -13,7 +18,7 @@ import sys
 sys.path = [os.path.abspath("../.."), os.path.abspath("api")] + sys.path
 
 # Most of the configuration for Breezy docs is defined here ...
-from breezy.doc_generate.conf import *
+from breezy.doc_generate.conf import *  # noqa: F403
 
 ## Configuration specific to this site ##
 
@@ -21,7 +26,7 @@ from breezy.doc_generate.conf import *
 brz_locale = "en"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = "Developer Document Catalog ({})".format(release)
+html_short_title = f"Developer Document Catalog ({release})"
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -68,10 +73,7 @@ latex_documents = [
     for start, target, title, author, doc_class in brz_documents
 ]
 
-texinfo_documents = [
-    (start, target, title, author, doc_class)
-    for start, target, title, author, doc_class in brz_documents
-]
+texinfo_documents = list(brz_documents)
 
 # List of documents that shouldn't be included in the build.
 # Note: Maybe some of them *ought* to be linked in somewhere?

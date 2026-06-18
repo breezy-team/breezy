@@ -32,7 +32,7 @@ class TestGitDir(tests.TestCaseInTempDir):
 
         gd = controldir.ControlDir.open(".")
         self.assertEqual(
-            "{},branch=master".format(urlutils.local_path_to_url(os.path.abspath("."))),
+            f"{urlutils.local_path_to_url(os.path.abspath('.'))},branch=master",
             gd.get_branch_reference(),
         )
 

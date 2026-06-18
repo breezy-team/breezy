@@ -1,0 +1,334 @@
+*******************************
+Rust Bindings Development Guide
+*******************************
+
+This document describes breezy-specific practices for developing Rust bindings using PyO3.
+
+Overview
+========
+
+Breezy uses PyO3 to create Python bindings for performance-critical code written in Rust. The project follows a workspace structure where each major component has a dedicated ``-py`` crate for Python bindings.
+
+Project Structure
+=================
+
+Rust extensions in breezy follow this structure::
+
+    crates/
+    ├── component/           # Pure Rust implementation
+    │   ├── Cargo.toml
+    │   └── src/
+    │       └── lib.rs
+    └── component-py/        # Python bindings
+        ├── Cargo.toml
+        └── src/
+            └── lib.rs
+
+Naming Conventions
+==================
+
+* Rust extension modules are named with an ``_rs`` suffix (e.g., ``_osutils_rs``)
+* Python binding crates use a ``-py`` suffix (e.g., ``osutils-py``)
+* The PyO3 module function should be named ``_module_name_rs``
+
+Basic Module Template
+=====================
+
+.. code-block:: rust
+
+    use pyo3::prelude::*;
+
+    #[pymodule]
+    fn _module_name_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+        m.add("__doc__", "Module documentation")?;
+        
+        // Add functions
+        m.add_wrapped(wrap_pyfunction!(function_name))?;
+        
+        // Add classes
+        m.add_class::<ClassName>()?;
+        
+        // Add submodules
+        let submodule = PyModule::new(py, "submodule")?;
+        submodule.add_wrapped(wrap_pyfunction!(submodule_function))?;
+        m.add_submodule(&submodule)?;
+        
+        Ok(())
+    }
+
+Common Patterns
+===============
+
+Function Signatures
+-------------------
+
+Use ``#[pyo3(signature = ...)]`` for functions with optional parameters:
+
+.. code-block:: rust
+
+    #[pyfunction]
+    #[pyo3(signature = (path, follow_symlinks=true))]
+    fn stat(py: Python, path: &str, follow_symlinks: bool) -> PyResult<PyObject> {
+        // Implementation
+    }
+
+Error Handling
+--------------
+
+Define custom exceptions using ``create_exception!``:
+
+.. code-block:: rust
+
+    create_exception!(module_name, CustomError, pyo3::exceptions::PyException);
+
+    #[pymodule]
+    fn _module_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+        m.add("CustomError", py.get_type::<CustomError>())?;
+        Ok(())
+    }
+
+Working with Paths
+------------------
+
+Use the ``extract_path`` pattern for handling path-like objects:
+
+.. code-block:: rust
+
+    fn extract_path(py: Python, path: &Bound<PyAny>) -> PyResult<PathBuf> {
+        if let Ok(s) = path.extract::<&str>() {
+            Ok(PathBuf::from(s))
+        } else if let Ok(s) = path.extract::<&[u8]>() {
+            Ok(PathBuf::from(OsStr::from_bytes(s)))
+        } else if let Ok(path_obj) = path.call_method0("__fspath__") {
+            extract_path(py, &path_obj)
+        } else {
+            Err(PyTypeError::new_err("expected str, bytes or path-like object"))
+        }
+    }
+
+GIL Management
+--------------
+
+Release the GIL for I/O operations:
+
+.. code-block:: rust
+
+    #[pyfunction]
+    fn read_file(py: Python, path: &str) -> PyResult<Vec<u8>> {
+        let data = py.allow_threads(|| {
+            std::fs::read(path)
+        })?;
+        Ok(data)
+    }
+
+Classes
+-------
+
+Define classes with ``#[pyclass]`` and implement methods with ``#[pymethods]``:
+
+.. code-block:: rust
+
+    #[pyclass]
+    struct MyClass {
+        inner: SomeRustType,
+    }
+
+    #[pymethods]
+    impl MyClass {
+        #[new]
+        fn new(value: i32) -> PyResult<Self> {
+            Ok(Self {
+                inner: SomeRustType::new(value)?,
+            })
+        }
+        
+        #[getter]
+        fn value(&self) -> i32 {
+            self.inner.value()
+        }
+        
+        fn method(&self, py: Python) -> PyResult<String> {
+            // Method implementation
+        }
+    }
+
+Dynamic Module Import Pattern
+=============================
+
+For complex modules that need to selectively import submodules (as suggested in PyO3 issue #759), use this pattern:
+
+.. code-block:: rust
+
+    use pyo3::prelude::*;
+    use pyo3::types::PyDict;
+
+    #[pymodule]
+    fn _complex_module_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+        // Import sys to manipulate module loading
+        let sys = py.import("sys")?;
+        let sys_modules = sys.getattr("modules")?;
+        
+        // Create the main module structure
+        m.add("__doc__", "Complex module with dynamic submodules")?;
+        
+        // Define available submodules
+        let submodules = vec![
+            ("submodule1", create_submodule1),
+            ("submodule2", create_submodule2),
+            ("submodule3", create_submodule3),
+        ];
+        
+        // Selectively load submodules based on configuration
+        let config = get_module_config()?;
+        
+        for (name, creator) in submodules {
+            if config.should_load(name) {
+                let submod = creator(py)?;
+                m.add_submodule(&submod)?;
+                
+                // Register in sys.modules for proper import behavior
+                let full_name = format!("{}.{}", m.name()?, name);
+                sys_modules.set_item(full_name, &submod)?;
+            }
+        }
+        
+        Ok(())
+    }
+
+    fn create_submodule1(py: Python) -> PyResult<Bound<PyModule>> {
+        let m = PyModule::new(py, "submodule1")?;
+        m.add_wrapped(wrap_pyfunction!(submodule1_function))?;
+        Ok(m)
+    }
+
+This pattern is useful when:
+
+* You have a large module with many optional components
+* You want to reduce import time by loading only necessary submodules
+* You need to maintain compatibility while transitioning from Python to Rust
+
+Build Configuration
+===================
+
+Cargo.toml Template
+-------------------
+
+.. code-block:: toml
+
+    [package]
+    name = "component-py"
+    version = "0.1.0"
+    edition = "2021"
+
+    [lib]
+    name = "_component_rs"
+    crate-type = ["cdylib"]
+
+    [dependencies]
+    pyo3 = { workspace = true, features = ["abi3-py37"] }
+    component = { path = "../component" }
+
+    [features]
+    default = ["pyo3/extension-module"]
+
+Setup.py Configuration
+----------------------
+
+.. code-block:: python
+
+    from setuptools_rust import RustExtension
+
+    rust_extensions = [
+        RustExtension(
+            "breezy._component_rs",
+            path="crates/component-py/Cargo.toml",
+            binding=Binding.PyO3,
+            py_limited_api=True,
+        ),
+    ]
+
+Testing
+=======
+
+Test Rust bindings from Python:
+
+.. code-block:: python
+
+    import unittest
+    from breezy import _component_rs
+
+    class TestComponentBindings(unittest.TestCase):
+        def test_function(self):
+            result = _component_rs.function_name("arg")
+            self.assertEqual(result, expected_value)
+
+Performance Considerations
+==========================
+
+1. **Minimize Python/Rust boundary crossings**: Batch operations when possible
+2. **Use ``py.allow_threads()``** for I/O and CPU-intensive operations
+3. **Prefer ``PyBytes`` over ``Vec<u8>``** for binary data to avoid copies
+4. **Use ``&[u8]`` parameters** instead of ``Vec<u8>`` when data is read-only
+
+Binary Compatibility
+====================
+
+Breezy uses PyO3's ``abi3`` feature for stable ABI compatibility across Python versions. This ensures that compiled extensions work with multiple Python versions without recompilation.
+
+Common Pitfalls
+===============
+
+1. **Forgetting to release the GIL**: Always use ``py.allow_threads()`` for blocking operations
+2. **Incorrect error conversion**: Ensure Rust errors are properly converted to Python exceptions
+3. **Memory leaks with PyObject**: Be careful with reference counting when manually managing PyObject
+4. **Path encoding issues**: Always handle both str and bytes paths for cross-platform compatibility
+
+Migration Strategy
+==================
+
+When migrating Python code to Rust:
+
+1. Start with performance-critical functions
+2. Keep the Python API unchanged
+3. Add comprehensive tests before migration
+4. Benchmark before and after to ensure performance improvements
+5. Document any behavioral differences in the migration
+
+Example: Migrating a Python Function
+------------------------------------
+
+Original Python:
+
+.. code-block:: python
+
+    def calculate_hash(data: bytes) -> str:
+        import hashlib
+        return hashlib.sha256(data).hexdigest()
+
+Rust replacement:
+
+.. code-block:: rust
+
+    use pyo3::prelude::*;
+    use sha2::{Sha256, Digest};
+
+    #[pyfunction]
+    fn calculate_hash(data: &[u8]) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        format!("{:x}", hasher.finalize())
+    }
+
+    #[pymodule]
+    fn _hash_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+        m.add_wrapped(wrap_pyfunction!(calculate_hash))?;
+        Ok(())
+    }
+
+Additional Resources
+====================
+
+* `PyO3 Documentation <https://pyo3.rs/>`_
+* `PyO3 Architecture Guide <https://pyo3.rs/main/architecture.html>`_
+* `Maturin Documentation <https://maturin.rs/>`_ (alternative build tool)
+* Breezy's existing Rust extensions in ``crates/*-py/`` directories

@@ -202,7 +202,7 @@ class TestLS(tests.TestCaseWithTransport):
 
     def test_ls_path_nonrecursive(self):
         self.ls_equals(
-            "{}/.bzrignore\n{}/a\n".format(self.test_dir, self.test_dir),
+            f"{self.test_dir}/.bzrignore\n{self.test_dir}/a\n",
             self.test_dir,
             recursive=False,
         )

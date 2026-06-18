@@ -7,7 +7,7 @@ It's meant for people interested in developing Breezy, and some parts will
 also be useful to people developing Breezy plugins.
 
 If you have any questions or something seems to be incorrect, unclear or
-missing, please talk to us in ``irc://irc.oftc.net/#breezy``, or write to
+missing, please talk to us on matrix at ``#breezy:matrix.org``, or write to
 the Breezy mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 

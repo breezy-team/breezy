@@ -24,6 +24,7 @@ Working on Breezy
    testing
    code-review
    code-style
+   rust-bindings
    documenting-changes
 
 * `Contributing to Breezy Documentation <http://wiki.breezy-vcs.org/ContributingToTheDocs>`_ (wiki)

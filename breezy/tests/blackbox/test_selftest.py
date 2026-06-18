@@ -18,9 +18,10 @@
 
 import os
 
+from dromedary import memory
+
 from breezy import tests
 from breezy.tests import features
-from breezy.transport import memory
 
 
 class SelfTestPatch:
@@ -54,7 +55,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         # Test that we can pass a transport to the selftest core - sftp
         # version.
         self.requireFeature(features.paramiko)
-        from breezy.tests import stub_sftp
+        from dromedary.tests import stub_sftp
 
         params = self.get_params_passed_to_core("selftest --transport=sftp")
         self.assertEqual(stub_sftp.SFTPAbsoluteServer, params[1]["transport"])
@@ -67,13 +68,13 @@ class TestOptions(tests.TestCase, SelfTestPatch):
 
     def test_parameters_passed_to_core(self):
         params = self.get_params_passed_to_core("selftest --list-only")
-        self.assertTrue("list_only" in params[1])
+        self.assertIn("list_only", params[1])
         params = self.get_params_passed_to_core("selftest --list-only selftest")
-        self.assertTrue("list_only" in params[1])
+        self.assertIn("list_only", params[1])
         params = self.get_params_passed_to_core(
             ["selftest", "--list-only", "--exclude", "selftest"]
         )
-        self.assertTrue("list_only" in params[1])
+        self.assertIn("list_only", params[1])
         params = self.get_params_passed_to_core(
             ["selftest", "--list-only", "selftest", "--randomize", "now"]
         )

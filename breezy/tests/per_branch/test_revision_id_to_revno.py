@@ -17,6 +17,7 @@
 """Tests for Branch.revision_id_to_revno()."""
 
 from breezy import errors
+from breezy.errors import GhostRevisionsHaveNoRevno
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_branch import TestCaseWithBranch
 
@@ -53,7 +54,7 @@ class TestRevisionIdToRevno(TestCaseWithBranch):
         # a ghost and the revision not being on the mainline. As such,
         # allow both NoSuchRevision and GhostRevisionsHaveNoRevno here.
         self.assertRaises(
-            (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno),
+            (errors.NoSuchRevision, GhostRevisionsHaveNoRevno),
             tree.branch.revision_id_to_revno,
             b"unknown",
         )

@@ -87,7 +87,7 @@ class TestBranchCheck(TestCaseWithBranch):
             elif kind == "revision-existence":
                 existences.add(value)
             else:
-                raise AssertionError("unknown ref kind for ref {}".format(ref))
+                raise AssertionError(f"unknown ref kind for ref {ref}")
         node_distances = branch.repository.get_graph().find_lefthand_distances(
             distances
         )

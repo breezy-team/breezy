@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""File utilities for testing.
+
+This module provides mock file objects and utilities that can be used
+in unit tests to simulate file operations without actual filesystem access.
+"""
+
 from io import BytesIO
 
 

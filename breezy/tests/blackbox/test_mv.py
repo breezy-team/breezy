@@ -21,7 +21,8 @@ import os
 import breezy.branch
 from breezy import osutils, workingtree
 from breezy.tests import TestCaseWithTransport, script
-from breezy.tests.features import (
+
+from ..features import (
     CaseInsensitiveFilesystemFeature,
     SymlinkFeature,
     UnicodeFilenameFeature,

@@ -53,9 +53,7 @@ class TestAlias(tests.TestCaseWithTransport):
         tree.add(file_name)
         tree.commit("added")
 
-        config.GlobalConfig.from_string(
-            "[ALIASES]\nust=st {}\n".format(file_name), save=True
-        )
+        config.GlobalConfig.from_string(f"[ALIASES]\nust=st {file_name}\n", save=True)
 
         out, err = self.run_bzr("ust")
         self.assertEqual(err, "")
@@ -80,10 +78,10 @@ class TestAlias(tests.TestCaseWithTransport):
 
     def test_remove_known_alias(self):
         self.run_bzr('alias commit="commit --strict"')
-        out, err = self.run_bzr("alias commit")
+        out, _err = self.run_bzr("alias commit")
         self.assertEqual('brz alias commit="commit --strict"\n', out)
         # No output when removing an existing alias.
-        out, err = self.run_bzr("alias --remove commit")
+        out, _err = self.run_bzr("alias --remove commit")
         self.assertEqual("", out)
         # Now its not.
         out, _err = self.run_bzr("alias commit")

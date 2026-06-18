@@ -1,131 +1,128 @@
 #!/usr/bin/env python3
-import optparse
-import random
-import sys
+"""Benchmark tool for graph algorithms.
 
+This script benchmarks KnownGraph vs simple Graph implementations
+for computing heads operations.
+"""
+
+import os
+import sys
+import time
+from optparse import OptionParser
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+import vcsgraph
 import vcsgraph.graph as graph
 
-from breezy import (
-    branch,
-    commands,
-    osutils,
-    trace,
-    ui,
-)
-from breezy.ui import text
-from vcsgraph import KnownGraph
-from vcsgraph import known_graph as _known_graph_mod
-
-p = optparse.OptionParser()
+p = OptionParser()
 p.add_option("--quick", default=False, action="store_true")
-p.add_option("--max-combinations", default=500, type=int)
-p.add_option("--lsprof", default=None, type=str)
 opts, args = p.parse_args(sys.argv[1:])
 
-trace.enable_default_logging()
-ui.ui_factory = text.TextUIFactory()
 
-begin = osutils.perf_counter()
-if len(args) >= 1:
-    b = branch.Branch.open(args[0])
-else:
-    b = branch.Branch.open(".")
-with b.lock_read():
-    g = b.repository.get_graph()
-    parent_map = dict(
-        p for p in g.iter_ancestry([b.last_revision()]) if p[1] is not None
-    )
-end = osutils.perf_counter()
+def load_data(fname):
+    """Load graph data from a file.
 
-print("Found %d nodes, loaded in %.3fs" % (len(parent_map), end - begin))
+    Args:
+        fname: Path to a file containing graph data. Each line should have
+            a revision ID followed by its parent IDs, separated by spaces.
 
-
-def all_heads_comp(g, combinations):
-    h = []
-    with ui.ui_factory.nested_progress_bar() as pb:
-        for idx, combo in enumerate(combinations):
-            if idx & 0x1F == 0:
-                pb.update("proc", idx, len(combinations))
-            h.append(g.heads(combo))
-    return h
+    Returns:
+        dict: A parent map mapping revision IDs to tuples of parent IDs.
+    """
+    with open(fname, "rb") as f:
+        lines = f.readlines()
+    parent_map = {}
+    for line in lines:
+        parts = line.split()
+        if len(parts) > 1:
+            parent_map[parts[0]] = tuple(parts[1:])
+        else:
+            parent_map[parts[0]] = ()
+    return parent_map
 
 
-combinations = []
-# parents = parent_map.keys()
-# for p1 in parents:
-#     for p2 in random.sample(parents, 10):
-#         combinations.append((p1, p2))
-# Times for random sampling of 10x1150 of bzrtools
-#   Graph        KnownGraph
-#   96.1s   vs   25.7s  :)
-# Times for 500 'merge parents' from bzr.dev
-#   25.6s   vs   45.0s  :(
+def all_heads_comp(graph, combinations):
+    """Benchmark computing heads for all key combinations.
 
-for _revision_id, parent_ids in parent_map.items():
-    if parent_ids is not None and len(parent_ids) > 1:
-        combinations.append(parent_ids)
-# The largest portion of the graph that has to be walked for a heads() check
-# combinations = [('john@arbash-meinel.com-20090312021943-tu6tcog48aiujx4s',
-#                  'john@arbash-meinel.com-20090312130552-09xa2xsitf6rilzc')]
-if opts.max_combinations > 0 and len(combinations) > opts.max_combinations:
-    combinations = random.sample(combinations, opts.max_combinations)
+    Args:
+        graph: A graph object with a heads() method.
+        combinations: List of key pairs to compute heads for.
 
-print("      %d combinations" % (len(combinations),))
+    Returns:
+        dict: Results including elapsed time and computed heads.
+    """
+    heads = {}
+    start = time.time()
+    for c in combinations:
+        heads[c] = graph.heads(c)
+    elapsed = time.time() - start
+    return {"elapsed": elapsed, "heads": heads}
 
 
-def combi_graph(graph_klass, comb):
-    # DEBUG
-    graph._counters[1] = 0
-    graph._counters[2] = 0
+def combi_graph(graph_klass, combinations):
+    """Create a graph and benchmark heads computation.
 
-    begin = osutils.perf_counter()
+    Args:
+        graph_klass: Graph class or callable to instantiate.
+        combinations: List of key pairs to compute heads for.
+
+    Returns:
+        dict: Results including elapsed time and computed heads.
+    """
     g = graph_klass(parent_map)
-    if opts.lsprof is not None:
-        heads = commands.apply_lsprofiled(opts.lsprof, all_heads_comp, g, comb)
-    else:
-        heads = all_heads_comp(g, comb)
-    end = osutils.perf_counter()
-    return {"elapsed": (end - begin), "graph": g, "heads": heads}
+    return all_heads_comp(g, combinations)
 
 
-def report(name, g):
-    print("{}: {:.3f}s".format(name, g["elapsed"]))
-    counters_used = False
-    for c in graph._counters:
-        if c:
-            counters_used = True
-    if counters_used:
-        print("  {}".format(graph._counters))
+if len(args) < 1:
+    print("Usage: time_graph.py file [key1 key2]")
+    sys.exit(1)
+
+parent_map = load_data(args[0])
+if len(args) > 2:
+    combinations = [(args[1].encode(), args[2].encode())]
+else:
+    all_keys = sorted(parent_map)
+    combinations = []
+    for idx, key in enumerate(all_keys):
+        # Pick pairs that are likely to have interesting relationships
+        other = all_keys[-(idx + 1)]
+        if other != key:
+            combinations.append((key, other))
 
 
-known_python = combi_graph(_known_graph_mod.KnownGraph, combinations)
-report("Known (python)", known_python)
+def report(name, result):
+    """Report benchmark results.
 
-known_compiled = combi_graph(KnownGraph, combinations)
-report("Known (compiled)", known_compiled)
+    Args:
+        name: Name of the benchmark.
+        result: Dict containing 'elapsed' time and 'heads' data.
+    """
+    print(f"{name}: {result['elapsed']:.3f}s")
+    if not opts.quick:
+        print(f"  {graph._counters}")
+
+
+known_python = combi_graph(vcsgraph.KnownGraph, combinations)
+report("Known", known_python)
 
 
 def _simple_graph(parent_map):
+    """Create a simple Graph instance from a parent map.
+
+    Args:
+        parent_map: Dictionary mapping revision IDs to their parent IDs.
+
+    Returns:
+        Graph instance using DictParentsProvider.
+    """
     return graph.Graph(graph.DictParentsProvider(parent_map))
 
 
 if opts.quick:
-    if known_python["heads"] != known_compiled["heads"]:
-        import pdb
-
-        pdb.set_trace()
-    print(
-        "ratio: {:.1f}:1 faster".format(
-            known_python["elapsed"] / known_compiled["elapsed"]
-        )
-    )
+    print(f"ratio: {known_python['elapsed']:.3f}s")
 else:
     orig = combi_graph(_simple_graph, combinations)
     report("Orig", orig)
 
-    if orig["heads"] != known_compiled["heads"]:
-        import pdb
-
-        pdb.set_trace()
-
-    print("ratio: {:.1f}:1 faster".format(orig["elapsed"] / known_compiled["elapsed"]))
+    print(f"ratio: {orig['elapsed'] / known_python['elapsed']:.1f}:1 faster")

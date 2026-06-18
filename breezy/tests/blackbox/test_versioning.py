@@ -21,10 +21,11 @@
 
 import os
 
-from breezy.osutils import pathjoin
 from breezy.tests import TestCaseWithTransport
-from breezy.trace import mutter
-from breezy.workingtree import WorkingTree
+
+from ...osutils import pathjoin
+from ...trace import mutter
+from ...workingtree import WorkingTree
 
 
 class TestMkdir(TestCaseWithTransport):
@@ -50,7 +51,7 @@ class TestMkdir(TestCaseWithTransport):
 
         delta = wt.changes_from(wt.basis_tree())
 
-        self.log("delta.added = {!r}".format(delta.added))
+        self.log(f"delta.added = {delta.added!r}")
 
         self.assertEqual(len(delta.added), 1)
         self.assertEqual(delta.added[0].path[1], "foo")
@@ -70,7 +71,7 @@ class TestMkdir(TestCaseWithTransport):
 
         delta = wt.changes_from(wt.basis_tree())
 
-        self.log("delta.added = {!r}".format(delta.added))
+        self.log(f"delta.added = {delta.added!r}")
 
         self.assertEqual(len(delta.added), 2)
         self.assertEqual(delta.added[0].path[1], "dir")

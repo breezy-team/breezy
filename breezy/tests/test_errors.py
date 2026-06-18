@@ -19,7 +19,11 @@
 import inspect
 import re
 
+from bzrformats.inventory import NoSuchId
+from dromedary import errors as transport_errors
+
 from .. import controldir, errors, osutils, tests, urlutils
+from ..bzr.smart import transport as _smart_transport
 
 
 class TestErrors(tests.TestCase):
@@ -37,12 +41,11 @@ class TestErrors(tests.TestCase):
             fmt = getattr(c, "_fmt", None)
             if init:
                 args = inspect.getfullargspec(init)[0]
-                self.assertFalse(
-                    "message" in args,
-                    (
-                        'Argument name "message" not allowed for '
-                        '"errors.{}.__init__"'.format(c.__name__)
-                    ),
+                self.assertNotIn(
+                    "message",
+                    args,
+                    'Argument name "message" not allowed for '
+                    f'"errors.{c.__name__}.__init__"',
                 )
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(
@@ -80,13 +83,13 @@ class TestErrors(tests.TestCase):
         )
 
     def test_in_process_transport(self):
-        error = errors.InProcessTransport("fpp")
+        error = transport_errors.InProcessTransport("fpp")
         self.assertEqualDiff(
             "The transport 'fpp' is only accessible within this process.", str(error)
         )
 
     def test_invalid_http_range(self):
-        error = errors.InvalidHttpRange(
+        error = transport_errors.InvalidHttpRange(
             "path", "Content-Range: potatoes 0-00/o0oo0", "bad range"
         )
         self.assertEqual(
@@ -97,7 +100,7 @@ class TestErrors(tests.TestCase):
         )
 
     def test_invalid_range(self):
-        error = errors.InvalidRange("path", 12, "bad range")
+        error = transport_errors.InvalidRange("path", 12, "bad range")
         self.assertEqual("Invalid range access in path at 12: bad range", str(error))
 
     def test_jail_break(self):
@@ -128,14 +131,14 @@ class TestErrors(tests.TestCase):
         self.assertEqualDiff("The medium 'a medium' is not connected.", str(error))
 
     def test_no_smart_medium(self):
-        error = errors.NoSmartMedium("a transport")
+        error = _smart_transport.NoSmartMedium("a transport")
         self.assertEqualDiff(
             "The transport 'a transport' cannot tunnel the smart protocol.",
             str(error),
         )
 
     def test_no_such_id(self):
-        error = errors.NoSuchId("atree", "anid")
+        error = NoSuchId("atree", "anid")
         self.assertEqualDiff(
             'The file id "anid" is not present in the tree atree.', str(error)
         )
@@ -188,8 +191,8 @@ class TestErrors(tests.TestCase):
     def test_read_error(self):
         # a unicode path to check that %r is being used.
         path = "a path"
-        error = errors.ReadError(path)
-        self.assertContainsRe(str(error), "^Error reading from u?'a path'.$")
+        error = transport_errors.ReadError(path)
+        self.assertContainsRe(str(error), "^Error reading from 'a path'")
 
     def test_bzrerror_from_literal_string(self):
         # Some code constructs BzrError from a literal string, in which case
@@ -229,57 +232,9 @@ class TestErrors(tests.TestCase):
         )
 
     def test_transport_not_possible(self):
-        error = errors.TransportNotPossible("readonly", "original error")
+        error = transport_errors.TransportNotPossible("readonly", "original error")
         self.assertEqualDiff(
             "Transport operation not possible: readonly original error", str(error)
-        )
-
-    def assertSocketConnectionError(self, expected, *args, **kwargs):
-        """Check the formatting of a SocketConnectionError exception."""
-        e = errors.SocketConnectionError(*args, **kwargs)
-        self.assertEqual(expected, str(e))
-
-    def test_socket_connection_error(self):
-        """Test the formatting of SocketConnectionError."""
-        # There should be a default msg about failing to connect
-        # we only require a host name.
-        self.assertSocketConnectionError("Failed to connect to ahost", "ahost")
-
-        # If port is None, we don't put :None
-        self.assertSocketConnectionError(
-            "Failed to connect to ahost", "ahost", port=None
-        )
-        # But if port is supplied we include it
-        self.assertSocketConnectionError(
-            "Failed to connect to ahost:22", "ahost", port=22
-        )
-
-        # We can also supply extra information about the error
-        # with or without a port
-        self.assertSocketConnectionError(
-            "Failed to connect to ahost:22; bogus error",
-            "ahost",
-            port=22,
-            orig_error="bogus error",
-        )
-        self.assertSocketConnectionError(
-            "Failed to connect to ahost; bogus error", "ahost", orig_error="bogus error"
-        )
-        # An exception object can be passed rather than a string
-        orig_error = ValueError("bad value")
-        self.assertSocketConnectionError(
-            "Failed to connect to ahost; {}".format(str(orig_error)),
-            host="ahost",
-            orig_error=orig_error,
-        )
-
-        # And we can supply a custom failure message
-        self.assertSocketConnectionError(
-            "Unable to connect to ssh host ahost:444; my_error",
-            host="ahost",
-            port=444,
-            msg="Unable to connect to ssh host",
-            orig_error="my_error",
         )
 
     def test_target_not_branch(self):
@@ -294,15 +249,10 @@ class TestErrors(tests.TestCase):
         )
 
     def test_unexpected_smart_server_response(self):
-        e = errors.UnexpectedSmartServerResponse(("not yes",))
+        e = transport_errors.UnexpectedSmartServerResponse(("not yes",))
         self.assertEqual(
             "Could not understand response from smart server: ('not yes',)", str(e)
         )
-
-    def test_check_error(self):
-        e = errors.BzrCheckError("example check failure")
-        self.assertEqual("Internal check failed: example check failure", str(e))
-        self.assertTrue(e.internal_error)
 
     def test_repository_data_stream_error(self):
         """Test the formatting of RepositoryDataStreamError."""
@@ -345,7 +295,7 @@ class TestErrors(tests.TestCase):
 
     def test_error_from_smart_server(self):
         error_tuple = ("error", "tuple")
-        err = errors.ErrorFromSmartServer(error_tuple)
+        err = transport_errors.ErrorFromSmartServer(error_tuple)
         self.assertEqual(
             "Error received from smart server: ('error', 'tuple')", str(err)
         )
@@ -444,9 +394,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         b = self.make_branch(".")
         error = errors.NoPublicBranch(b)
         url = urlutils.unescape_for_display(b.base, "ascii")
-        self.assertEqualDiff(
-            'There is no public branch set for "{}".'.format(url), str(error)
-        )
+        self.assertEqualDiff(f'There is no public branch set for "{url}".', str(error))
 
     def test_no_repo(self):
         dir = controldir.ControlDir.create(self.get_url())

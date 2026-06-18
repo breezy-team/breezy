@@ -16,6 +16,8 @@
 
 """Tests for repository break-lock."""
 
+import contextlib
+
 from breezy import errors, ui
 from breezy.tests import per_repository
 
@@ -29,10 +31,8 @@ class TestBreakLock(per_repository.TestCaseWithRepository):
 
     def test_unlocked(self):
         # break lock when nothing is locked should just return
-        try:
+        with contextlib.suppress(NotImplementedError):
             self.repo.break_lock()
-        except NotImplementedError:
-            pass
 
     def test_locked(self):
         # break_lock when locked should

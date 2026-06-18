@@ -16,8 +16,9 @@
 
 """Tests for breezy.branch.InterBranch.copy_content_into."""
 
+from dromedary.errors import NoSuchFile
+
 from breezy.tests.per_intertree import TestCaseWithTwoTrees
-from breezy.transport import NoSuchFile
 
 
 class TestFindPaths(TestCaseWithTwoTrees):

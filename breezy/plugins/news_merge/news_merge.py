@@ -78,4 +78,12 @@ class NewsMerger(merge.ConfigurableFileMerger):
 
 
 def sort_key(chunk):
+    """Generate a sort key for NEWS file chunks.
+
+    Args:
+        chunk: A tuple containing chunk type and content.
+
+    Returns:
+        A normalized string for sorting, with backticks removed and lowercased.
+    """
     return chunk[1].replace("`", "").lower()

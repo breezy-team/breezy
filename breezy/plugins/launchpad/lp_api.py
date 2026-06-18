@@ -27,25 +27,32 @@ from ...i18n import gettext
 
 
 class LaunchpadlibMissing(errors.DependencyNotPresent):
+    """Exception raised when launchpadlib is not available.
+
+    This exception is raised when the launchpadlib library is not installed
+    but is required for Launchpad API operations.
+    """
+
     _fmt = (
         "launchpadlib is required for Launchpad API access. "
         "Please install the launchpadlib package."
     )
 
     def __init__(self, e):
+        """Initialize the LaunchpadlibMissing exception.
+
+        Args:
+            e: The original exception that caused this dependency error.
+        """
         super().__init__("launchpadlib", e)
 
 
 try:
     import launchpadlib
 except ModuleNotFoundError as e:
-    raise LaunchpadlibMissing(e)
+    raise LaunchpadlibMissing(e) from e
 
-from launchpadlib.credentials import (
-    AccessToken,
-    Credentials,
-    CredentialStore,
-)
+from launchpadlib.credentials import AccessToken, Credentials, CredentialStore
 from launchpadlib.launchpad import Launchpad
 
 # Declare the minimum version of launchpadlib that we need in order to work.
@@ -68,24 +75,48 @@ def check_launchpadlib_compatibility():
     if installed_version < MINIMUM_LAUNCHPADLIB_VERSION:
         raise errors.DependencyNotPresent(
             "launchpadlib",
-            "At least launchpadlib {} is required, but installed version is {}".format(
-                MINIMUM_LAUNCHPADLIB_VERSION, installed_version
-            ),
+            f"At least launchpadlib {MINIMUM_LAUNCHPADLIB_VERSION} is required, but installed version is {installed_version}",
         )
 
 
 class NoLaunchpadBranch(errors.BzrError):
+    """Exception raised when no Launchpad branch can be found for a given branch.
+
+    This exception is raised when attempting to find a Launchpad branch
+    corresponding to a local or remote branch, but no such branch exists
+    on Launchpad.
+    """
+
     _fmt = 'No launchpad branch could be found for branch "%(url)s".'
 
     def __init__(self, branch):
+        """Initialize the NoLaunchpadBranch exception.
+
+        Args:
+            branch: The branch object for which no Launchpad branch was found.
+        """
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
 def get_auth_engine(base_url):
+    """Get the authorization engine for Launchpad API access.
+
+    Args:
+        base_url: The base URL for the Launchpad service.
+
+    Returns:
+        Authorization engine instance for authenticating with Launchpad.
+    """
     return Launchpad.authorization_engine_factory(base_url, "breezy")
 
 
 def get_credential_store():
+    """Get the credential store for Launchpad API credentials.
+
+    Returns:
+        BreezyCredentialStore: A credential store instance for managing
+            Launchpad API credentials within Breezy.
+    """
     return BreezyCredentialStore()
     # return Launchpad.credential_store_factory()
 
@@ -94,8 +125,14 @@ class BreezyCredentialStore(CredentialStore):
     """Implementation of the launchpadlib CredentialStore API for Breezy."""
 
     def __init__(self, credential_save_failed=None):
+        """Initialize the BreezyCredentialStore.
+
+        Args:
+            credential_save_failed: Optional callback function to handle
+                credential save failures. Defaults to None.
+        """
         super().__init__(credential_save_failed)
-        from breezy.config import AuthenticationConfig
+        from ...config import AuthenticationConfig
 
         self.auth_config = AuthenticationConfig()
 
@@ -258,7 +295,7 @@ class LaunchpadBranch:
                     return
                 graph = self.bzr.repository.get_graph()
                 if not graph.is_ancestor(
-                    osutils.safe_utf8(self.lp.last_scanned_id), self.bzr.last_revision()
+                    self.lp.last_scanned_id.encode("utf-8"), self.bzr.last_revision()
                 ):
                     raise errors.DivergedBranches(self.bzr, self.push_bzr)
                 trace.note(gettext("Pushing to %s") % self.lp.bzr_identity)

@@ -59,13 +59,11 @@ class DummyLock:
 
     def _assert_locked(self):
         if not self._lock_mode:
-            raise LockError("{} is not locked".format(self))
+            raise LockError(f"{self} is not locked")
 
     def _assert_not_locked(self):
         if self._lock_mode:
-            raise LockError(
-                "{} is already locked in mode {!r}".format(self, self._lock_mode)
-            )
+            raise LockError(f"{self} is already locked in mode {self._lock_mode!r}")
 
     def validate_token(self, token):
         if token == "token":

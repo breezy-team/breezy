@@ -22,9 +22,9 @@ def make_tree_with_conflicts(test, this_path="this", other_path="other", prefix=
     this_tree = test.make_branch_and_tree(this_path)
     test.build_tree_contents(
         [
-            ("{}/{}file".format(this_path, prefix), b"this content\n"),
-            ("{}/{}_other_file".format(this_path, prefix), b"this content\n"),
-            ("{}/{}dir/".format(this_path, prefix),),
+            (f"{this_path}/{prefix}file", b"this content\n"),
+            (f"{this_path}/{prefix}_other_file", b"this content\n"),
+            (f"{this_path}/{prefix}dir/",),
         ]
     )
     this_tree.add(prefix + "file")
@@ -34,16 +34,16 @@ def make_tree_with_conflicts(test, this_path="this", other_path="other", prefix=
     other_tree = this_tree.controldir.sprout(other_path).open_workingtree()
     test.build_tree_contents(
         [
-            ("{}/{}file".format(other_path, prefix), b"contentsb\n"),
-            ("{}/{}_other_file".format(other_path, prefix), b"contentsb\n"),
+            (f"{other_path}/{prefix}file", b"contentsb\n"),
+            (f"{other_path}/{prefix}_other_file", b"contentsb\n"),
         ]
     )
     other_tree.rename_one(prefix + "dir", prefix + "dir2")
     other_tree.commit(message="change")
     test.build_tree_contents(
         [
-            ("{}/{}file".format(this_path, prefix), b"contentsa2\n"),
-            ("{}/{}_other_file".format(this_path, prefix), b"contentsa2\n"),
+            (f"{this_path}/{prefix}file", b"contentsa2\n"),
+            (f"{this_path}/{prefix}_other_file", b"contentsa2\n"),
         ]
     )
     this_tree.rename_one(prefix + "dir", prefix + "dir3")
@@ -58,29 +58,35 @@ class TestConflicts(script.TestCaseWithTransportAndScript):
         make_tree_with_conflicts(self, "branch", "other")
 
     def test_conflicts(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ cd branch
 $ brz conflicts
 Text conflict in my_other_file
 Path conflict: mydir3 / mydir2
 Text conflict in myfile
-""")
+"""
+        )
 
     def test_conflicts_text(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ cd branch
 $ brz conflicts --text
 my_other_file
 myfile
-""")
+"""
+        )
 
     def test_conflicts_directory(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz conflicts  -d branch
 Text conflict in my_other_file
 Path conflict: mydir3 / mydir2
 Text conflict in myfile
-""")
+"""
+        )
 
 
 class TestUnicodePaths(tests.TestCaseWithTransport):

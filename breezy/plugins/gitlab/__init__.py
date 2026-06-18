@@ -28,6 +28,11 @@ forges.register_lazy("gitlab", __name__ + ".forge", "GitLab")
 
 
 def test_suite():
+    """Gather all test suites for the GitLab plugin.
+
+    Returns:
+        TestSuite: A unittest TestSuite containing all tests for this plugin.
+    """
     from unittest import TestSuite
 
     from .tests import test_suite

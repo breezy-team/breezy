@@ -31,14 +31,16 @@ class TestLogFormats(tests.TestCaseWithTransport):
         if os.path.isfile(conf_path):
             # Something is wrong in environment,
             # we risk overwriting users config
-            self.fail("{} exists".format(conf_path))
+            self.fail(f"{conf_path} exists")
 
         bedding.ensure_config_dir_exists()
         with open(conf_path, "wb") as f:
-            f.write(b"""[DEFAULT]
+            f.write(
+                b"""[DEFAULT]
 email=Joe Foo <joe@foo.com>
 log_format=line
-""")
+"""
+            )
 
     def _make_simple_branch(self, relpath="."):
         wt = self.make_branch_and_tree(relpath)
@@ -105,10 +107,10 @@ log_format=line
         wt.commit(
             "revision with a long author", committer="Person with long name SENTINEL"
         )
-        log, err = self.run_bzr("log --line")
+        log, _err = self.run_bzr("log --line")
         self.assertNotContainsString(log, "SENTINEL")
         self.overrideEnv("BRZ_COLUMNS", "116")
-        log, err = self.run_bzr("log --line")
+        log, _err = self.run_bzr("log --line")
         self.assertContainsString(log, "SENT...")
         self.overrideEnv("BRZ_COLUMNS", "0")
         log, _err = self.run_bzr("log --line")

@@ -17,11 +17,11 @@
 
 from io import BytesIO
 
-import vcsgraph.graph
+import vcsgraph.graph as _mod_graph
+from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 
-from ... import errors
 from ... import revision as _mod_revision
-from ...bzr import inventory
 from ...bzr.inventorytree import InventoryTreeChange
 
 
@@ -47,7 +47,7 @@ class _TreeShim:
         if file_id in self._new_info_by_id:
             new_path = self._new_info_by_id[file_id][0]
             if new_path is None:
-                raise errors.NoSuchId(self, file_id)
+                raise NoSuchId(self, file_id)
             return new_path
         return self._basis_inv.id2path(file_id)
 
@@ -73,7 +73,10 @@ class _TreeShim:
             return self._content_provider(file_id)
         except KeyError:
             # The content wasn't shown as 'new'. Just validate this fact
-            assert file_id not in self._new_info_by_id
+            if file_id in self._new_info_by_id:
+                raise AssertionError(
+                    f"file_id {file_id} was in {self._new_info_by_id}"
+                ) from None
             old_ie = self._basis_inv.get_entry(file_id)
             old_text_key = (file_id, old_ie.revision)
             stream = self._repo.texts.get_record_stream(
@@ -112,10 +115,10 @@ class _TreeShim:
             # probably is better to optimize for that
             try:
                 old_ie = basis_inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 old_ie = None
                 if ie is None:
-                    raise AssertionError("How is both old and new None?")
+                    raise AssertionError("How is both old and new None?") from e
                     change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
@@ -169,6 +172,12 @@ class _TreeShim:
 
 
 class RevisionStore:
+    """Manages loading revisions into a repository.
+
+    This class provides functionality for creating and storing revisions
+    in a Bazaar repository, handling inventory deltas and parent relationships.
+    """
+
     def __init__(self, repo):
         """An object responsible for loading revisions into a repository.
 
@@ -194,17 +203,27 @@ class RevisionStore:
         else:
             inv = inventory.Inventory(revision_id=revision_id)
             if self.expects_rich_root():
-                # The very first root needs to have the right revision
-                inv.root.revision = revision_id
+                # The very first root needs to carry the revision; rebuild
+                # it since InventoryEntry is immutable.
+                old_root = inv.root
+                inv.delete(old_root.file_id)
+                inv.add(
+                    inventory.InventoryDirectory(
+                        file_id=old_root.file_id,
+                        name=old_root.name,
+                        parent_id=None,
+                        revision=revision_id,
+                    )
+                )
         return inv
 
     def _init_chk_inventory(self, revision_id, root_id):
         """Generate a CHKInventory for a parentless revision."""
-        from ...bzr import chk_map
+        from bzrformats import chk_map
 
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
-        serializer = self.repo._format._serializer
+        serializer = self.repo._format._inventory_serializer
         search_key_name = serializer.search_key_name
         maximum_size = serializer.maximum_size
 
@@ -275,9 +294,7 @@ class RevisionStore:
         if ie.revision != self._current_rev_id:
             raise AssertionError(
                 "start_new_revision() registered a different"
-                " revision ({}) to that in the inventory entry ({})".format(
-                    self._current_rev_id, ie.revision
-                )
+                f" revision ({self._current_rev_id}) to that in the inventory entry ({ie.revision})"
             )
 
         # Find the heads. This code is lifted from
@@ -290,7 +307,7 @@ class RevisionStore:
         for inv in self._rev_parent_invs:
             try:
                 old_rev = inv.get_entry(ie.file_id).revision
-            except errors.NoSuchId:
+            except NoSuchId:
                 pass
             else:
                 if old_rev in head_set:
@@ -318,13 +335,9 @@ class RevisionStore:
                 or parent_entry.executable != ie.executable
             ):
                 changed = True
-        elif ie.kind == "symlink":
-            if parent_entry.symlink_target != ie.symlink_target:
-                changed = True
-        if changed:
-            rev_id = ie.revision
-        else:
-            rev_id = parent_entry.revision
+        elif ie.kind == "symlink" and parent_entry.symlink_target != ie.symlink_target:
+            changed = True
+        rev_id = ie.revision if changed else parent_entry.revision
         return tuple(heads), rev_id
 
     def load_using_delta(
@@ -366,9 +379,8 @@ class RevisionStore:
             revision_id=rev.revision_id,
         )
         if self._graph is None and self._use_known_graph:
-            if (
-                getattr(vcsgraph.graph.GraphThunkIdsToKeys, "add_node", None)
-                and getattr(self.repo, "get_known_graph_ancestry", None)
+            if getattr(_mod_graph.GraphThunkIdsToKeys, "add_node", None) and getattr(
+                self.repo, "get_known_graph_ancestry", None
             ):
                 self._graph = self.repo.get_known_graph_ancestry(rev.parent_ids)
             else:
@@ -408,7 +420,7 @@ class RevisionStore:
             builder.inv_sha1, builder.new_inventory = builder.inv_sha1
         # This is a duplicate of Builder.commit() since we already have the
         # Revision object, and we *don't* want to call commit_write_group()
-        rev.inv_sha1 = builder.inv_sha1
+        rev.inventory_sha1 = builder.inv_sha1
         builder.repository.add_revision(
             builder._new_revision_id, rev, builder.revision_tree().root_inventory
         )

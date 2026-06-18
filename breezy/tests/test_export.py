@@ -257,9 +257,9 @@ class TarExporterTests(tests.TestCaseWithTransport):
         self.assertEqualDiff(content1, content2)
         # the gzip module doesn't have a way to read back to the original
         # filename, but it's stored as-is in the tarfile.
-        self.assertFalse(b"testdir1" in content1)
-        self.assertFalse(b"target.tar.gz" in content1)
-        self.assertTrue(b"target.tar" in content1)
+        self.assertNotIn(b"testdir1", content1)
+        self.assertNotIn(b"target.tar.gz", content1)
+        self.assertIn(b"target.tar", content1)
 
     def test_tbz2(self):
         wt = self.make_branch_and_tree(".")

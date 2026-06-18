@@ -30,10 +30,7 @@ class TestErrors(tests.TestCase):
 class TestIniBasedRulesSearcher(tests.TestCase):
     def make_searcher(self, text):
         """Make a _RulesSearcher from a string."""
-        if text is None:
-            lines = None
-        else:
-            lines = text.splitlines()
+        lines = None if text is None else text.splitlines()
         return rules._IniBasedRulesSearcher(lines)
 
     def test_unknown_namespace(self):

@@ -108,7 +108,7 @@ class TestCommands(TestCaseWithTransport):
         tree.add("a")
 
         # test a single versioned file
-        out, err = self.run_bzr("ignore a")
+        out, _err = self.run_bzr("ignore a")
         self.assertEqual(
             out,
             "Warning: the following files are version controlled"
@@ -118,7 +118,7 @@ class TestCommands(TestCaseWithTransport):
         )
 
         # test a single unversioned file
-        out, err = self.run_bzr("ignore b")
+        out, _err = self.run_bzr("ignore b")
         self.assertEqual(out, "")
 
         # test wildcards

@@ -14,10 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from bzrformats import versionedfile
+
 from .. import errors, osutils
 from .. import revision as _mod_revision
 from ..branch import Branch
-from ..bzr import bzrdir, knitrepo, versionedfile
+from ..bzr import bzrdir, knitrepo
 from ..upgrade import Convert
 from ..workingtree import WorkingTree
 from . import TestCaseWithTransport
@@ -304,8 +306,10 @@ class TestKnitToPackFetch(TestCaseWithTransport):
             ("get_record_stream", [(b"rev-one",)], target._format._fetch_order, False),
             self.find_get_record_stream(source.inventories.calls, 2),
         )
+        # Revisions are streamed topologically when sent as deltas, so a
+        # delta never arrives before the basis its expansion needs.
         self.assertEqual(
-            ("get_record_stream", [(b"rev-one",)], target._format._fetch_order, False),
+            ("get_record_stream", [(b"rev-one",)], "topological", False),
             self.find_get_record_stream(source.revisions.calls),
         )
         # XXX: Signatures is special, and slightly broken. The
@@ -427,7 +431,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         to_add = [("add", ("", b"TREE_ROOT", "directory", None))]
         for i in range(10):
             fname = "file%03d" % (i,)
-            fileid = ("{}-{}".format(fname, osutils.rand_chars(64))).encode("ascii")
+            fileid = f"{fname}-{osutils.rand_chars(64)}".encode("ascii")
             to_add.append(("add", (fname, fileid, "file", b"content\n")))
         builder.build_snapshot(None, to_add, revision_id=b"A")
         builder.build_snapshot([b"A"], [], revision_id=b"B")

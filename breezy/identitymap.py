@@ -31,7 +31,7 @@ class IdentityMap:
     def add_weave(self, id, weave):
         """Add weave to the map with a given id."""
         if self._weave_key(id) in self._map:
-            raise errors.BzrError("weave {} already in the identity map".format(id))
+            raise errors.BzrError(f"weave {id} already in the identity map")
         self._map[self._weave_key(id)] = weave
         self._reverse_map[weave] = self._weave_key(id)
 
@@ -39,15 +39,20 @@ class IdentityMap:
         """Return the weave for 'id', or None if it is not present."""
         return self._map.get(self._weave_key(id), None)
 
-    def __init__(self):
-        super().__init__()
-        self._map = {}
-        self._reverse_map = {}
+    def __init__(self) -> None:
+        """Initialize an empty IdentityMap.
 
-    def remove_object(self, an_object):
+        Creates internal dictionaries for mapping objects by their keys
+        and reverse mapping from objects to their keys.
+        """
+        super().__init__()
+        self._map: dict[object, object] = {}
+        self._reverse_map: dict[object, object] = {}
+
+    def remove_object(self, an_object: object):
         """Remove object from map."""
         if isinstance(an_object, list):
-            raise KeyError("{!r} not in identity map".format(an_object))
+            raise KeyError(f"{an_object!r} not in identity map")
         else:
             self._map.pop(self._reverse_map[an_object])
             self._reverse_map.pop(an_object)

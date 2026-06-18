@@ -19,32 +19,43 @@
 
 """Quilt patch handling."""
 
-import errno
 import os
 import signal
 import subprocess
 
+from dromedary.errors import NoSuchFile
+
 from ... import errors, osutils, trace
-from ... import transport as _mod_transport
 
 DEFAULT_PATCHES_DIR = "patches"
 DEFAULT_SERIES_FILE = "series"
 
 
 class QuiltError(errors.BzrError):
+    """Error raised when quilt command execution fails."""
+
     _fmt = "An error (%(retcode)d) occurred running quilt: %(stderr)s%(extra)s"
 
     def __init__(self, retcode, stdout, stderr):
+        """Initialize QuiltError.
+
+        Args:
+            retcode: Exit code from quilt command.
+            stdout: Standard output from quilt command.
+            stderr: Standard error from quilt command.
+        """
         self.retcode = retcode
         self.stderr = stderr
         if stdout is not None:
-            self.extra = "\n\n{}".format(stdout)
+            self.extra = f"\n\n{stdout}"
         else:
             self.extra = ""
         self.stdout = stdout
 
 
 class QuiltNotInstalled(errors.BzrError):
+    """Error raised when quilt is not installed or not found."""
+
     _fmt = "Quilt is not installed."
 
 
@@ -74,17 +85,14 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None, quiet=None)
     # Hide output if -q is in use.
     if quiet is None:
         quiet = trace.is_quiet()
-    if not quiet:
-        stderr = subprocess.STDOUT
-    else:
-        stderr = subprocess.PIPE
+    stderr = subprocess.STDOUT if not quiet else subprocess.PIPE
     quilt_path = osutils.find_executable_on_path("quilt")
     if quilt_path is None:
         raise QuiltNotInstalled()
     command = [quilt_path] + args
     trace.mutter("running: %r", command)
     if not os.path.isdir(working_dir):
-        raise AssertionError("{} is not a valid directory".format(working_dir))
+        raise AssertionError(f"{working_dir} is not a valid directory")
     try:
         proc = subprocess.Popen(
             command,
@@ -235,6 +243,14 @@ def quilt_delete(working_dir, patch, patches_dir=None, series_file=None, remove=
 
 
 def quilt_upgrade(working_dir):
+    """Upgrade the patches directory to the current quilt format.
+
+    Args:
+        working_dir: Directory to work in.
+
+    Returns:
+        Output from quilt command.
+    """
     return run_quilt(["upgrade"], working_dir=working_dir)
 
 
@@ -246,13 +262,11 @@ def quilt_applied(tree):
             for patch in tree.get_file_lines(".pc/applied-patches")
             if patch.strip() != b""
         ]
-    except _mod_transport.NoSuchFile:
+    except NoSuchFile:
         return []
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            # File has already been removed
-            return []
-        raise
+    except FileNotFoundError:
+        # File has already been removed
+        return []
 
 
 def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
@@ -294,10 +308,8 @@ def quilt_series(tree, series_path):
             for patch in tree.get_file_lines(series_path)
             if patch.strip() != b""
         ]
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            # File has already been removed
-            return []
-        raise
-    except _mod_transport.NoSuchFile:
+    except FileNotFoundError:
+        # File has already been removed
+        return []
+    except NoSuchFile:
         return []

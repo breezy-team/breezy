@@ -36,6 +36,8 @@ check_refs are tuples (kind, value). Currently defined kinds are:
 
 import contextlib
 
+from dromedary import errors as transport_errors
+
 from . import errors
 from .controldir import ControlDir
 from .i18n import gettext
@@ -46,9 +48,25 @@ class Check:
     """Check a repository."""
 
     def __init__(self, repository, check_repo=True):
+        """Initialize a Check instance.
+
+        Args:
+            repository: The repository to check.
+            check_repo: Whether to check the repository itself. Defaults to True.
+        """
         self.repository = repository
 
     def report_results(self, verbose):
+        """Report the results of the check operation.
+
+        This is an abstract method that must be implemented by subclasses.
+
+        Args:
+            verbose: Whether to provide verbose output.
+
+        Raises:
+            NotImplementedError: Always raised as this is an abstract method.
+        """
         raise NotImplementedError(self.report_results)
 
 
@@ -122,7 +140,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                         try:
                             tree = branch.controldir.open_workingtree()
                             saw_tree = True
-                        except (errors.NotLocalUrl, errors.NoWorkingTree):
+                        except (transport_errors.NotLocalUrl, errors.NoWorkingTree):
                             pass
                         else:
                             scan_tree(base_tree, tree, needed_refs, exit_stack)

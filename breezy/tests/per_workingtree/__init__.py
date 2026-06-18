@@ -22,9 +22,10 @@ Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/per_workingtree/*.py.
 """
 
+from dromedary import memory
+
 from breezy import branchbuilder, tests, transport, workingtree
 from breezy.tests import per_controldir, test_server
-from breezy.transport import memory
 
 
 def make_scenarios(
@@ -168,8 +169,11 @@ def load_tests(loader, standard_tests, pattern):
     scenarios = wt_scenarios()
 
     # add the tests for the sub modules
+    submod_tests = loader.suiteClass()
+    for module_name in test_workingtree_implementations:
+        submod_tests.addTest(loader.loadTestsFromName(module_name))
     return tests.multiply_tests(
-        loader.loadTestsFromModuleNames(test_workingtree_implementations),
+        submod_tests,
         scenarios,
         standard_tests,
     )

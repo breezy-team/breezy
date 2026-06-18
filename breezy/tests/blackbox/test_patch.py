@@ -28,7 +28,7 @@ class TestPatch(TestCaseWithTransport):
         with open("myfile", "w") as f:
             f.write("goodbye")
         with open("mypatch", "w") as f:
-            f.write(self.run_bzr("diff -p1", retcode=1)[0])
+            f.write(self.run_bzr("diff --color=never -p1", retcode=1)[0])
         self.run_bzr("revert")
         self.assertFileEqual("hello", "myfile")
         self.run_bzr("patch -p1 --silent mypatch")

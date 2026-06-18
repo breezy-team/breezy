@@ -47,7 +47,7 @@ def changes_between_git_tree_and_working_copy(
     """Determine the changes between a git tree and a working tree with index."""
     to_tree_sha, extras = target.git_snapshot(want_unversioned=want_unversioned)
     store = OverlayObjectStore([source_store, target.store])
-    return tree_changes(
+    changes = tree_changes(
         store,
         from_tree_sha,
         to_tree_sha,
@@ -55,7 +55,8 @@ def changes_between_git_tree_and_working_copy(
         rename_detector=rename_detector,
         want_unchanged=want_unchanged,
         change_type_same=True,
-    ), extras
+    )
+    return changes, extras
 
 
 class GitWorkingTreeTests(TestCaseWithTransport):
@@ -489,6 +490,279 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         self.store.add_object(t)
         self.expectDelta([], tree_id=t.id)
 
+    def test_gitattributes_crlf_eol(self):
+        """Working tree CRLF files should not show as changed when eol=crlf."""
+        # Create .gitattributes specifying eol=crlf for .bat files
+        self.build_tree_contents([(".gitattributes", "*.bat text eol=crlf\n")])
+        self.wt.add([".gitattributes"])
+        # Create a file with LF line endings (as git stores it)
+        with open(self.wt.abspath("test.bat"), "wb") as f:
+            f.write(b"line1\nline2\n")
+        self.wt.add(["test.bat"])
+        self.wt.commit("initial commit")
+        # Now write the file with CRLF (as git checkout would produce
+        # for eol=crlf)
+        with open(self.wt.abspath("test.bat"), "wb") as f:
+            f.write(b"line1\r\nline2\r\n")
+        # The LF-normalized blob is what git stores
+        a_lf = Blob.from_string(b"line1\nline2\n")
+        gitattrs = Blob.from_string(b"*.bat text eol=crlf\n")
+        oldt = Tree()
+        oldt.add(b".gitattributes", stat.S_IFREG | 0o644, gitattrs.id)
+        oldt.add(b"test.bat", stat.S_IFREG | 0o644, a_lf.id)
+        # After normalization, the CRLF working tree content should be
+        # normalized to LF, matching the committed content - no changes.
+        self.expectDelta([], tree_id=oldt.id)
+
+    def test_gitattributes_crlf_actual_change(self):
+        """Actual content changes should still be detected with eol=crlf."""
+        self.build_tree_contents([(".gitattributes", "*.bat text eol=crlf\n")])
+        self.wt.add([".gitattributes"])
+        with open(self.wt.abspath("test.bat"), "wb") as f:
+            f.write(b"line1\nline2\n")
+        self.wt.add(["test.bat"])
+        self.wt.commit("initial commit")
+        # Write different content with CRLF
+        with open(self.wt.abspath("test.bat"), "wb") as f:
+            f.write(b"line1\r\nline2\r\nline3\r\n")
+        a_old = Blob.from_string(b"line1\nline2\n")
+        a_new = Blob.from_string(b"line1\nline2\nline3\n")
+        gitattrs = Blob.from_string(b"*.bat text eol=crlf\n")
+        oldt = Tree()
+        oldt.add(b".gitattributes", stat.S_IFREG | 0o644, gitattrs.id)
+        oldt.add(b"test.bat", stat.S_IFREG | 0o644, a_old.id)
+        newt = Tree()
+        newt.add(b".gitattributes", stat.S_IFREG | 0o644, gitattrs.id)
+        newt.add(b"test.bat", stat.S_IFREG | 0o644, a_new.id)
+        self.expectDelta(
+            [
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
+                    new=TreeEntry(b"", stat.S_IFDIR, newt.id),
+                ),
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"test.bat", stat.S_IFREG | 0o644, a_old.id),
+                    new=TreeEntry(b"test.bat", stat.S_IFREG | 0o644, a_new.id),
+                ),
+            ],
+            tree_id=oldt.id,
+        )
+
+    def test_gitattributes_text_auto(self):
+        """Files marked as text=auto should have LF normalized."""
+        self.build_tree_contents([(".gitattributes", "* text=auto\n")])
+        self.wt.add([".gitattributes"])
+        # Create a file with CRLF line endings
+        with open(self.wt.abspath("file.txt"), "wb") as f:
+            f.write(b"line1\r\nline2\r\n")
+        self.wt.add(["file.txt"])
+        self.wt.commit("initial commit")
+        # The file should be stored with LF internally
+        # Get the actual committed tree to verify normalization worked
+        head_commit = self.store[self.wt.branch.repository._git.head()]
+        committed_tree = self.store[head_commit.tree]
+        # Verify file.txt was stored with LF
+        file_entry = committed_tree[b"file.txt"]
+        file_blob = self.store[file_entry[1]]
+        self.assertEqual(
+            file_blob.data, b"line1\nline2\n", "File should be stored with LF"
+        )
+
+        # Simulate checkout with CRLF (on Windows)
+        with open(self.wt.abspath("file.txt"), "wb") as f:
+            f.write(b"line1\r\nline2\r\n")
+        # Should not show as changed when compared to committed tree
+        self.expectDelta([], tree_id=head_commit.tree)
+
+    def test_gitattributes_binary(self):
+        """Binary files marked with -text should not be normalized."""
+        self.build_tree_contents(
+            [
+                (".gitattributes", "*.bin -text\n"),
+                ("test.bin", b"binary\r\ndata\x00\r\n"),
+            ]
+        )
+        self.wt.add([".gitattributes", "test.bin"])
+        self.wt.commit("initial commit")
+
+        # Verify file was stored without normalization (with CRLF)
+        head_commit = self.store[self.wt.branch.repository._git.head()]
+        committed_tree = self.store[head_commit.tree]
+        file_entry = committed_tree[b"test.bin"]
+        file_blob = self.store[file_entry[1]]
+        self.assertEqual(
+            file_blob.data,
+            b"binary\r\ndata\x00\r\n",
+            "Binary file should be stored as-is",
+        )
+
+    def test_gitattributes_info_attributes(self):
+        """Test that .git/info/attributes is read."""
+        import os
+
+        # Create .git/info/attributes
+        info_dir = os.path.join(self.wt.repository._git.controldir(), "info")
+        os.makedirs(info_dir, exist_ok=True)
+        info_attrs_path = os.path.join(info_dir, "attributes")
+        with open(info_attrs_path, "w") as f:
+            f.write("*.txt text eol=lf\n")
+
+        # Create a file with CRLF
+        with open(self.wt.abspath("file.txt"), "wb") as f:
+            f.write(b"line1\r\nline2\r\n")
+        self.wt.add(["file.txt"])
+        self.wt.commit("initial commit")
+
+        # Verify file was normalized to LF
+        head_commit = self.store[self.wt.branch.repository._git.head()]
+        committed_tree = self.store[head_commit.tree]
+        file_entry = committed_tree[b"file.txt"]
+        file_blob = self.store[file_entry[1]]
+        self.assertEqual(
+            file_blob.data,
+            b"line1\nline2\n",
+            "File should be normalized according to info/attributes",
+        )
+
+    def test_gitattributes_get_file_filtered(self):
+        """Test that get_file() applies content filters."""
+        self.build_tree_contents(
+            [
+                (".gitattributes", "*.txt text eol=lf\n"),
+                ("file.txt", b"line1\r\nline2\r\n"),
+            ]
+        )
+        self.wt.add([".gitattributes", "file.txt"])
+
+        # get_file() should return filtered (normalized) content
+        with self.wt.get_file("file.txt") as f:
+            content = f.read()
+        self.assertEqual(content, b"line1\nline2\n", "get_file should apply filters")
+
+        # get_file(filtered=False) should return raw content
+        with self.wt.get_file("file.txt", filtered=False) as f:
+            content = f.read()
+        self.assertEqual(
+            content,
+            b"line1\r\nline2\r\n",
+            "get_file(filtered=False) should return raw content",
+        )
+
+    def test_gitattributes_priority(self):
+        """Test priority of gitattributes from different sources."""
+        import os
+
+        # Create .git/info/attributes with one rule
+        info_dir = os.path.join(self.wt.repository._git.controldir(), "info")
+        os.makedirs(info_dir, exist_ok=True)
+        info_attrs_path = os.path.join(info_dir, "attributes")
+        with open(info_attrs_path, "w") as f:
+            f.write("*.txt text eol=crlf\n")
+
+        # Create .gitattributes with conflicting rule (should take precedence)
+        self.build_tree_contents(
+            [
+                (".gitattributes", "*.txt text eol=lf\n"),
+                ("file.txt", b"line1\r\nline2\r\n"),
+            ]
+        )
+        self.wt.add([".gitattributes", "file.txt"])
+        self.wt.commit("initial commit")
+
+        # Working tree .gitattributes should override info/attributes
+        head_commit = self.store[self.wt.branch.repository._git.head()]
+        committed_tree = self.store[head_commit.tree]
+        file_entry = committed_tree[b"file.txt"]
+        file_blob = self.store[file_entry[1]]
+        self.assertEqual(
+            file_blob.data,
+            b"line1\nline2\n",
+            "Working tree .gitattributes should override info/attributes",
+        )
+
+    def test_gitattributes_global_config(self):
+        """Test that global gitattributes from core.attributesFile is read."""
+        import os
+
+        # Create a global gitattributes file in the test directory
+        global_attrs_path = os.path.join(self.test_dir, "global.gitattributes")
+        with open(global_attrs_path, "w") as f:
+            f.write("*.global text eol=lf\n")
+
+        # Set core.attributesFile config
+        config_path = os.path.join(self.wt.repository._git.controldir(), "config")
+        config = self.wt.repository._git.get_config()
+        config.set(b"core", b"attributesFile", global_attrs_path.encode())
+        config.write_to_path(config_path)
+
+        # Create a file with CRLF
+        with open(self.wt.abspath("file.global"), "wb") as f:
+            f.write(b"line1\r\nline2\r\n")
+        self.wt.add(["file.global"])
+        self.wt.commit("initial commit")
+
+        # Verify file was normalized to LF
+        head_commit = self.store[self.wt.branch.repository._git.head()]
+        committed_tree = self.store[head_commit.tree]
+        file_entry = committed_tree[b"file.global"]
+        file_blob = self.store[file_entry[1]]
+        self.assertEqual(
+            file_blob.data,
+            b"line1\nline2\n",
+            "File should be normalized according to global gitattributes",
+        )
+
+    def test_gitattributes_custom_filter(self):
+        """Test that custom filters from gitattributes are applied."""
+        import os
+
+        # Create filter scripts in test directory
+        # Create clean filter (normalizes to LF)
+        clean_script = os.path.join(self.test_dir, "clean.sh")
+        with open(clean_script, "w") as f:
+            f.write("#!/bin/sh\nsed 's/\\r$//'\n")
+        os.chmod(clean_script, 0o755)  # noqa: S103
+
+        # Create smudge filter (adds CRLF)
+        smudge_script = os.path.join(self.test_dir, "smudge.sh")
+        with open(smudge_script, "w") as f:
+            f.write("#!/bin/sh\nsed 's/$/\\r/'\n")
+        os.chmod(smudge_script, 0o755)  # noqa: S103
+
+        # Configure the custom filter
+        config_path = os.path.join(self.wt.repository._git.controldir(), "config")
+        config = self.wt.repository._git.get_config()
+        config.set((b"filter", b"myfilter"), b"clean", clean_script.encode())
+        config.set((b"filter", b"myfilter"), b"smudge", smudge_script.encode())
+        config.write_to_path(config_path)
+
+        # Create .gitattributes using the custom filter
+        self.build_tree_contents(
+            [
+                (".gitattributes", "*.custom filter=myfilter\n"),
+            ]
+        )
+        self.wt.add([".gitattributes"])
+
+        # Create a file with CRLF
+        with open(self.wt.abspath("file.custom"), "wb") as f:
+            f.write(b"line1\r\nline2\r\n")
+        self.wt.add(["file.custom"])
+        self.wt.commit("initial commit")
+
+        # The custom filter should normalize to LF via the clean filter
+        head_commit = self.store[self.wt.branch.repository._git.head()]
+        committed_tree = self.store[head_commit.tree]
+        file_entry = committed_tree[b"file.custom"]
+        file_blob = self.store[file_entry[1]]
+        self.assertEqual(
+            file_blob.data,
+            b"line1\nline2\n",
+            "File should be filtered through custom clean filter",
+        )
+
     def test_submodule_not_checked_out(self):
         a = Blob.from_string(b"irrelevant\n")
         with self.wt.lock_tree_write():
@@ -500,3 +774,20 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         t.add(b"a", S_IFGITLINK, a.id)
         self.store.add_object(t)
         self.expectDelta([], tree_id=t.id)
+
+    def test_subsume(self):
+        self.build_tree(["a", "b"])
+        self.wt.add(["a", "b"])
+        myrevid = self.wt.commit("")
+
+        subwt = self.make_branch_and_tree("c", format="git")
+        self.build_tree(["c/d"])
+        subwt.add(["d"])
+        subrevid = subwt.commit("")
+
+        self.wt.subsume(subwt)
+        self.assertEqual([myrevid, subrevid], self.wt.get_parent_ids())
+        self.assertFalse(os.path.exists("c/.git"))
+        self.assertTrue(os.path.exists("c/.git.retired.0"))
+        changes = list(self.wt.iter_changes(self.wt.basis_tree()))
+        self.assertEqual(2, len(changes))

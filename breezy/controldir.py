@@ -14,15 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__docformat__ = "google"
-
 """ControlDir is the basic control directory class.
 
 The ControlDir class is the base for the control directory used
 by all bzr and foreign formats. For the ".bzr" implementation,
 see breezy.bzrdir.BzrDir.
-
 """
+
+__docformat__ = "google"
 
 from typing import TYPE_CHECKING, Optional, cast
 
@@ -43,6 +42,11 @@ from breezy.i18n import gettext
 """,
 )
 
+import contextlib
+
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+
 from . import errors, hooks, registry, trace
 from . import revision as _mod_revision
 from . import transport as _mod_transport
@@ -54,23 +58,45 @@ if TYPE_CHECKING:
 
 
 class MustHaveWorkingTree(errors.BzrError):
+    """Exception raised when branching requires a working tree but can't create one."""
+
     _fmt = "Branching '%(url)s'(%(format)s) must create a working tree."
 
     def __init__(self, format, url):
+        """Initialize the exception.
+
+        Args:
+            format: The format that requires a working tree.
+            url: The URL being branched.
+        """
         errors.BzrError.__init__(self, format=format, url=url)
 
 
 class BranchReferenceLoop(errors.BzrError):
+    """Exception raised when a branch reference would create a loop."""
+
     _fmt = "Can not create branch reference that points at branch itself."
 
     def __init__(self, branch):
+        """Initialize the exception.
+
+        Args:
+            branch: The branch that would create a loop.
+        """
         errors.BzrError.__init__(self, branch=branch)
 
 
 class NoColocatedBranchSupport(errors.BzrError):
+    """Exception raised when co-located branches are not supported."""
+
     _fmt = "%(controldir)r does not support co-located branches."
 
     def __init__(self, controldir):
+        """Initialize the exception.
+
+        Args:
+            controldir: The control directory that doesn't support co-located branches.
+        """
         self.controldir = controldir
 
 
@@ -92,18 +118,38 @@ class ControlComponent:
 
     @property
     def control_transport(self) -> _mod_transport.Transport:
+        """Transport for the control directory (e.g. .bzr).
+
+        Returns:
+            Transport object for accessing control files.
+        """
         raise NotImplementedError
 
     @property
     def control_url(self) -> str:
+        """URL of the control directory.
+
+        Returns:
+            Base URL of the control transport.
+        """
         return self.control_transport.base
 
     @property
     def user_transport(self) -> _mod_transport.Transport:
+        """Transport for the user-visible directory (above .bzr).
+
+        Returns:
+            Transport object for accessing the user directory.
+        """
         raise NotImplementedError
 
     @property
     def user_url(self) -> str:
+        """User-visible URL of this directory.
+
+        Returns:
+            Base URL of the user transport.
+        """
         return self.user_transport.base
 
     _format: "ControlComponentFormat"
@@ -527,7 +573,7 @@ class ControlDir(ControlComponent):
                 source.set_push_location(br_to.base)
             try:
                 tree_to = self.open_workingtree()
-            except errors.NotLocalUrl:
+            except transport_errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(
                     br_to,
                     overwrite=overwrite,
@@ -584,14 +630,11 @@ class ControlDir(ControlComponent):
         """
         try:
             tree = self.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
             tree = None
             branch = self.open_branch(name=name)
         else:
-            if name is not None:
-                branch = self.open_branch(name=name)
-            else:
-                branch = tree.branch
+            branch = self.open_branch(name=name) if name is not None else tree.branch
         return tree, branch
 
     def get_config(self):
@@ -699,7 +742,7 @@ class ControlDir(ControlComponent):
                 controldir = klass.open_from_transport(current_transport)
             except (
                 errors.NotBranchError,
-                errors.PermissionDenied,
+                transport_errors.PermissionDenied,
                 errors.UnknownFormatError,
             ):
                 pass
@@ -708,7 +751,7 @@ class ControlDir(ControlComponent):
                 yield value
             try:
                 subdirs = list_current(current_transport)
-            except (_mod_transport.NoSuchFile, errors.PermissionDenied):
+            except (NoSuchFile, transport_errors.PermissionDenied):
                 continue
             if recurse:
                 for subdir in sorted(subdirs, reverse=True):
@@ -803,20 +846,18 @@ class ControlDir(ControlComponent):
           possible_transports: An optional reusable transports list.
         """
         if force_new_tree:
-            from breezy.transport import local
+            from dromedary import local
 
             # check for non local urls
             t = _mod_transport.get_transport(base, possible_transports)
             if not isinstance(t, local.LocalTransport):
-                raise errors.NotLocalUrl(base)
+                raise transport_errors.NotLocalUrl(base)
         controldir = klass.create(base, format, possible_transports)
         repo = controldir._find_or_create_repository(force_new_repo)
         result = controldir.create_branch()
         if force_new_tree or (repo.make_working_trees() and force_new_tree is None):
-            try:
+            with contextlib.suppress(transport_errors.NotLocalUrl):
                 controldir.create_workingtree()
-            except errors.NotLocalUrl:
-                pass
         return result
 
     @classmethod
@@ -836,10 +877,10 @@ class ControlDir(ControlComponent):
         Returns: The WorkingTree object.
         """
         t = _mod_transport.get_transport(base)
-        from breezy.transport import local
+        from dromedary import local
 
         if not isinstance(t, local.LocalTransport):
-            raise errors.NotLocalUrl(base)
+            raise transport_errors.NotLocalUrl(base)
         controldir = klass.create_branch_and_repo(
             base, force_new_repo=True, format=format
         ).controldir
@@ -896,8 +937,8 @@ class ControlDir(ControlComponent):
             transport, format = _mod_transport.do_catching_redirections(
                 find_format, transport, redirected
             )
-        except errors.TooManyRedirections:
-            raise errors.NotBranchError(base)
+        except transport_errors.TooManyRedirections as e:
+            raise errors.NotBranchError(base) from e
 
         format.check_support_status(_unsupported)
         return cast("ControlDir", format.open(transport, _found=True))
@@ -937,13 +978,13 @@ class ControlDir(ControlComponent):
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError:
                 pass
-            except errors.PermissionDenied:
+            except transport_errors.PermissionDenied:
                 pass
             try:
                 new_t = a_transport.clone("..")
-            except urlutils.InvalidURLJoin:
+            except urlutils.InvalidURLJoin as e:
                 # reached the root, whatever that may be
-                raise errors.NotBranchError(path=url)
+                raise errors.NotBranchError(path=url) from e
             if new_t.base == a_transport.base:
                 # reached the root, whatever that may be
                 raise errors.NotBranchError(path=url)
@@ -998,8 +1039,8 @@ class ControlDir(ControlComponent):
             try:
                 repo = controldir.find_repository()
                 return None, None, repo, relpath
-            except errors.NoRepositoryPresent:
-                raise errors.NotBranchError(location)
+            except errors.NoRepositoryPresent as e:
+                raise errors.NotBranchError(location) from e
         return tree, branch, branch.repository, relpath
 
     @classmethod
@@ -1089,6 +1130,11 @@ class ControlComponentFormat:
 
     @classmethod
     def get_format_string(cls):
+        """Return the format string for this format.
+
+        Returns:
+            String that identifies this format.
+        """
         raise NotImplementedError(cls.get_format_string)
 
 
@@ -1096,6 +1142,11 @@ class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFor
     """A registry for control components (branch, workingtree, repository)."""
 
     def __init__(self, other_registry=None):
+        """Initialize the registry.
+
+        Args:
+            other_registry: Optional registry to copy from.
+        """
         super().__init__(other_registry)
         self._extra_formats = []
 
@@ -1113,15 +1164,21 @@ class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFor
         This is mainly useful to allow custom repository formats, such as older
         Bazaar formats and foreign formats, to be tested.
         """
-        self._extra_formats.append(registry._ObjectGetter(format))
+        from catalogus.registry import _ObjectGetter
+
+        self._extra_formats.append(_ObjectGetter(format))
 
     def remove_extra(self, format):
         """Remove an extra format."""
-        self._extra_formats.remove(registry._ObjectGetter(format))
+        from catalogus.registry import _ObjectGetter
+
+        self._extra_formats.remove(_ObjectGetter(format))
 
     def register_extra_lazy(self, module_name, member_name):
         """Register a format lazily."""
-        self._extra_formats.append(registry._LazyObjectGetter(module_name, member_name))
+        from catalogus.registry import _LazyObjectGetter
+
+        self._extra_formats.append(_LazyObjectGetter(module_name, member_name))
 
     def _get_extra(self):
         """Return getters for extra formats, not usable in meta directories."""
@@ -1129,7 +1186,11 @@ class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFor
 
     def _get_all_lazy(self):
         """Return getters for all formats, even those not usable in metadirs."""
-        result = [self._dict[name].get_obj for name in self.keys()]
+        # For Rust-based registry, create getters for each format
+        result = []
+        for name in self.keys():
+            # Create a getter function that returns the format
+            result.append(lambda n=name: self.get(n))
         result.extend(self._get_extra())
         return result
 
@@ -1269,6 +1330,14 @@ class ControlDirFormat:
             ui.ui_factory.recommend_upgrade(self.get_format_description(), basedir)
 
     def same_model(self, target_format):
+        """Check if this format has the same model as another format.
+
+        Args:
+            target_format: Format to compare with.
+
+        Returns:
+            True if both formats use the same data model.
+        """
         return self.repository_format.rich_root_data == target_format.rich_root_data
 
     @classmethod
@@ -1282,11 +1351,21 @@ class ControlDirFormat:
         klass._probers.remove(prober)
 
     def __str__(self):
+        """Return string representation of the format.
+
+        Returns:
+            Format description without trailing newlines.
+        """
         # Trim the newline
         return self.get_format_description().rstrip()
 
     @classmethod
     def all_probers(klass) -> list[type["Prober"]]:
+        """Return all registered probers.
+
+        Returns:
+            List of all registered prober classes.
+        """
         return klass._probers
 
     @classmethod
@@ -1317,7 +1396,7 @@ class ControlDirFormat:
                 pass
         raise errors.NotBranchError(path=transport.base)
 
-    def initialize(self, url, possible_transports=None):
+    def initialize(self, url: str, possible_transports=None):
         """Create a control dir at this url and return an opened copy.
 
         While not deprecated, this method is very specific and its use will
@@ -1331,16 +1410,16 @@ class ControlDirFormat:
             _mod_transport.get_transport(url, possible_transports)
         )
 
-    def initialize_on_transport(self, transport):
+    def initialize_on_transport(self, transport: _mod_transport.Transport):
         """Initialize a new controldir in the base directory of a Transport."""
         raise NotImplementedError(self.initialize_on_transport)
 
     def initialize_on_transport_ex(
         self,
-        transport,
-        use_existing_dir=False,
-        create_prefix=False,
-        force_new_repo=False,
+        transport: _mod_transport.Transport,
+        use_existing_dir: bool = False,
+        create_prefix: bool = False,
+        force_new_repo: bool = False,
         stacked_on=None,
         stack_on_pwd=None,
         repo_format_name=None,
@@ -1480,7 +1559,21 @@ class Prober:
 
 
 class ControlDirFormatInfo:
+    """Information about a control directory format.
+
+    Contains metadata about a format including whether it's native,
+    deprecated, hidden, or experimental.
+    """
+
     def __init__(self, native, deprecated, hidden, experimental):
+        """Initialize format information.
+
+        Args:
+            native: Whether this is a native format.
+            deprecated: Whether this format is deprecated.
+            hidden: Whether this format should be hidden from users.
+            experimental: Whether this format is experimental.
+        """
         self.deprecated = deprecated
         self.native = native
         self.hidden = hidden
@@ -1558,6 +1651,18 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat, None]):
         hidden=False,
         experimental=False,
     ):
+        """Register a format lazily.
+
+        Args:
+            key: Key to register under.
+            module_name: Module containing the format.
+            member_name: Name of the format class in the module.
+            help: Help text for the format.
+            native: Whether this is a native format.
+            deprecated: Whether this format is deprecated.
+            hidden: Whether this format should be hidden.
+            experimental: Whether this format is experimental.
+        """
         registry.Registry.register_lazy(
             self,
             key,
@@ -1587,9 +1692,25 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat, None]):
         self.get("default")()
 
     def make_controldir(self, key):
+        """Create a control directory using the specified format.
+
+        Args:
+            key: Key identifying the format to use.
+
+        Returns:
+            New control directory instance.
+        """
         return self.get(key)()
 
     def help_topic(self, topic):
+        """Generate help text for control directory formats.
+
+        Args:
+            topic: Help topic requested.
+
+        Returns:
+            Formatted help text describing available formats.
+        """
         output = ""
         default_realkey = None
         default_help = self.get_help("default")
@@ -1618,9 +1739,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat, None]):
 
         if default_realkey is not None:
             output += wrapped(
-                default_realkey,
-                "(default) {}".format(default_help),
-                self.get_info("default"),
+                default_realkey, f"(default) {default_help}", self.get_info("default")
             )
         deprecated_pairs = []
         experimental_pairs = []
@@ -1685,13 +1804,26 @@ class RepoInitHookParams:
         self.shared = shared
 
     def __eq__(self, other):
+        """Compare two instances for equality.
+
+        Args:
+            other: Other instance to compare with.
+
+        Returns:
+            True if both instances have the same attributes.
+        """
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
+        """Return string representation for debugging.
+
+        Returns:
+            String representation showing the associated repository or controldir.
+        """
         if self.repository:
-            return "<{} for {}>".format(self.__class__.__name__, self.repository)
+            return f"<{self.__class__.__name__} for {self.repository}>"
         else:
-            return "<{} for {}>".format(self.__class__.__name__, self.controldir)
+            return f"<{self.__class__.__name__} for {self.controldir}>"
 
 
 def is_control_filename(filename):

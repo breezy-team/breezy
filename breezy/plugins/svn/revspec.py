@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Revision specification support for Subversion revision numbers."""
+
 from ...revisionspec import InvalidRevisionSpec, RevisionSpec
 
 
@@ -33,7 +35,17 @@ class RevisionSpec_svn(RevisionSpec):
         raise InvalidRevisionSpec(self.user_spec, branch)
 
     def needs_branch(self):
+        """Check if this revision specifier needs a branch.
+
+        Returns:
+            True, as SVN revision specifiers require a branch context.
+        """
         return True
 
     def get_branch(self):
+        """Get the branch associated with this revision specifier.
+
+        Returns:
+            None, as this specifier doesn't provide a specific branch.
+        """
         return None

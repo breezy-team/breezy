@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Module for fetching ghost revisions from another branch.
+
+Ghost revisions are revisions that are referenced as ancestors but not
+present in the local repository. This module provides functionality to
+identify and fetch these missing revisions from another branch.
+"""
+
 import contextlib
 
 from .branch import Branch
@@ -22,8 +29,26 @@ from .trace import note
 
 
 class GhostFetcher:
+    """Fetches ghost revisions from another branch.
+
+    This class identifies revisions that are referenced as ancestors but
+    missing from the local repository, and attempts to fetch them from
+    another branch.
+    """
+
     @classmethod
     def from_cmdline(cls, other):
+        """Create a GhostFetcher from command line arguments.
+
+        Args:
+            other: The location of the other branch, or None to use parent.
+
+        Returns:
+            A GhostFetcher instance.
+
+        Raises:
+            CommandError: If no branch is specified and no parent is saved.
+        """
         this_branch = Branch.open_containing(".")[0]
         if other is None:
             other = this_branch.get_parent()
@@ -35,10 +60,23 @@ class GhostFetcher:
         return cls(this_branch, other_branch)
 
     def __init__(self, this_branch, other_branch):
+        """Initialize a GhostFetcher.
+
+        Args:
+            this_branch: The local branch to fetch ghosts into.
+            other_branch: The branch to fetch ghosts from.
+        """
         self.this_branch = this_branch
         self.other_branch = other_branch
 
     def run(self):
+        """Run the ghost fetching process.
+
+        Locks the branches appropriately and fetches ghost revisions.
+
+        Returns:
+            A tuple of (installed, failed) revision lists.
+        """
         lock_other = self.this_branch.base != self.other_branch.base
         with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.this_branch.lock_write())

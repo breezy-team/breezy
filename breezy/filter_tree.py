@@ -39,6 +39,14 @@ class ContentFilterTree(tree.Tree):
         self.filter_stack_callback = filter_stack_callback
 
     def get_file_text(self, path):
+        """Get the filtered text content of a file.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            The filtered file content as bytes.
+        """
         chunks = self.backing_tree.get_file_lines(path)
         filters = self.filter_stack_callback(path)
         context = ContentFilterContext(path, self)
@@ -47,15 +55,51 @@ class ContentFilterTree(tree.Tree):
         return content
 
     def get_file(self, path):
+        """Get a file object with filtered content.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            A BytesIO object containing the filtered file content.
+        """
         return BytesIO(self.get_file_text(path))
 
     def has_filename(self, filename):
-        return self.backing_tree.has_filename
+        """Check if a filename exists in the tree.
+
+        Args:
+            filename: The filename to check.
+
+        Returns:
+            True if the filename exists, False otherwise.
+        """
+        return self.backing_tree.has_filename(filename)
 
     def is_executable(self, path):
+        """Check if a file is executable.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            True if the file is executable, False otherwise.
+        """
         return self.backing_tree.is_executable(path)
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+        """Iterate over entries in the tree by directory.
+
+        Note: This returns the parent tree's entries. The file lengths may be
+        incorrect as they represent unfiltered content.
+
+        Args:
+            specific_files: Optional list of specific files to iterate.
+            recurse_nested: Whether to recurse into nested trees.
+
+        Returns:
+            Iterator of tree entries.
+        """
         # NB: This simply returns the parent tree's entries; the length may be
         # wrong but it can't easily be calculated without filtering the whole
         # text.  Currently all callers cope with this; perhaps they should be
@@ -66,7 +110,17 @@ class ContentFilterTree(tree.Tree):
         )
 
     def lock_read(self):
+        """Acquire a read lock on the tree.
+
+        Returns:
+            Lock object from the backing tree.
+        """
         return self.backing_tree.lock_read()
 
     def unlock(self):
+        """Release the lock on the tree.
+
+        Returns:
+            Result of unlocking the backing tree.
+        """
         return self.backing_tree.unlock()

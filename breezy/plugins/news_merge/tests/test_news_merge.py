@@ -19,3 +19,4 @@
 # Note that the single test from this file is now in
 # test_merge.TestConfigurableFileMerger -- rbc 20100129.
 
+

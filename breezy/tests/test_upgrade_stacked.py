@@ -23,6 +23,7 @@ from .scenarios import load_tests_apply_scenarios
 
 
 def upgrade_scenarios():
+    """Generate test scenarios for different format upgrade combinations."""
     scenario_pairs = [  # old format, new format, model_change
         #        ('knit', 'rich-root', True),
         ("knit", "1.6", False),
@@ -49,6 +50,8 @@ load_tests = load_tests_apply_scenarios
 
 
 class TestStackUpgrade(tests.TestCaseWithTransport):
+    """Tests for upgrading stacked repositories between different formats."""
+
     # TODO: This should possibly be repeated for all stacking repositories,
     # pairwise by rich/non-rich format; should possibly also try other kinds
     # of upgrades like knit->pack. -- mbp 20080804

@@ -17,11 +17,12 @@
 
 import os
 
-from breezy.errors import BinaryFile
-from breezy.iterablefile import IterableFile
-from breezy.patch import PatchInvokeError, diff3, iter_patched_from_hunks, run_patch
-from breezy.patches import parse_patch
-from breezy.tests import TestCase, TestCaseInTempDir
+from breezy.tests import TestCase, TestCaseInTempDir, features
+
+from ..errors import BinaryFile
+from ..osutils import IterableFile
+from ..patch import PatchInvokeError, diff3, iter_patched_from_hunks, run_patch
+from ..patches import parse_patch
 
 
 class TestPatch(TestCaseInTempDir):
@@ -41,6 +42,10 @@ class TestPatch(TestCaseInTempDir):
 
 
 class PatchesTester(TestCase):
+    def setUp(self):
+        super().setUp()
+        self.requireFeature(features.patch_feature)
+
     def datafile(self, filename):
         data_path = os.path.join(
             os.path.dirname(__file__), "test_patches_data", filename
@@ -65,12 +70,47 @@ class PatchesTester(TestCase):
             parsed = parse_patch(self.datafile(diff))
             orig_lines = list(self.datafile(orig))
             mod_lines = list(self.datafile(mod))
-            iter_patched = iter_patched_from_hunks(orig_lines, parsed.hunks)
+            iter_patched = iter_patched_from_hunks(
+                orig_lines, [h.as_bytes() for h in parsed.hunks]
+            )
             patched_file = IterableFile(iter_patched)
             count = 0
             for patch_line in patched_file:
-                self.assertEqual(
-                    patch_line, mod_lines[count], "for file {}".format(diff)
-                )
+                self.assertEqual(patch_line, mod_lines[count], f"for file {diff}")
                 count += 1
             self.assertEqual(count, len(mod_lines))
+
+
+class RunPatchTests(TestCaseInTempDir):
+    def setUp(self):
+        super().setUp()
+        self.requireFeature(features.patch_feature)
+
+    def test_new_file(self):
+        run_patch(
+            ".",
+            b"""\
+ message           | 3 +++
+ 1 files changed, 14 insertions(+)
+ create mode 100644 message
+
+diff --git a/message b/message
+new file mode 100644
+index 0000000..05ec0b1
+--- /dev/null
++++ b/message
+@@ -0,0 +1,3 @@
++Update standards version, no changes needed.
++Certainty: certain
++Fixed-Lintian-Tags: out-of-date-standards-version
+""".splitlines(True),
+            strip=1,
+        )
+        self.assertFileEqual(
+            """\
+Update standards version, no changes needed.
+Certainty: certain
+Fixed-Lintian-Tags: out-of-date-standards-version
+""",
+            "message",
+        )

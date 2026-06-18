@@ -35,9 +35,16 @@ _per_user_searcher = None
 
 
 class UnknownRules(errors.BzrError):
+    """Exception raised when unknown rule sections are detected."""
+
     _fmt = "Unknown rules detected: %(unknowns_str)s."
 
     def __init__(self, unknowns):
+        """Initialize UnknownRules exception.
+
+        Args:
+            unknowns: List of unknown rule section names.
+        """
         errors.BzrError.__init__(self, unknowns_str=", ".join(unknowns))
 
 
@@ -155,6 +162,7 @@ def rules_path():
 
 
 def reset_rules():
+    """Reset the global per-user rules searcher to use the default rules file."""
     global _per_user_searcher
     _per_user_searcher = _IniBasedRulesSearcher(rules_path())
 

@@ -18,7 +18,8 @@
 """Tests for generating multiple tests for scenarios."""
 
 from breezy.tests import TestCase, TestLoader, iter_suite_tests, multiply_tests
-from breezy.tests.scenarios import (
+
+from .scenarios import (
     load_tests_apply_scenarios,
     multiply_scenarios,
     multiply_tests_by_their_scenarios,
@@ -48,7 +49,10 @@ def get_generated_test_attributes(suite, attr_name):
 
 
 class TestTestScenarios(TestCase):
+    """Test cases for scenario-based test multiplication functionality."""
+
     def test_multiply_tests(self):
+        """Test that tests can be multiplied by scenarios."""
         loader = TestLoader()
         suite = loader.suiteClass()
         multiply_tests(self, vary_by_color(), suite)
@@ -65,6 +69,7 @@ class TestTestScenarios(TestCase):
         self.assertEqual(2 * 2, len(s), s)
 
     def test_multiply_tests_by_their_scenarios(self):
+        """Test that tests are multiplied using their own scenarios."""
         loader = TestLoader()
         suite = loader.suiteClass()
         test_instance = PretendVaryingTest("test_nothing")
@@ -81,6 +86,8 @@ class TestTestScenarios(TestCase):
 
 
 class PretendVaryingTest(TestCase):
+    """A test class with scenarios for testing scenario multiplication."""
+
     scenarios = multiply_scenarios(
         vary_named_attribute("value"),
         vary_named_attribute("other"),

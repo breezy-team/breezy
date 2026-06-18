@@ -14,7 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import errno
+"""Utilities for cleaning up working trees by removing unwanted files."""
+
 import os
 import shutil
 
@@ -106,7 +107,7 @@ def delete_items(deletables, dry_run=False):
         """Show warning for errors seen by rmtree."""
         # Handle only permission error while removing files.
         # Other errors are re-raised.
-        if function is not os.remove or excinfo[1].errno != errno.EACCES:
+        if function is not os.remove or not isinstance(excinfo[1], PermissionError):
             raise
         ui.ui_factory.show_warning(gettext("unable to remove %s") % path)
 
@@ -122,10 +123,7 @@ def delete_items(deletables, dry_run=False):
                 try:
                     os.unlink(path)
                     note("  " + subp)
-                except OSError as e:
-                    # We handle only permission error here
-                    if e.errno != errno.EACCES:
-                        raise e
+                except PermissionError as e:
                     ui.ui_factory.show_warning(
                         gettext('unable to remove "{0}": {1}.').format(path, e.strerror)
                     )

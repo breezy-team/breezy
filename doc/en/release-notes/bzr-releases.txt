@@ -1,0 +1,54 @@
+###########################
+Historical Bazaar Releases
+###########################
+
+These are the historical release notes from when Breezy was known as Bazaar (bzr).
+
+.. toctree::
+   :maxdepth: 1
+
+   bzr-0.1
+   bzr-0.6
+   bzr-0.7
+   bzr-0.8
+   bzr-0.9
+   bzr-0.10
+   bzr-0.11
+   bzr-0.12
+   bzr-0.13
+   bzr-0.14
+   bzr-0.15
+   bzr-0.16
+   bzr-0.17
+   bzr-0.18
+   bzr-0.90
+   bzr-0.91
+   bzr-0.92
+   bzr-1.0
+   bzr-1.1
+   bzr-1.2
+   bzr-1.3
+   bzr-1.4
+   bzr-1.5
+   bzr-1.6
+   bzr-1.7
+   bzr-1.8
+   bzr-1.9
+   bzr-1.10
+   bzr-1.11
+   bzr-1.12
+   bzr-1.13
+   bzr-1.14
+   bzr-1.15
+   bzr-1.16
+   bzr-1.17
+   bzr-1.18
+   bzr-2.0
+   bzr-2.1
+   bzr-2.2
+   bzr-2.3
+   bzr-2.4
+   bzr-2.5
+   bzr-2.6
+   bzr-2.7
+   bzr-2.8

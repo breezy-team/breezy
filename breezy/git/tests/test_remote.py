@@ -21,6 +21,11 @@ import os
 import time
 from io import BytesIO
 
+from dromedary.errors import (
+    PermissionDenied,
+    TransportError,
+    UnexpectedHttpStatus,
+)
 from dulwich import porcelain
 from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
@@ -28,13 +33,9 @@ from dulwich.repo import Repo as GitRepo
 from ...branch import Branch
 from ...controldir import ControlDir
 from ...errors import (
-    ConnectionReset,
     DivergedBranches,
     NoSuchTag,
     NotBranchError,
-    PermissionDenied,
-    TransportError,
-    UnexpectedHttpStatus,
 )
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature
@@ -181,12 +182,11 @@ Email support@github.com for help
         )
 
     def test_connection_reset_by_peer(self):
-        self.assertEqual(
-            ConnectionReset("[Errno 104] Connection reset by peer"),
-            parse_git_error(
-                "url", RemoteGitError("[Errno 104] Connection reset by peer")
-            ),
+        got = parse_git_error(
+            "url", RemoteGitError("[Errno 104] Connection reset by peer")
         )
+        self.assertIsInstance(got, ConnectionResetError)
+        self.assertEqual("[Errno 104] Connection reset by peer", got.args[0])
 
     def test_http_unexpected(self):
         self.assertEqual(
@@ -218,7 +218,7 @@ class ParseHangupTests(TestCase):
 
     def test_not_set(self):
         self.assertIsInstance(
-            parse_git_hangup("http://", HangupException()), ConnectionReset
+            parse_git_hangup("http://", HangupException()), ConnectionResetError
         )
 
     def test_single_line(self):
@@ -309,7 +309,7 @@ class TestRemoteGitBranch(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
 
     def test_set_last_revision_info(self):
@@ -346,7 +346,7 @@ class FetchFromRemoteTestBase:
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
 
     def test_sprout_simple(self):
@@ -402,11 +402,13 @@ class FetchFromRemoteTestBase:
         )
 
         with open("remote/.gitmodules", "w") as f:
-            f.write("""
+            f.write(
+                """
 [submodule "lala"]
 \tpath = nested
 \turl = ../sub/.git
-""")
+"""
+            )
         self.remote_real.get_worktree().stage(".gitmodules")
         self.sub_real.clone("remote/nested")
         self.remote_real.get_worktree().stage("nested")
@@ -549,7 +551,7 @@ class PushToRemoteBase:
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
 
     def test_push_branch_new(self):
@@ -638,8 +640,8 @@ class PushToRemoteBase:
         branch = builder.get_branch()
         try:
             branch.tags.set_tag("atag", rev_2)
-        except TagsNotSupported:
-            raise TestNotApplicable("source format does not support tags")
+        except TagsNotSupported as err:
+            raise TestNotApplicable("source format does not support tags") from err
 
         branch.get_config_stack().set("branch.fetch_tags", True)
         if self._from_format == "git":
@@ -741,7 +743,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
 
     def test_remove_branch(self):
@@ -842,7 +844,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         remote.open_branch().tags.set_tag(
-            b"blah", default_mapping.revision_id_foreign_to_bzr(c1)
+            "blah", default_mapping.revision_id_foreign_to_bzr(c1)
         )
         self.assertEqual(
             self.remote_real.get_refs(),
@@ -951,7 +953,7 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
         self.remote_real.get_worktree().commit(
             message=b"message",

@@ -25,12 +25,22 @@ class BzrGitError(brz_errors.BzrError):
 
 
 class NoPushSupport(brz_errors.BzrError):
+    """Error raised when push is not supported for a given source/target combination."""
+
     _fmt = (
         "Push is not yet supported from %(source)r to %(target)r "
         "using %(mapping)r for %(revision_id)r. Try dpush instead."
     )
 
     def __init__(self, source, target, mapping, revision_id=None):
+        """Initialize NoPushSupport error.
+
+        Args:
+            source: The source repository or branch.
+            target: The target repository or branch.
+            mapping: The mapping being used for the push.
+            revision_id: Optional revision ID that failed to push.
+        """
         self.source = source
         self.target = target
         self.mapping = mapping
@@ -38,4 +48,6 @@ class NoPushSupport(brz_errors.BzrError):
 
 
 class GitSmartRemoteNotSupported(brz_errors.UnsupportedOperation):
+    """Error raised when an operation is not supported by Git smart server protocol."""
+
     _fmt = "This operation is not supported by the Git smart server protocol."

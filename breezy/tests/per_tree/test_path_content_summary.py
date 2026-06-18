@@ -20,8 +20,9 @@ import os
 
 from breezy import tests
 from breezy.tests import features, per_tree
-from breezy.tests.features import SymlinkFeature
-from breezy.transform import PreviewTree
+
+from ...transform import PreviewTree
+from ..features import SymlinkFeature
 
 
 class TestPathContentSummary(per_tree.TestCaseWithTree):
@@ -41,7 +42,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         ):
             pass
         else:
-            self.fail("invalid size in summary: {!r}".format(returned_size))
+            self.fail(f"invalid size in summary: {returned_size!r}")
 
     def test_symlink_content_summary(self):
         self.requireFeature(SymlinkFeature(self.test_dir))

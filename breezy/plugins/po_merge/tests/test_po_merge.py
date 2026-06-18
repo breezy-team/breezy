@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import merge, osutils
+from breezy import merge
 from breezy.plugins import po_merge
 from breezy.tests import features, script
 
@@ -36,7 +36,8 @@ class BlackboxTestPoMerger(script.TestCaseWithTransportAndScript):
         # Since the conflicts in .pot are not seen *during* the merge, the .po
         # merge triggers the hook and creates no conflicts for fr.po. But the
         # .pot used is the one present in the tree *before* the merge.
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz branch adduser -rrevid:this work
 2>Branched 2 revisions.
 $ cd work
@@ -45,11 +46,13 @@ $ brz merge ../adduser -rrevid:other
 2> M  po/fr.po
 2>Text conflict in po/adduser.pot
 2>1 conflicts encountered.
-""")
+"""
+        )
 
     def test_called_on_remerge(self):
         # Merge with no config for the hook to create the conflicts
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz branch adduser -rrevid:this work
 2>Branched 2 revisions.
 $ cd work
@@ -60,12 +63,14 @@ $ brz merge ../adduser -rrevid:other -Opo_merge.po_dirs=
 2>Text conflict in po/adduser.pot
 2>Text conflict in po/fr.po
 2>2 conflicts encountered.
-""")
+"""
+        )
         # Fix the conflicts in the .pot file
         with open("po/adduser.pot", "wb") as f:
             f.write(_Adduser["resolved_pot"])
         # Tell brz the conflict is resolved
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz resolve po/adduser.pot
 2>1 conflict resolved, 1 remaining
 # Use remerge to trigger the hook, we use the default config options here
@@ -73,7 +78,8 @@ $ brz remerge po/*.po
 2>All changes applied successfully.
 # There should be no conflicts anymore
 $ brz conflicts
-""")
+"""
+        )
 
 
 def make_adduser_branch(test, relpath):
@@ -137,11 +143,10 @@ $ brz branch adduser -rrevid:{revid} {branch_name}
             null_output_matches_anything=True,
         )
         self.assertFileEqual(
-            _Adduser["{revid}_pot".format(**env)],
-            "{branch_name}/po/adduser.pot".format(**env),
+            _Adduser[f"{env['revid']}_pot"], f"{env['branch_name']}/po/adduser.pot"
         )
         self.assertFileEqual(
-            _Adduser["{revid}_po".format(**env)], "{branch_name}/po/fr.po".format(**env)
+            _Adduser[f"{env['revid']}_po"], f"{env['branch_name']}/po/fr.po"
         )
 
     def test_base(self):
@@ -159,7 +164,8 @@ $ brz branch adduser -rrevid:{revid} {branch_name}
 # beginning of the file.
 
 _Adduser = {
-    "base_pot": osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+    "base_pot": (
+        rb"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -186,8 +192,10 @@ msgstr ""
 msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 
-"""),
-    "this_pot": osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+"""
+    ),
+    "this_pot": (
+        rb"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -221,8 +229,10 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-"""),
-    "other_pot": osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+"""
+    ),
+    "other_pot": (
+        rb"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -256,8 +266,10 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-"""),
-    "resolved_pot": osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+"""
+    ),
+    "resolved_pot": (
+        rb"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -291,8 +303,10 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-"""),
-    "base_po": osutils.safe_utf8(r"""# adduser's manpages translation to French
+"""
+    ),
+    "base_po": (
+        r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -327,8 +341,10 @@ msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-"""),
-    "this_po": osutils.safe_utf8(r"""# adduser's manpages translation to French
+"""
+    ).encode(),
+    "this_po": (
+        r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -370,8 +386,10 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-"""),
-    "other_po": osutils.safe_utf8(r"""# adduser's manpages translation to French
+"""
+    ).encode(),
+    "other_po": (
+        r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -413,8 +431,10 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-"""),
-    "resolved_po": osutils.safe_utf8(r"""# adduser's manpages translation to French
+"""
+    ).encode(),
+    "resolved_po": (
+        r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -456,5 +476,6 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-"""),
+"""
+    ).encode(),
 }

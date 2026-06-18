@@ -16,8 +16,9 @@
 
 """Test that all trees support Tree.lock_read()."""
 
-from breezy.tests.matchers import *
 from breezy.tests.per_tree import TestCaseWithTree
+
+from ..matchers import *  # noqa: F403
 
 
 class TestLocking(TestCaseWithTree):

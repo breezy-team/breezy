@@ -14,10 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Fake command module for testing lazy command loading.
+
+This module provides a minimal command class used to test the lazy loading
+mechanism for commands in the test suite.
+"""
+
 from . import test_commands
 
 test_commands.lazy_command_imported = True  # type: ignore
 
 
 class cmd_fake:
+    """A fake command class for testing lazy loading."""
+
     pass

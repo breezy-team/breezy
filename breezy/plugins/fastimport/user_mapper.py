@@ -13,10 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""User mapping functionality for fastimport plugin."""
+
 from email.utils import parseaddr
 
 
 class UserMapper:
+    """Maps user identities from one format to another."""
+
     def __init__(self, lines):
         """Create a user-mapper from a list of lines.
 

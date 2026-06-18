@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Decorators for use in Breezy.
+
+This module provides various decorators that add functionality to methods
+and functions, including error suppression and property caching.
+"""
+
 from . import trace
 
 
@@ -90,7 +96,7 @@ def cachedproperty(attrname_or_fn):
         return _CachedPropertyForAttr(attrname)
     else:
         fn = attrname_or_fn
-        attrname = "_{}_cached_value".format(fn.__name__)
+        attrname = f"_{fn.__name__}_cached_value"
         return _CachedProperty(attrname, fn)
 
 

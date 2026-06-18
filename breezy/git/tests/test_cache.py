@@ -16,6 +16,7 @@
 
 """Tests for GitShaMap."""
 
+import contextlib
 import os
 import stat
 
@@ -48,7 +49,18 @@ class TestGitShaMap:
 
     def test_commit(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"myrevid"))
+        updater = self.cache.get_updater(
+            Revision(
+                b"myrevid",
+                parent_ids=[],
+                message="",
+                committer="",
+                timezone=0,
+                timestamp=0,
+                properties={},
+                inventory_sha1=None,
+            )
+        )
         c = self._get_test_commit()
         updater.add_object(
             c, {"testament3-sha1": b"cc9462f7f8263ef5adf8eff2fb936bb36b504cba"}, None
@@ -81,7 +93,18 @@ class TestGitShaMap:
 
     def test_blob(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"myrevid"))
+        updater = self.cache.get_updater(
+            Revision(
+                b"myrevid",
+                parent_ids=[],
+                message="",
+                committer="",
+                timezone=0,
+                timestamp=0,
+                properties={},
+                inventory_sha1=None,
+            )
+        )
         updater.add_object(self._get_test_commit(), {"testament3-sha1": b"Test"}, None)
         b = Blob()
         b.data = b"TEH BLOB"
@@ -95,7 +118,18 @@ class TestGitShaMap:
 
     def test_tree(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"somerevid"))
+        updater = self.cache.get_updater(
+            Revision(
+                b"somerevid",
+                parent_ids=[],
+                message="",
+                committer="",
+                timezone=0,
+                timestamp=0,
+                properties={},
+                inventory_sha1=None,
+            )
+        )
         updater.add_object(
             self._get_test_commit(), {"testament3-sha1": b"mytestamentsha"}, None
         )
@@ -108,14 +142,23 @@ class TestGitShaMap:
             [("tree", (b"fileid", b"myrevid"))], list(self.map.lookup_git_sha(t.id))
         )
         # It's possible for a backend to not implement lookup_tree
-        try:
+        with contextlib.suppress(NotImplementedError):
             self.assertEqual(t.id, self.map.lookup_tree_id(b"fileid", b"myrevid"))
-        except NotImplementedError:
-            pass
 
     def test_revids(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"myrevid"))
+        updater = self.cache.get_updater(
+            Revision(
+                b"myrevid",
+                parent_ids=[],
+                message="",
+                committer="",
+                timezone=0,
+                timestamp=0,
+                properties={},
+                inventory_sha1=None,
+            )
+        )
         c = self._get_test_commit()
         updater.add_object(c, {"testament3-sha1": b"mtestament"}, None)
         updater.finish()
@@ -124,7 +167,18 @@ class TestGitShaMap:
 
     def test_missing_revisions(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"myrevid"))
+        updater = self.cache.get_updater(
+            Revision(
+                b"myrevid",
+                parent_ids=[],
+                message="",
+                committer="",
+                timezone=0,
+                timestamp=0,
+                properties={},
+                inventory_sha1=None,
+            )
+        )
         c = self._get_test_commit()
         updater.add_object(c, {"testament3-sha1": b"testament"}, None)
         updater.finish()
@@ -154,8 +208,8 @@ class TdbGitShaMapTests(TestCaseInTempDir, TestGitShaMap):
         TestCaseInTempDir.setUp(self)
         try:
             self.cache = TdbBzrGitCache(os.path.join(self.test_dir, "foo.tdb"))
-        except ModuleNotFoundError:
-            raise UnavailableFeature("Missing tdb")
+        except ModuleNotFoundError as err:
+            raise UnavailableFeature("Missing tdb") from err
         self.map = self.cache.idmap
 
 

@@ -20,7 +20,7 @@ import stat
 from ... import controldir
 
 
-def escape_commit_message(message):
+def escape_commit_message(message: str) -> str:
     """Replace xml-incompatible control characters."""
     # This really ought to be provided by breezy.
     # Code copied from breezy.commit.
@@ -32,10 +32,10 @@ def escape_commit_message(message):
     import re
 
     message, _ = re.subn(
-        "[^\x09\x0a\x0d\u0020-\ud7ff\ue000-\ufffd]+",
-        lambda match: match.group(0).encode("unicode_escape"),
+        "[^\x09\x0a\x0d\u0020-\ud7ff\ue000-\ufffd]+",  # type: ignore
+        lambda match: match.group(0).encode("unicode_escape"),  # type: ignore
         message,
-    )
+    )  # type: ignore
     return message
 
 
@@ -98,13 +98,13 @@ def open_destination_directory(location, format=None, verbose=True):
         if contents:
             errors.CommandError(
                 "Destination must have a .bzr directory, "
-                " not yet exist or be empty - files found in {}".format(location)
+                f" not yet exist or be empty - files found in {location}"
             )
     else:
         try:
             os.mkdir(location)
         except OSError as ex:
-            raise errors.CommandError("Unable to create {}: {}".format(location, ex))
+            raise errors.CommandError(f"Unable to create {location}: {ex}") from ex
 
     # Create a repository for the nominated format.
     trace.note("Creating destination repository ...")
@@ -122,13 +122,25 @@ def open_destination_directory(location, format=None, verbose=True):
 
 
 def kind_to_mode(kind, executable):
+    """Convert a file kind and executable flag to a mode value.
+
+    Args:
+        kind: The file kind ('file', 'symlink', 'directory', 'tree-reference').
+        executable: Boolean indicating if the file is executable (only for 'file' kind).
+
+    Returns:
+        The mode value as an integer.
+
+    Raises:
+        AssertionError: If the kind is unknown or executable value is invalid.
+    """
     if kind == "file":
         if executable is True:
             return stat.S_IFREG | 0o755
         elif executable is False:
             return stat.S_IFREG | 0o644
         else:
-            raise AssertionError("Executable {!r} invalid".format(executable))
+            raise AssertionError(f"Executable {executable!r} invalid")
     elif kind == "symlink":
         return stat.S_IFLNK
     elif kind == "directory":
@@ -136,10 +148,21 @@ def kind_to_mode(kind, executable):
     elif kind == "tree-reference":
         return 0o160000
     else:
-        raise AssertionError("Unknown file kind '{}'".format(kind))
+        raise AssertionError(f"Unknown file kind '{kind}'")
 
 
 def mode_to_kind(mode):
+    """Convert a mode value to a file kind and executable flag.
+
+    Args:
+        mode: The mode value as an integer.
+
+    Returns:
+        A tuple of (kind, executable) where kind is a string and executable is a boolean.
+
+    Raises:
+        AssertionError: If the mode value is invalid.
+    """
     # Note: Output from git-fast-export slightly different to spec
     if mode in (0o644, 0o100644):
         return "file", False
@@ -152,7 +175,7 @@ def mode_to_kind(mode):
     elif mode == 0o160000:
         return "tree-reference", False
     else:
-        raise AssertionError("invalid mode {:o}".format(mode))
+        raise AssertionError(f"invalid mode {mode:o}")
 
 
 def binary_stream(stream):

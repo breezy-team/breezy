@@ -54,29 +54,61 @@ from . import bedding, debug, osutils, plugin, trace
 
 
 def report_bug(exc_info, stderr):
-    if ("no_apport" in debug.debug_flags) or os.environ.get("APPORT_DISABLE", None):
+    """Report a bug to the user through either apport or legacy methods.
+
+    This function first tries to report the bug using apport if it's available
+    and not disabled. If apport is not available or fails, it falls back to
+    the legacy reporting method which prints the error information to stderr.
+
+    Args:
+        exc_info: A tuple (exc_type, exc_value, exc_traceback) as returned by
+            sys.exc_info(), containing exception information to report.
+        stderr: A file-like object where error messages should be written,
+            typically sys.stderr.
+
+    Returns:
+        None. The function handles bug reporting as a side effect.
+    """
+    if (debug.debug_flag_enabled("no_apport")) or os.environ.get(
+        "APPORT_DISABLE", None
+    ):
         return report_bug_legacy(exc_info, stderr)
     try:
         if report_bug_to_apport(exc_info, stderr):
             # wrote a file; if None then report the old way
             return
-    except ImportError as e:
-        trace.mutter("couldn't find apport bug-reporting library: {}".format(e))
+    except ModuleNotFoundError as e:
+        trace.mutter(f"couldn't find apport bug-reporting library: {e}")
     except Exception as e:
         # this should only happen if apport is installed but it didn't
         # work, eg because of an io error writing the crash file
-        trace.mutter("brz: failed to report crash using apport: {!r}".format(e))
+        trace.mutter(f"brz: failed to report crash using apport: {e!r}")
         trace.log_exception_quietly()
     return report_bug_legacy(exc_info, stderr)
 
 
 def report_bug_legacy(exc_info, err_file):
-    """Report a bug by just printing a message to the user."""
+    """Report a bug by just printing a message to the user.
+
+    This is the legacy method for bug reporting that prints detailed
+    information about the crash including the traceback, system information,
+    arguments, plugins, and encoding details to help with debugging.
+
+    Args:
+        exc_info: A tuple (exc_type, exc_value, exc_traceback) as returned by
+            sys.exc_info(), containing exception information to report.
+        err_file: A file-like object where the bug report should be written,
+            typically sys.stderr.
+
+    Returns:
+        None. The function writes the bug report to err_file as a side effect.
+    """
     trace.print_exception(exc_info, err_file)
     err_file.write("\n")
     import textwrap
 
     def print_wrapped(l):
+        """Print text wrapped to 78 characters with indented continuation lines."""
         err_file.write(textwrap.fill(l, width=78, subsequent_indent="    ") + "\n")
 
     print_wrapped(
@@ -86,7 +118,7 @@ def report_bug_legacy(exc_info, err_file):
             platform.platform(aliased=1),
         )
     )
-    print_wrapped("arguments: {!r}\n".format(sys.argv))
+    print_wrapped(f"arguments: {sys.argv!r}\n")
     print_wrapped(
         textwrap.fill(
             "plugins: " + plugin.format_concise_plugin_list(),
@@ -115,7 +147,20 @@ def report_bug_legacy(exc_info, err_file):
 def report_bug_to_apport(exc_info, stderr):
     """Report a bug to apport for optional automatic filing.
 
-    :returns: The name of the crash file, or None if we didn't write one.
+    This function attempts to create a crash report using the apport system,
+    which can be automatically or manually sent to Launchpad for bug tracking.
+    If apport is configured to ignore crashes, no report is generated.
+
+    Args:
+        exc_info: A tuple (exc_type, exc_value, exc_traceback) as returned by
+            sys.exc_info(), containing exception information to report.
+        stderr: A file-like object where error messages should be written,
+            typically sys.stderr.
+
+    Returns:
+        str or None: The name of the crash file if one was created, or None
+            if we didn't write one (e.g., if apport is configured to ignore
+            crashes in this version).
     """
     # this function is based on apport_package_hook.py, but omitting some of the
     # Ubuntu-specific policy about what to report and when
@@ -147,6 +192,22 @@ def report_bug_to_apport(exc_info, stderr):
 
 
 def _write_apport_report_to_file(exc_info):
+    """Write a crash report to an apport file.
+
+    This function creates a detailed crash report using the apport Report
+    format and writes it to a crash file in the system's crash directory.
+    The report includes system information, Python details, Breezy version,
+    plugins, loaded modules, and the full traceback.
+
+    Args:
+        exc_info: A tuple (exc_type, exc_value, exc_traceback) as returned by
+            sys.exc_info(), containing exception information to report.
+
+    Returns:
+        str or None: The name of the crash file if one was created, or None
+            if the crash was configured to be ignored (e.g., via
+            ~/.apport-ignore.xml).
+    """
     import traceback
 
     from apport.report import Report
@@ -226,8 +287,17 @@ def _write_apport_report_to_file(exc_info):
 
 
 def _attach_log_tail(pr):
+    """Attach the tail of the Breezy log file to an apport report.
+
+    This function reads the last 40 lines of the Breezy log file and
+    attaches them to the apport report for debugging purposes. If the
+    log file cannot be read, the error is recorded in the report.
+
+    Args:
+        pr: An apport Report object to which the log tail will be attached.
+    """
     try:
-        brz_log = open(trace._get_brz_log_filename())
+        brz_log = open(trace.get_brz_log_filename())
     except OSError as e:
         pr["BrzLogTail"] = repr(e)
         return
@@ -239,6 +309,17 @@ def _attach_log_tail(pr):
 
 
 def _open_crash_file():
+    """Open a new crash file for writing.
+
+    This function creates a new crash file in the system's crash directory
+    with a unique filename based on the current timestamp and user ID.
+    The file is created with restricted permissions (0o600) for security.
+
+    Returns:
+        tuple: A tuple containing:
+            - str: The full path to the crash file
+            - file object: An open file object ready for writing the crash report
+    """
     crash_dir = bedding.crash_dir()
     if not osutils.isdir(crash_dir):
         # on unix this should be /var/crash and should already exist; on
@@ -250,10 +331,8 @@ def _open_crash_file():
     if sys.platform == "win32":
         user_part = ""
     else:
-        user_part = f".{os.getuid()}"
-    filename = osutils.pathjoin(
-        crash_dir, "brz{}.{}.crash".format(user_part, date_string)
-    )
+        user_part = ".%d" % os.getuid()
+    filename = osutils.pathjoin(crash_dir, f"brz{user_part}.{date_string}.crash")
     # be careful here that people can't play tmp-type symlink mischief in the
     # world-writable directory
     return filename, os.fdopen(
@@ -262,8 +341,18 @@ def _open_crash_file():
 
 
 def _format_plugin_list():
+    """Format the list of loaded Breezy plugins for crash reporting.
+
+    Returns:
+        str: A formatted string describing all loaded plugins with their paths.
+    """
     return "".join(plugin.describe_plugins(show_paths=True))
 
 
 def _format_module_list():
+    """Format the list of loaded Python modules for crash reporting.
+
+    Returns:
+        str: A pretty-printed string representation of all loaded Python modules.
+    """
     return pprint.pformat(sys.modules)

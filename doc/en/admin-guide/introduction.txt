@@ -39,16 +39,8 @@ pycrypto`_.
 .. _Python: http://www.python.org/
 .. _paramiko and pycrypto: http://www.lag.net/paramiko/
 
-For maximum performance, Bazaar can make use of compiled versions of some
+For maximum performance, Breezy can make use of compiled versions of some
 critical components of the code.  Pure Python alternatives exist for all of
 these components, but they may be considerably slower.  To compile these
-extensions, you need a C compiler and the relevant header files from the
-Python package.  On GNU/Linux, these may be in a separate package.  Other
-operating systems should have the required headers installed by default.
-
-If you are installing a development version of Bazaar, rather than a released
-version, you will need Pyrex_ to create the C extensions.  The release
-tarballs already have the Pyrex-created C files.
-
-.. _Pyrex: http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/
+extensions, you need a Rust toolchain.
 

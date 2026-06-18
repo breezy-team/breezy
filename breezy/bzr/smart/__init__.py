@@ -46,6 +46,3 @@ The protocol is described in doc/developers/network-protocol.txt.
 #   chunk, that indicates it is another chunk. Then you can send an 'error'
 #   chunk as long as you finish the previous chunk.
 #
-
-# Promote some attributes from submodules into this namespace
-from .request import SmartServerRequestHandler  # noqa: F401

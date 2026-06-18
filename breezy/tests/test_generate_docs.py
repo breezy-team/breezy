@@ -34,7 +34,10 @@ class Options:
 
 
 class TestGenerateDocs(TestCase):
+    """Test cases for documentation generation functionality."""
+
     def setUp(self):
+        """Set up the test environment with options and output stream."""
         super().setUp()
         self.sio = StringIO()
         self.options = Options()
@@ -42,12 +45,14 @@ class TestGenerateDocs(TestCase):
         breezy.commands.install_bzr_command_hooks()
 
     def test_man_page(self):
+        """Test that man page generation produces non-empty output."""
         from breezy.doc_generate import autodoc_man
 
         autodoc_man.infogen(self.options, self.sio)
         self.assertNotEqual("", self.sio.getvalue())
 
     def test_rstx_man(self):
+        """Test that ReST man page generation produces non-empty output."""
         from breezy.doc_generate import autodoc_rstx
 
         autodoc_rstx.infogen(self.options, self.sio)

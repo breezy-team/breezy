@@ -16,14 +16,18 @@
 
 """Tests for repository write groups."""
 
+from bzrformats import versionedfile
+from bzrformats.errors import BzrCheckError, ObjectNotLocked
+
 from breezy import controldir, errors, tests
 from breezy.bzr import branch as bzrbranch
-from breezy.bzr import remote, versionedfile
+from breezy.bzr import remote
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -133,8 +137,8 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         rich_root = branch_repo._format.rich_root_data
         all_texts = [
             (ie.file_id, ie.revision)
-            for ie in inv.iter_just_entries()
-            if rich_root or inv.id2path(ie.file_id) != ""
+            for path, ie in inv.iter_entries()
+            if rich_root or path != ""
         ]
         repo.texts.insert_record_stream(
             branch_repo.texts.get_record_stream(all_texts, "unordered", False)
@@ -298,7 +302,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             )
         ]
         self.assertRaises(
-            errors.ObjectNotLocked,
+            ObjectNotLocked,
             sink.insert_stream_without_locking,
             stream,
             repo._format,
@@ -618,7 +622,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         # the stacked location has already filled in the fulltext.
         try:
             repo.commit_write_group()
-        except errors.BzrCheckError:
+        except BzrCheckError:
             # It refused to commit because we have a missing parent
             pass
         else:
@@ -633,7 +637,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
-        self.assertRaises(errors.BzrCheckError, same_repo.commit_write_group)
+        self.assertRaises(BzrCheckError, same_repo.commit_write_group)
         same_repo.abort_write_group()
 
     def test_commit_resumed_write_group_adding_missing_parents(self):
@@ -660,7 +664,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         # commit_write_group fails.
         try:
             same_repo.commit_write_group()
-        except errors.BzrCheckError:
+        except BzrCheckError:
             pass
         else:
             # If the commit_write_group didn't fail, that is because the

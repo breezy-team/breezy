@@ -16,11 +16,29 @@
 
 """Helper classes for repository implementation tests."""
 
+from bzrformats import inventory
+from bzrformats.inventory import InventoryDirectory
+
 from .... import revision as _mod_revision
 from ....repository import WriteGroup
 from ....tests import TestNotApplicable
 from ....tests.per_repository import TestCaseWithRepository
-from ... import inventory
+
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
+
+
 from ...knitrepo import RepositoryFormatKnit
 
 
@@ -41,14 +59,12 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             # pretty deprecated.  Ideally these tests should apply to any repo
             # where repo.revision_graph_can_have_wrong_parents() is True, but
             # at the moment we only know how to corrupt knit repos.
-            raise TestNotApplicable(
-                "{} isn't a knit format".format(self.repository_format)
-            )
+            raise TestNotApplicable(f"{self.repository_format} isn't a knit format")
 
         repo = self.make_repository("broken")
         with repo.lock_write(), WriteGroup(repo):
             inv = inventory.Inventory(revision_id=b"revision-id")
-            inv.root.revision = b"revision-id"
+            _set_root_revision(inv, b"revision-id")
             inv_sha1 = repo.add_inventory(b"revision-id", inv, [])
             if repo.supports_rich_root():
                 root_id = inv.root.file_id
@@ -60,11 +76,16 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
                 inventory_sha1=inv_sha1,
                 timezone=0,
                 message="message",
+                properties={},
                 parent_ids=[],
             )
             # Manually add the revision text using the RevisionStore API, with
             # bad parents.
-            lines = repo._serializer.write_revision_to_lines(revision)
+            from breezy.bzr.vf_repository import _to_bzr_revision
+
+            lines = repo._revision_serializer.write_revision_to_lines(
+                _to_bzr_revision(revision)
+            )
             repo.revisions.add_lines(
                 (revision.revision_id,), [(b"incorrect-parent",)], lines
             )

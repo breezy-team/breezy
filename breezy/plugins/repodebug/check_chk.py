@@ -16,8 +16,9 @@
 
 """Check each CHK page to make sure it is in 'canonical' form."""
 
+from bzrformats import chk_map, groupcompress
+
 from ... import commands, controldir, trace, transport, ui
-from ...bzr import chk_map, groupcompress
 
 
 class cmd_check_chk(commands.Command):
@@ -27,6 +28,24 @@ class cmd_check_chk(commands.Command):
     takes_options = ["directory", "revision"]
 
     def run(self, directory=".", revision=None):
+        """Run the check-chk command to verify CHK pages are in canonical form.
+
+        This command iterates through inventories and checks that their CHK maps
+        (content-hash-key maps) are in canonical form by reconstructing them and
+        comparing the keys.
+
+        Args:
+            directory: Path to the directory containing the branch to check.
+                Defaults to current directory.
+            revision: Revision specification. Can be:
+                - None/empty: Check all inventories in the repository
+                - Single revision: Check only that revision's inventory
+                - Two revisions: Check inventories unique to the second revision
+                  compared to the first
+
+        Returns:
+            None. Warnings are printed for any CHK pages not in canonical form.
+        """
         _wt, branch, _relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
@@ -57,9 +76,7 @@ class cmd_check_chk(commands.Command):
                     search_key_func=inv.id_to_entry._search_key_func,
                 )
                 if inv.id_to_entry.key() != test_key:
-                    trace.warning(
-                        "Failed for id_to_entry inv: {}".format(inv.revision_id)
-                    )
+                    trace.warning(f"Failed for id_to_entry inv: {inv.revision_id}")
                 pid = inv.parent_id_basename_to_file_id
                 d = dict(pid.iteritems())
                 test_key = chk_map.CHKMap.from_dict(
@@ -71,7 +88,5 @@ class cmd_check_chk(commands.Command):
                 )
                 if pid.key() != test_key:
                     trace.warning(
-                        "Failed for parent_id_to_basename inv: {}".format(
-                            inv.revision_id
-                        )
+                        f"Failed for parent_id_to_basename inv: {inv.revision_id}"
                     )

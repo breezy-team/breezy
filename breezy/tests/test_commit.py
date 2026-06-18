@@ -18,10 +18,12 @@
 import os
 from io import BytesIO
 
-import breezy
+from dromedary.errors import NoSuchFile
 
-from .. import config, controldir, errors, trace
-from .. import transport as _mod_transport
+import breezy
+from breezy.errors import LockContention
+
+from .. import config, controldir, errors, osutils, trace
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
 from ..commit import (
@@ -31,7 +33,7 @@ from ..commit import (
     PointlessCommit,
     filter_excluded,
 )
-from ..errors import BzrError, LockContention
+from ..errors import BzrError
 from ..tree import TreeChange
 from . import TestCase, TestCaseWithTransport, test_foreign
 from .features import SymlinkFeature
@@ -42,9 +44,11 @@ from .matchers import MatchesAncestry
 
 class MustSignConfig(config.MemoryStack):
     def __init__(self):
-        super().__init__(b"""
+        super().__init__(
+            b"""
 create_signatures=always
-""")
+"""
+        )
 
 
 class CapturingReporter(NullCommitReporter):
@@ -278,7 +282,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.commit("initial", rev_id=b"test@rev-1", allow_pointless=True)
         self.assertRaises(
-            Exception,
+            errors.BzrError,
             wt.commit,
             message="reused id",
             rev_id=b"test@rev-1",
@@ -371,7 +375,10 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual(b"1", inv.get_entry(b"dirid").revision)
         self.assertEqual(b"1", inv.get_entry(b"file1id").revision)
         # FIXME: This should raise a KeyError I think, rbc20051006
-        self.assertRaises(BzrError, inv.get_entry, b"file2id")
+        # bzrformats raises its own NoSuchId class which is not a BzrError.
+        from bzrformats.inventory import NoSuchId
+
+        self.assertRaises((BzrError, NoSuchId), inv.get_entry, b"file2id")
 
     def test_strict_commit(self):
         """Try and commit with unknown files and strict = True, should fail."""
@@ -434,9 +441,11 @@ class TestCommit(TestCaseWithTransport):
 
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
-            conf = config.MemoryStack(b"""
+            conf = config.MemoryStack(
+                b"""
 create_signatures=always
-""")
+"""
+            )
             commit.Commit(config_stack=conf).commit(
                 message="base", allow_pointless=True, rev_id=b"B", working_tree=wt
             )
@@ -465,9 +474,11 @@ create_signatures=always
         try:
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.DisabledGPGStrategy
-            conf = config.MemoryStack(b"""
+            conf = config.MemoryStack(
+                b"""
 create_signatures=always
-""")
+"""
+            )
             self.assertRaises(
                 breezy.gpg.SigningFailed,
                 commit.Commit(config_stack=conf).commit,
@@ -494,9 +505,11 @@ create_signatures=always
         try:
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.DisabledGPGStrategy
-            conf = config.MemoryStack(b"""
+            conf = config.MemoryStack(
+                b"""
 create_signatures=when-possible
-""")
+"""
+            )
             revid = commit.Commit(config_stack=conf).commit(
                 message="base", allow_pointless=True, working_tree=wt
             )
@@ -702,20 +715,16 @@ create_signatures=when-possible
         tree.add("foo")
         tree.commit("added foo", rev_id=b"foo_id")
         log = BytesIO()
-        trace.push_log_file(log)
-        os_symlink = getattr(os, "symlink", None)
-        os.symlink = None
-        try:
-            # At this point as bzr thinks symlinks are not supported
-            # we should get a warning about symlink foo and bzr should
-            # not think its removed.
-            os.unlink("foo")
-            self.build_tree(["world"])
-            tree.add("world")
-            tree.commit("added world", rev_id=b"world_id")
-        finally:
-            if os_symlink:
-                os.symlink = os_symlink
+        trace.push_log_file(log, short=True)
+        self.overrideAttr(os, "symlink", None)
+        self.overrideAttr(osutils, "supports_symlinks", lambda x: False)
+        # At this point as bzr thinks symlinks are not supported
+        # we should get a warning about symlink foo and bzr should
+        # not think its removed.
+        os.unlink("foo")
+        self.build_tree(["world"])
+        tree.add("world")
+        tree.commit("added world", rev_id=b"world_id")
         self.assertContainsRe(
             log.getvalue(),
             b'Ignoring "foo" as symlinks are not supported on this filesystem\\.',
@@ -792,7 +801,7 @@ create_signatures=when-possible
         try:
             tree.commit()
         except Exception as e:
-            self.assertTrue(isinstance(e, BzrError))
+            self.assertIsInstance(e, BzrError)
             self.assertEqual(
                 "The message or message_callback keyword"
                 " parameter is required for commit().",
@@ -824,11 +833,11 @@ create_signatures=when-possible
         # simulate network failure
 
         def raise_(self, arg, arg2, arg3=None, arg4=None):
-            raise _mod_transport.NoSuchFile("foo")
+            raise NoSuchFile("foo")
 
         repository.add_inventory = raise_
         repository.add_inventory_by_delta = raise_
-        self.assertRaises(_mod_transport.NoSuchFile, tree.commit, message_callback=cb)
+        self.assertRaises(NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
 
     def test_selected_file_merge_commit(self):
@@ -869,8 +878,8 @@ create_signatures=when-possible
         tree = self.make_branch_and_tree("foo")
         rev_id = tree.commit("commit 1")
         rev = tree.branch.repository.get_revision(rev_id)
-        self.assertFalse("author" in rev.properties)
-        self.assertFalse("authors" in rev.properties)
+        self.assertNotIn("author", rev.properties)
+        self.assertNotIn("authors", rev.properties)
 
     def test_commit_author(self):
         """Passing a non-empty authors kwarg to MutableTree.commit should add
@@ -880,15 +889,15 @@ create_signatures=when-possible
         rev_id = tree.commit("commit 1", authors=["John Doe <jdoe@example.com>"])
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual("John Doe <jdoe@example.com>", rev.properties["authors"])
-        self.assertFalse("author" in rev.properties)
+        self.assertNotIn("author", rev.properties)
 
     def test_commit_empty_authors_list(self):
         """Passing an empty list to authors shouldn't add the property."""
         tree = self.make_branch_and_tree("foo")
         rev_id = tree.commit("commit 1", authors=[])
         rev = tree.branch.repository.get_revision(rev_id)
-        self.assertFalse("author" in rev.properties)
-        self.assertFalse("authors" in rev.properties)
+        self.assertNotIn("author", rev.properties)
+        self.assertNotIn("authors", rev.properties)
 
     def test_multiple_authors(self):
         tree = self.make_branch_and_tree("foo")
@@ -901,7 +910,7 @@ create_signatures=when-possible
             "John Doe <jdoe@example.com>\nJane Rey <jrey@example.com>",
             rev.properties["authors"],
         )
-        self.assertFalse("author" in rev.properties)
+        self.assertNotIn("author", rev.properties)
 
     def test_author_with_newline_rejected(self):
         tree = self.make_branch_and_tree("foo")

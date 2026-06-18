@@ -40,11 +40,11 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         self.assertEqual(1, len(self.store.packs), self.store.packs)
         packname = list(self.store.packs)[0].name()
         self.assertEqual(
-            {"pack-{}".format(packname.decode("ascii"))}, set(self.store._pack_names())
+            {f"pack-{packname.decode('ascii')}"}, set(self.store._pack_names())
         )
         self.store.transport.put_bytes_non_atomic("info/packs", b"P foo-pack.pack\n")
         self.assertEqual(
-            {"pack-{}".format(packname.decode("ascii"))}, set(self.store._pack_names())
+            {f"pack-{packname.decode('ascii')}"}, set(self.store._pack_names())
         )
 
     def test_remembers_packs(self):
@@ -63,7 +63,9 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         self.assertEqual(2, len(restore.packs))
 
 
-# FIXME: Unfortunately RefsContainerTests requires on a specific set of refs existing.
+# TODO: The dulwich RefsContainerTests base class used to provide a shared set
+# of symref tests, but it was dropped from dulwich. Reinstate the symref
+# coverage (e.g. by vendoring those tests) once an equivalent is available.
 
 
 class TransportRefContainerTests(TestCaseWithTransport):

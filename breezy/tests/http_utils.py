@@ -15,14 +15,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import base64
+import hashlib
 import re
 from io import BytesIO
 from urllib.request import parse_http_list, parse_keqv_list
 
-from .. import errors, osutils, tests, transport
+from dromedary import chroot
+from dromedary import errors as transport_errors
+from dromedary.tests import http_server
+
+from .. import tests, transport
 from ..bzr.smart import medium
-from ..transport import chroot
-from . import http_server
 
 
 class HTTPServerWithSmarts(http_server.HttpServer):
@@ -61,7 +64,7 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         self.send_header("Content-type", "application/octet-stream")
         if not self.path.endswith(".bzr/smart"):
             raise AssertionError(
-                "POST to path not ending in .bzr/smart: {!r}".format(self.path)
+                f"POST to path not ending in .bzr/smart: {self.path!r}"
             )
         t = chrooted_transport.clone(self.path[: -len(".bzr/smart")])
         # if this fails, we should return 400 bad request, but failure is
@@ -85,7 +88,7 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         # but for now it's simpler to just feed the bytes directly.
         smart_protocol_request.accept_bytes(unused_bytes)
         if not (smart_protocol_request.next_read_size() == 0):
-            raise errors.SmartProtocolError(
+            raise transport_errors.SmartProtocolError(
                 "not finished reading, but all data sent to protocol."
             )
         self.send_header("Content-Length", str(len(out_buffer.getvalue())))
@@ -203,7 +206,7 @@ class HTTPServerRedirecting(http_server.HttpServer):
 
     def redirect_to(self, host, port):
         """Redirect all requests to a specific host:port."""
-        self.redirections = [("(.*)", r"http://{}:{}\1".format(host, port), 301)]
+        self.redirections = [("(.*)", rf"http://{host}:{port}\1", 301)]
 
     def is_redirected(self, path):
         """Is the path redirected by this server.
@@ -325,9 +328,7 @@ class BasicAuthRequestHandler(AuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        self.send_header(
-            tcs.auth_header_sent, 'Basic realm="{}"'.format(tcs.auth_realm)
-        )
+        self.send_header(tcs.auth_header_sent, f'Basic realm="{tcs.auth_realm}"')
 
 
 # FIXME: We could send an Authentication-Info header too when
@@ -358,8 +359,8 @@ class DigestAuthRequestHandler(AuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        header = 'Digest realm="{}", '.format(tcs.auth_realm)
-        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce, "MD5")
+        header = f'Digest realm="{tcs.auth_realm}", '
+        header += f'nonce="{tcs.auth_nonce}", algorithm="MD5", qop="auth"'
         self.send_header(tcs.auth_header_sent, header)
 
 
@@ -373,11 +374,9 @@ class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        self.send_header(
-            tcs.auth_header_sent, 'Basic realm="{}"'.format(tcs.auth_realm)
-        )
-        header = 'Digest realm="{}", '.format(tcs.auth_realm)
-        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce, "MD5")
+        self.send_header(tcs.auth_header_sent, f'Basic realm="{tcs.auth_realm}"')
+        header = f'Digest realm="{tcs.auth_realm}", '
+        header += f'nonce="{tcs.auth_nonce}", algorithm="MD5", qop="auth"'
         self.send_header(tcs.auth_header_sent, header)
 
 
@@ -456,21 +455,21 @@ class DigestAuthServer(AuthServer):
 
         # Recalculate the response_digest to compare with the one
         # sent by the client
-        A1 = ("{}:{}:{}".format(user, realm, password)).encode("utf-8")
-        A2 = ("{}:{}".format(command, auth["uri"])).encode("utf-8")
+        A1 = f"{user}:{realm}:{password}".encode()
+        A2 = f"{command}:{auth['uri']}".encode()
 
         def H(x):
-            return osutils.md5(x).hexdigest()
+            return hashlib.md5(x).hexdigest()  # noqa: S324
 
         def KD(secret, data):
-            return H(("{}:{}".format(secret, data)).encode("utf-8"))
+            return H(f"{secret}:{data}".encode())
 
         nonce_count = int(auth["nc"], 16)
 
-        ncvalue = "{:08x}".format(nonce_count)
+        ncvalue = f"{nonce_count:08x}"
 
         cnonce = auth["cnonce"]
-        noncebit = "{}:{}:{}:{}:{}".format(nonce, ncvalue, cnonce, qop, H(A2))
+        noncebit = f"{nonce}:{ncvalue}:{cnonce}:{qop}:{H(A2)}"
         response_digest = KD(H(A1), noncebit)
 
         return response_digest == auth["response"]

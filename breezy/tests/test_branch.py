@@ -83,8 +83,8 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         bdir.create_repository()
         branch = BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
-        self.log("branch instance is {!r}".format(branch))
-        self.assertTrue(isinstance(branch, BzrBranch5))
+        self.log(f"branch instance is {branch!r}")
+        self.assertIsInstance(branch, BzrBranch5)
         self.assertIsDirectory(".", t)
         self.assertIsDirectory(".bzr/branch", t)
         self.assertIsDirectory(".bzr/branch/lock", t)
@@ -453,18 +453,25 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     def create_branch_with_reference(self):
         branch = self.make_branch("branch")
-        branch._set_all_reference_info({"path": ("location", b"file-id")})
+        branch._set_all_reference_info({b"file-id": ("location", "path")})
         return branch
 
     @staticmethod
     def instrument_branch(branch, gets):
-        old_get = branch._transport.get
+        class WrapTransport:
+            __slots__ = ("t",)
 
-        def get(*args, **kwargs):
-            gets.append((args, kwargs))
-            return old_get(*args, **kwargs)
+            def __init__(self, t):
+                self.t = t
 
-        branch._transport.get = get
+            def get(self, *args, **kwargs):
+                gets.append((args, kwargs))
+                return self.t.get(*args, **kwargs)
+
+            def __getattr__(self, n):
+                return getattr(self.t, n)
+
+        branch._transport = WrapTransport(branch._transport)
 
     def test_reference_info_caching_read_locked(self):
         gets = []
@@ -472,8 +479,8 @@ class BzrBranch8(tests.TestCaseWithTransport):
         branch.lock_read()
         self.addCleanup(branch.unlock)
         self.instrument_branch(branch, gets)
-        branch.get_reference_info("path")
-        branch.get_reference_info("path")
+        branch.get_reference_info(b"file-id")
+        branch.get_reference_info(b"file-id")
         self.assertEqual(1, len(gets))
 
     def test_reference_info_caching_read_unlocked(self):
@@ -490,10 +497,10 @@ class BzrBranch8(tests.TestCaseWithTransport):
         branch.lock_write()
         self.instrument_branch(branch, gets)
         self.addCleanup(branch.unlock)
-        branch._set_all_reference_info({"path2": ("location2", b"file-id")})
-        location, file_id = branch.get_reference_info("path2")
+        branch._set_all_reference_info({b"file-id": ("location2", "path2")})
+        location, path = branch.get_reference_info(b"file-id")
         self.assertEqual(0, len(gets))
-        self.assertEqual(b"file-id", file_id)
+        self.assertEqual("path2", path)
         self.assertEqual("location2", location)
 
     def test_reference_info_caches_cleared(self):
@@ -555,21 +562,16 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = _mod_branch.BranchHooks()
-        self.assertTrue("post_push" in hooks, "post_push not in {}".format(hooks))
-        self.assertTrue("post_commit" in hooks, "post_commit not in {}".format(hooks))
-        self.assertTrue("pre_commit" in hooks, "pre_commit not in {}".format(hooks))
-        self.assertTrue("post_pull" in hooks, "post_pull not in {}".format(hooks))
-        self.assertTrue(
-            "post_uncommit" in hooks, "post_uncommit not in {}".format(hooks)
+        self.assertIn("post_push", hooks, f"post_push not in {hooks}")
+        self.assertIn("post_commit", hooks, f"post_commit not in {hooks}")
+        self.assertIn("pre_commit", hooks, f"pre_commit not in {hooks}")
+        self.assertIn("post_pull", hooks, f"post_pull not in {hooks}")
+        self.assertIn("post_uncommit", hooks, f"post_uncommit not in {hooks}")
+        self.assertIn(
+            "post_change_branch_tip", hooks, f"post_change_branch_tip not in {hooks}"
         )
-        self.assertTrue(
-            "post_change_branch_tip" in hooks,
-            "post_change_branch_tip not in {}".format(hooks),
-        )
-        self.assertTrue(
-            "post_branch_init" in hooks, "post_branch_init not in {}".format(hooks)
-        )
-        self.assertTrue("post_switch" in hooks, "post_switch not in {}".format(hooks))
+        self.assertIn("post_branch_init", hooks, f"post_branch_init not in {hooks}")
+        self.assertIn("post_switch", hooks, f"post_switch not in {hooks}")
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""

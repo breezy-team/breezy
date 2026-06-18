@@ -22,7 +22,8 @@ from breezy import branch as _mod_branch
 from breezy import controldir, errors, workingtree
 from breezy.bzr import bzrdir
 from breezy.tests import TestCaseWithTransport
-from breezy.tests.features import HardlinkFeature
+
+from ..features import HardlinkFeature
 
 
 class TestCheckout(TestCaseWithTransport):
@@ -89,11 +90,11 @@ class TestCheckout(TestCaseWithTransport):
         )
         # check no tree was created
         self.assertRaises(errors.NoWorkingTree, branch.controldir.open_workingtree)
-        out, err = self.run_bzr("checkout treeless-branch")
+        _out, _err = self.run_bzr("checkout treeless-branch")
         # we should have a tree now
         branch.controldir.open_workingtree()
         # with no diff
-        out, err = self.run_bzr("diff treeless-branch")
+        _out, _err = self.run_bzr("diff treeless-branch")
 
         # now test with no parameters
         branch = controldir.ControlDir.create_branch_convenience(
@@ -101,7 +102,7 @@ class TestCheckout(TestCaseWithTransport):
         )
         # check no tree was created
         self.assertRaises(errors.NoWorkingTree, branch.controldir.open_workingtree)
-        out, err = self.run_bzr("checkout")
+        _out, _err = self.run_bzr("checkout")
         # we should have a tree now
         branch.controldir.open_workingtree()
         # with no diff

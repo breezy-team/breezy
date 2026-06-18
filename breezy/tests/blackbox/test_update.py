@@ -21,7 +21,8 @@ import os
 
 from breezy import branch, osutils, tests, workingtree
 from breezy.bzr import bzrdir
-from breezy.tests.script import ScriptRunner
+
+from ..script import ScriptRunner
 
 
 class TestUpdate(tests.TestCaseWithTransport):
@@ -29,7 +30,7 @@ class TestUpdate(tests.TestCaseWithTransport):
         self.make_branch_and_tree(".")
         out, err = self.run_bzr("update")
         self.assertEqual(
-            "Tree is up to date at revision 0 of branch {}\n".format(self.test_dir), err
+            f"Tree is up to date at revision 0 of branch {self.test_dir}\n", err
         )
         self.assertEqual("", out)
 
@@ -358,7 +359,7 @@ $ brz update -r 1
         master.commit("merge", rev_id=b"merge")
 
         # Switch to o2. file3 was added only in o3 and should be deleted.
-        out, err = self.run_bzr("update -r revid:o2")
+        _out, err = self.run_bzr("update -r revid:o2")
         self.assertContainsRe(err, "-D\\s+file3")
         self.assertContainsRe(err, "All changes applied successfully\\.")
         self.assertContainsRe(err, "Updated to revision 1.1.1 of branch .*")
@@ -435,7 +436,7 @@ $ brz update -r revid:m2
             )
 
     def test_update_checkout_prevent_double_merge(self):
-        """ "Launchpad bug 113809 in brz "update performs two merges"
+        """Launchpad bug 113809 in brz "update performs two merges
         https://launchpad.net/bugs/113809.
         """
         master = self.make_branch_and_tree("master")
@@ -461,7 +462,7 @@ $ brz update -r revid:m2
         self.build_tree_contents([("lightweight/file", b"lightweight local changes\n")])
 
         # now update (and get conflicts)
-        out, err = self.run_bzr("update lightweight", retcode=1)
+        out, _err = self.run_bzr("update lightweight", retcode=1)
         self.assertEqual("", out)
         # NB: these conflicts are actually in the source code
         self.assertFileEqual(

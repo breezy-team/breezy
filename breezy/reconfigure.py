@@ -28,22 +28,39 @@ from .i18n import gettext
 
 
 class BzrDirError(errors.BzrError):
+    """Base class for reconfiguration errors related to control directories."""
+
     def __init__(self, controldir):
+        """Initialize BzrDirError with a control directory.
+
+        Args:
+            controldir: The control directory that caused the error.
+        """
         display_url = urlutils.unescape_for_display(controldir.user_url, "ascii")
         errors.BzrError.__init__(self, controldir=controldir, display_url=display_url)
 
 
 class NoBindLocation(BzrDirError):
+    """Error raised when no bind location can be found."""
+
     _fmt = "No location could be found to bind to at %(display_url)s."
 
 
 class UnsyncedBranches(BzrDirError):
+    """Error raised when branches are not synchronized."""
+
     _fmt = (
         "'%(display_url)s' is not in sync with %(target_url)s.  See"
         " brz help sync-for-reconfigure."
     )
 
     def __init__(self, controldir, target_branch):
+        """Initialize UnsyncedBranches error.
+
+        Args:
+            controldir: The control directory.
+            target_branch: The target branch that is out of sync.
+        """
         errors.BzrError.__init__(self, controldir)
         from . import urlutils
 
@@ -51,38 +68,56 @@ class UnsyncedBranches(BzrDirError):
 
 
 class AlreadyBranch(BzrDirError):
+    """Error raised when trying to reconfigure to branch but already is one."""
+
     _fmt = "'%(display_url)s' is already a branch."
 
 
 class AlreadyTree(BzrDirError):
+    """Error raised when trying to reconfigure to tree but already is one."""
+
     _fmt = "'%(display_url)s' is already a tree."
 
 
 class AlreadyCheckout(BzrDirError):
+    """Error raised when trying to reconfigure to checkout but already is one."""
+
     _fmt = "'%(display_url)s' is already a checkout."
 
 
 class AlreadyLightweightCheckout(BzrDirError):
+    """Error raised when trying to reconfigure to lightweight checkout but already is one."""
+
     _fmt = "'%(display_url)s' is already a lightweight checkout."
 
 
 class AlreadyUsingShared(BzrDirError):
+    """Error raised when already using a shared repository."""
+
     _fmt = "'%(display_url)s' is already using a shared repository."
 
 
 class AlreadyStandalone(BzrDirError):
+    """Error raised when already standalone (not using shared repository)."""
+
     _fmt = "'%(display_url)s' is already standalone."
 
 
 class AlreadyWithTrees(BzrDirError):
+    """Error raised when repository already creates working trees."""
+
     _fmt = "Shared repository '%(display_url)s' already creates working trees."
 
 
 class AlreadyWithNoTrees(BzrDirError):
+    """Error raised when repository already doesn't create working trees."""
+
     _fmt = "Shared repository '%(display_url)s' already doesn't create working trees."
 
 
 class ReconfigurationNotSupported(BzrDirError):
+    """Error raised when requested reconfiguration is not supported."""
+
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
 
 
@@ -90,6 +125,12 @@ class ReconfigureStackedOn:
     """Reconfigures a branch to be stacked on another branch."""
 
     def apply(self, controldir, stacked_on_url):
+        """Apply stacked-on reconfiguration.
+
+        Args:
+            controldir: Control directory containing the branch.
+            stacked_on_url: URL to stack the branch on.
+        """
         branch = controldir.open_branch()
         # it may be a path relative to the cwd or a url; the branch wants
         # a path relative to itself...
@@ -107,7 +148,14 @@ class ReconfigureStackedOn:
 
 
 class ReconfigureUnstacked:
+    """Reconfigures a branch to be unstacked."""
+
     def apply(self, controldir):
+        """Apply unstacked reconfiguration.
+
+        Args:
+            controldir: Control directory containing the branch.
+        """
         branch = controldir.open_branch()
         with branch.lock_write():
             branch.set_stacked_on_url(None)
@@ -116,7 +164,15 @@ class ReconfigureUnstacked:
 
 
 class Reconfigure:
+    """Class for reconfiguring control directories into different layouts."""
+
     def __init__(self, controldir, new_bound_location=None):
+        """Initialize Reconfigure instance.
+
+        Args:
+            controldir: Control directory to reconfigure.
+            new_bound_location: Optional new location to bind to.
+        """
         self.controldir = controldir
         self.new_bound_location = new_bound_location
         self.local_repository = None
@@ -262,11 +318,12 @@ class Reconfigure:
             if not want_reference:
                 self._create_repository = True
         else:
-            if want_reference and (
-                self.repository.user_url == self.controldir.user_url
+            if (
+                want_reference
+                and (self.repository.user_url == self.controldir.user_url)
+                and not self.repository.is_shared()
             ):
-                if not self.repository.is_shared():
-                    self._destroy_repository = True
+                self._destroy_repository = True
         if self.referenced_branch is None:
             if want_reference:
                 self._create_reference = True
@@ -374,10 +431,7 @@ class Reconfigure:
                 old_repo = self.referenced_branch.repository
             else:
                 old_repo = None
-            if old_repo is not None:
-                repository_format = old_repo._format
-            else:
-                repository_format = None
+            repository_format = old_repo._format if old_repo is not None else None
             if repository_format is not None:
                 repo = repository_format.initialize(self.controldir)
             else:

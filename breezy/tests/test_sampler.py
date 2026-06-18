@@ -29,5 +29,8 @@ from breezy.tests import TestCaseInTempDir
 
 # Now we need a test script:
 class DemoTest(TestCaseInTempDir):
+    """A demo test class used as a template for new test modules."""
+
     def test_nothing(self):
+        """A simple test that always passes to demonstrate test structure."""
         self.assertEqual(1, 1)

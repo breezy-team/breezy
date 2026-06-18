@@ -214,9 +214,8 @@ class TestHeadTracking(testtools.TestCase):
                 reftracker.track_heads(cmd)
                 # eat the file commands
                 list(cmd.iter_files())
-            elif isinstance(cmd, commands.ResetCommand):
-                if cmd.from_ is not None:
-                    reftracker.track_heads_for_ref(cmd.ref, cmd.from_)
+            elif isinstance(cmd, commands.ResetCommand) and cmd.from_ is not None:
+                reftracker.track_heads_for_ref(cmd.ref, cmd.from_)
         self.assertEqual(reftracker.heads, expected)
 
     def test_mainline(self):

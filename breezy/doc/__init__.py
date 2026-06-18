@@ -22,6 +22,19 @@ for man page generation.
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests for the breezy.doc module and its submodules.
+
+    This function follows the unittest load_tests protocol to discover and
+    load tests from this module and its submodules.
+
+    Args:
+        loader: The test loader instance.
+        basic_tests: The basic tests for this module.
+        pattern: Pattern to match test files (unused).
+
+    Returns:
+        A test suite containing tests from this module and submodules.
+    """
     suite = loader.suiteClass()
     # add the tests for this module (obviously none so far)
     suite.addTests(basic_tests)
@@ -31,6 +44,7 @@ def load_tests(loader, basic_tests, pattern):
     ]
 
     # add the tests for the sub modules
-    suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
+    for module_name in testmod_names:
+        suite.addTest(loader.loadTestsFromName(module_name))
 
     return suite

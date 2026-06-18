@@ -24,14 +24,15 @@ __all__ = [
 ]
 
 import vcsgraph.errors
+from bzrformats.errors import BzrCheckError
+from bzrformats.versionedfile import AdapterFactory, ChunkedContentFactory
+from vcsgraph.tsort import topo_sort
 
-from .. import errors, ui
 from .. import revision as _mod_revision
+from .. import ui
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
 from ..trace import mutter
-from ..tsort import topo_sort
-from .versionedfile import AdapterFactory, ChunkedContentFactory
 
 
 class VersionedFileRepoReconciler:
@@ -219,7 +220,7 @@ class KnitReconciler(VersionedFileRepoReconciler):
         if self.thorough:
             try:
                 self._load_indexes()
-            except errors.BzrCheckError:
+            except BzrCheckError:
                 self.aborted = True
                 return
             # knits never suffer this
@@ -310,6 +311,8 @@ class KnitReconciler(VersionedFileRepoReconciler):
             id_unused_versions = {
                 key[-1] for key in unused_versions if key[0] == file_id
             }
+            # Maybe this id was present in the disk store but is not referenced
+            # by any revision at all.
             file_versions = file_id_versions.get(file_id, [])
             self._fix_text_parent(
                 file_id, versions_with_bad_parents, id_unused_versions, file_versions
@@ -375,6 +378,14 @@ class PackReconciler(VersionedFileRepoReconciler):
     # https://bugs.launchpad.net/bzr/+bug/154173
 
     def __init__(self, repo, other=None, thorough=False, canonicalize_chks=False):
+        """Initialize a PackReconciler.
+
+        Args:
+            repo: The repository to reconcile.
+            other: Other repository for reconciliation reference.
+            thorough: Whether to perform thorough reconciliation.
+            canonicalize_chks: Whether to canonicalize CHK records.
+        """
         super().__init__(repo, other=other, thorough=thorough)
         self.canonicalize_chks = canonicalize_chks
 
@@ -430,11 +441,22 @@ class BranchReconciler:
     """Reconciler that works on a branch."""
 
     def __init__(self, a_branch, thorough=False):
+        """Initialize a BranchReconciler.
+
+        Args:
+            a_branch: The branch to reconcile.
+            thorough: Whether to perform thorough reconciliation.
+        """
         self.fixed_history = None
         self.thorough = thorough
         self.branch = a_branch
 
     def reconcile(self):
+        """Perform reconciliation on the branch.
+
+        Returns:
+            ReconcileResult: The result of the reconciliation.
+        """
         with self.branch.lock_write(), ui.ui_factory.nested_progress_bar() as self.pb:
             ret = ReconcileResult()
             ret.fixed_history = self._reconcile_steps()

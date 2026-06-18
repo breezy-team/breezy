@@ -16,9 +16,12 @@
 
 """Tests of the WorkingTree.unversion API."""
 
-from breezy import errors, transport
-from breezy.tests.matchers import HasPathRelations
+from dromedary.errors import NoSuchFile
+
+from breezy import errors
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ..matchers import HasPathRelations
 
 
 class TestUnversion(TestCaseWithWorkingTree):
@@ -32,7 +35,7 @@ class TestUnversion(TestCaseWithWorkingTree):
     def test_unversion_missing_file(self):
         """WT.unversion(['missing']) raises NoSuchId."""
         tree = self.make_branch_and_tree(".")
-        self.assertRaises(transport.NoSuchFile, tree.unversion, ["missing"])
+        self.assertRaises(NoSuchFile, tree.unversion, ["missing"])
 
     def test_unversion_parent_and_child_renamed_bug_187207(self):
         # When unversioning dirstate trees show a bug in dealing with

@@ -18,10 +18,12 @@
 
 from io import BytesIO
 
+from dromedary import chroot, memory
+
+from breezy.transport.http import wsgi
+
 from .. import tests
 from ..bzr.smart import medium, protocol
-from ..transport import chroot, memory
-from ..transport.http import wsgi
 
 
 class WSGITestMixin:
@@ -80,7 +82,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         iterable = app(environ, self.start_response)
         self.read_response(iterable)
         self.assertEqual("405 Method not allowed", self.status)
-        self.assertTrue(("Allow", "POST") in self.headers)
+        self.assertIn(("Allow", "POST"), self.headers)
 
     def _fake_make_request(self, transport, write_func, bytes, rcp):
         request = FakeRequest(transport, write_func)
@@ -287,16 +289,16 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
         response_bytes = self.read_response(iterable)
         self.assertEqual("200 OK", self.status)
         # expect a successful response, rather than a jail break error
-        from breezy.bzr.tests.test_smart_transport import LoggingMessageHandler
+        from ..bzr.tests.test_smart_transport import LoggingMessageHandler
 
         message_handler = LoggingMessageHandler()
         decoder = protocol.ProtocolThreeDecoder(
             message_handler, expect_version_marker=True
         )
         decoder.accept_bytes(response_bytes)
-        self.assertTrue(
-            ("structure", (b"branch", branch._format.network_name()))
-            in message_handler.event_log
+        self.assertIn(
+            ("structure", (b"branch", branch._format.network_name())),
+            message_handler.event_log,
         )
 
 

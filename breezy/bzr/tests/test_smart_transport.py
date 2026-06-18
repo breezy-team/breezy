@@ -17,6 +17,7 @@
 """Tests for smart transport."""
 
 # all of this deals with byte strings so this is safe
+import contextlib
 import doctest
 import errno
 import os
@@ -27,18 +28,21 @@ import threading
 import time
 from io import BytesIO
 
+from dromedary import errors as transport_errors
+from dromedary import local, memory, ssh
+from dromedary.errors import NoSuchFile
 from testtools.matchers import DocTestMatches
 
 import breezy
+from breezy import transport as _mod_transport
+from breezy.transport import remote
 
 from ... import controldir, debug, errors, osutils, tests, urlutils
-from ... import transport as _mod_transport
 from ...tests import features, test_server
-from ...transport import local, memory, remote, ssh
-from ...transport.http import urllib
 from .. import bzrdir
 from ..remote import UnknownErrorFromSmartServer
 from ..smart import client, medium, message, protocol, vfs
+from ..smart import http as smart_http
 from ..smart import request as _mod_request
 from ..smart import server as _mod_server
 from . import test_smart
@@ -202,8 +206,7 @@ class SmartClientMediumTests(tests.TestCase):
         # readable pipe, writeable pipe.
         # Constructing one should just save these and do nothing.
         # We test this by passing in None.
-        client_medium = medium.SmartSimplePipesClientMedium(None, None, None)
-        del client_medium
+        medium.SmartSimplePipesClientMedium(None, None, None)
 
     def test_simple_pipes_client_request_type(self):
         # SimplePipesClient should use SmartClientStreamMediumRequest's.
@@ -241,7 +244,7 @@ class SmartClientMediumTests(tests.TestCase):
         # read.read() hangs. On Linux, read.read() returns the empty string.
         p = subprocess.Popen(
             [
-                sys.executable,
+                tests.python_executable(),
                 "-c",
                 "import sys\nsys.stdout.write(sys.stdin.read(4))\nsys.stdout.close()\n",
             ],
@@ -257,7 +260,7 @@ class SmartClientMediumTests(tests.TestCase):
         #   Windows py2.6.6 we get IOError(EINVAL)
         #   Lucid py2.6.5, we get IOError(EPIPE)
         # In both cases, it should be wrapped to ConnectionReset
-        self.assertRaises(errors.ConnectionReset, client_medium._accept_bytes, b"more")
+        self.assertRaises(ConnectionResetError, client_medium._accept_bytes, b"more")
 
     def test_simple_pipes__accept_bytes_pipe_closed(self):
         child_read, client_write = create_file_pipes()
@@ -269,7 +272,7 @@ class SmartClientMediumTests(tests.TestCase):
         #   Lucid py2.6.5, we get IOError(EPIPE)
         # In both cases, it should be wrapped to ConnectionReset
         child_read.close()
-        self.assertRaises(errors.ConnectionReset, client_medium._accept_bytes, b"more")
+        self.assertRaises(ConnectionResetError, client_medium._accept_bytes, b"more")
 
     def test_simple_pipes__flush_pipe_closed(self):
         child_read, client_write = create_file_pipes()
@@ -283,7 +286,7 @@ class SmartClientMediumTests(tests.TestCase):
     def test_simple_pipes__flush_subprocess_closed(self):
         p = subprocess.Popen(
             [
-                sys.executable,
+                tests.python_executable(),
                 "-c",
                 "import sys\nsys.stdout.write(sys.stdin.read(4))\nsys.stdout.close()\n",
             ],
@@ -310,7 +313,7 @@ class SmartClientMediumTests(tests.TestCase):
     def test_simple_pipes__read_bytes_subprocess_closed(self):
         p = subprocess.Popen(
             [
-                sys.executable,
+                tests.python_executable(),
                 "-c",
                 "import sys\n"
                 'if sys.platform == "win32":\n'
@@ -672,7 +675,9 @@ class SmartClientMediumTests(tests.TestCase):
         client_medium = medium.SmartTCPClientMedium(
             "non_existent.invalid", 4155, "base"
         )
-        self.assertRaises(errors.ConnectionError, client_medium._ensure_connection)
+        self.assertRaises(
+            transport_errors.ConnectionError, client_medium._ensure_connection
+        )
 
 
 class TestSmartClientStreamMediumRequest(tests.TestCase):
@@ -788,7 +793,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         client_medium = medium.SmartTCPClientMedium(None, None, None)
         client_medium._socket = client_sock
         client_medium._connected = True
-        req = client_medium.get_request()
+        client_medium.get_request()
         self.assertRaises(medium.TooManyConcurrentRequests, client_medium.get_request)
         client_medium.reset()
         # The stream should be reset, marked as disconnected, though ready for
@@ -800,8 +805,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         except OSError as e:
             if e.errno not in (errno.EBADF,):
                 raise
-        req = client_medium.get_request()
-        del req
+        client_medium.get_request()
 
 
 class RemoteTransportTests(test_smart.TestCaseWithSmartMedium):
@@ -1054,12 +1058,11 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # Make a new protocol, call _serve_one_request with it to collect the
         # second request.
         second_protocol = SampleRequest(expected_bytes=sample_request_bytes)
-        stream_still_open = server._serve_one_request(second_protocol)
+        server._serve_one_request(second_protocol)
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
         self.assertFalse(server.finished)
         server._disconnect_client()
         self.assertEqual(b"", client_sock.recv(1))
-        del stream_still_open
 
     def test_pipe_like_stream_error_handling(self):
         # Use plain python BytesIO so we can monkey-patch the close method to
@@ -1310,10 +1313,8 @@ class TestSmartTCPServer(tests.TestCase):
 
     def ensure_client_disconnected(self, client_sock):
         """Ensure that a socket is closed, discarding all errors."""
-        try:
+        with contextlib.suppress(Exception):
             client_sock.close()
-        except Exception:
-            pass
 
     def connect_to_server(self, server):
         """Create a client socket that can talk to the server."""
@@ -1357,7 +1358,7 @@ class TestSmartTCPServer(tests.TestCase):
         self.overrideEnv("BRZ_NO_SMART_VFS", None)
 
         class FlakyTransport:
-            base = "a_url"
+            base = "flaky:///"
 
             def external_url(self):
                 return self.base
@@ -1386,7 +1387,7 @@ class TestSmartTCPServer(tests.TestCase):
     def test_serve_conn_tracks_connections(self):
         server = _mod_server.SmartTCPServer(None, client_timeout=4.0)
         server_sock, client_sock = portable_socket_pair()
-        server.serve_conn(server_sock, "-{}".format(self.id()))
+        server.serve_conn(server_sock, f"-{self.id()}")
         self.assertEqual(1, len(server._active_connections))
         # We still want to talk on the connection. Polling should indicate it
         # is still active.
@@ -1566,7 +1567,7 @@ class TestServerSocketUsage(SmartTCPTests):
         self.start_server()
         t = remote.RemoteTCPTransport(self.server.get_url())
         self.stop_server()
-        self.assertRaises(errors.ConnectionError, t.has, ".")
+        self.assertRaises(transport_errors.ConnectionError, t.has, ".")
 
     def test_server_closes_listening_sock_on_shutdown_after_request(self):
         """The server should close its listening socket when it's stopped."""
@@ -1577,7 +1578,7 @@ class TestServerSocketUsage(SmartTCPTests):
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
         t = remote.RemoteTCPTransport(server_url)
-        self.assertRaises(errors.ConnectionError, t.has, ".")
+        self.assertRaises(transport_errors.ConnectionError, t.has, ".")
 
 
 class WritableEndToEndTests(SmartTCPTests):
@@ -1586,6 +1587,10 @@ class WritableEndToEndTests(SmartTCPTests):
     def setUp(self):
         super().setUp()
         self.start_server()
+
+    def tearDown(self):
+        self.stop_server()
+        super().tearDown()
 
     def test_start_tcp_server(self):
         url = self.server.get_url()
@@ -1611,9 +1616,7 @@ class WritableEndToEndTests(SmartTCPTests):
         # asked for by the client. This gives meaningful and unsurprising errors
         # for users.
         self.overrideEnv("BRZ_NO_SMART_VFS", None)
-        err = self.assertRaises(
-            _mod_transport.NoSuchFile, self.transport.get, "not%20a%20file"
-        )
+        err = self.assertRaises(NoSuchFile, self.transport.get, "not%20a%20file")
         self.assertSubset([err.path], ["not%20a%20file", "./not%20a%20file"])
 
     def test_simple_clone_conn(self):
@@ -1653,8 +1656,7 @@ class WritableEndToEndTests(SmartTCPTests):
         transport = self.transport
         t = self.backing_transport
         bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
-        result_dir = controldir.ControlDir.open_containing_from_transport(transport)
-        del result_dir
+        controldir.ControlDir.open_containing_from_transport(transport)
 
 
 class ReadOnlyEndToEndTests(SmartTCPTests):
@@ -1664,14 +1666,16 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
         """TransportNotPossible should be preserved from the backing transport."""
         self.overrideEnv("BRZ_NO_SMART_VFS", None)
         self.start_server(readonly=True)
-        self.assertRaises(errors.TransportNotPossible, self.transport.mkdir, "foo")
+        self.assertRaises(
+            transport_errors.TransportNotPossible, self.transport.mkdir, "foo"
+        )
 
     def test_rename_error_readonly(self):
         """TransportNotPossible should be preserved from the backing transport."""
         self.overrideEnv("BRZ_NO_SMART_VFS", None)
         self.start_server(readonly=True)
         self.assertRaises(
-            errors.TransportNotPossible, self.transport.rename, "foo", "bar"
+            transport_errors.TransportNotPossible, self.transport.rename, "foo", "bar"
         )
 
     def test_open_write_stream_error_readonly(self):
@@ -1679,7 +1683,9 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
         self.overrideEnv("BRZ_NO_SMART_VFS", None)
         self.start_server(readonly=True)
         self.assertRaises(
-            errors.TransportNotPossible, self.transport.open_write_stream, "foo"
+            transport_errors.TransportNotPossible,
+            self.transport.open_write_stream,
+            "foo",
         )
 
 
@@ -1703,6 +1709,7 @@ class TestServerHooks(SmartTCPTests):
         self.assertEqual(
             [([self.backing_transport.base], self.transport.base)], self.hook_calls
         )
+        self.stop_server()
 
     def test_server_started_hook_file(self):
         """The server_started hook fires when the server is started."""
@@ -1942,8 +1949,10 @@ class TestRemoteTransport(tests.TestCase):
         """Sending a ReadOnlyError to _translate_error raises TransportNotPossible."""
         client_medium = medium.SmartSimplePipesClientMedium(None, None, "base")
         transport = remote.RemoteTransport("bzr://localhost/", medium=client_medium)
-        err = errors.ErrorFromSmartServer((b"ReadOnlyError",))
-        self.assertRaises(errors.TransportNotPossible, transport._translate_error, err)
+        err = transport_errors.ErrorFromSmartServer((b"ReadOnlyError",))
+        self.assertRaises(
+            transport_errors.TransportNotPossible, transport._translate_error, err
+        )
 
 
 class TestSmartProtocol(tests.TestCase):
@@ -1967,13 +1976,11 @@ class TestSmartProtocol(tests.TestCase):
     client_protocol_class: type[protocol.SmartProtocolBase] | None = None
 
     def make_client_protocol_and_output(self, input_bytes=None):
+        """:returns: a Request"""
         # This is very similar to
         # breezy.bzr.smart.client._SmartClient._build_client_protocol
         # XXX: make this use _SmartClient!
-        if input_bytes is None:
-            input = BytesIO()
-        else:
-            input = BytesIO(input_bytes)
+        input = BytesIO() if input_bytes is None else BytesIO(input_bytes)
         output = BytesIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output, "base")
         request = client_medium.get_request()
@@ -2077,12 +2084,11 @@ class CommonSmartProtocolTestMixin:
         requester, response_handler = self.make_client_protocol()
         requester.call(b"hello")
         ex = self.assertRaises(
-            errors.ConnectionReset, response_handler.read_response_tuple
+            ConnectionResetError, response_handler.read_response_tuple
         )
         self.assertEqual(
-            "Connection closed: "
             "Unexpected end of message. Please check connectivity "
-            "and permissions, and report a bug if problems persist. ",
+            "and permissions, and report a bug if problems persist.",
             str(ex),
         )
 
@@ -2124,8 +2130,7 @@ class TestVersionOneFeaturesInProtocolOne(
         output = BytesIO()
         client_medium = medium.SmartSimplePipesClientMedium(None, output, "base")
         request = client_medium.get_request()
-        client_protocol = protocol.SmartClientRequestProtocolOne(request)
-        del client_protocol
+        protocol.SmartClientRequestProtocolOne(request)
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = BytesIO()
@@ -2271,7 +2276,9 @@ class TestVersionOneFeaturesInProtocolOne(
         request = client_medium.get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call(b"foo")
-        self.assertRaises(errors.UnknownSmartMethod, smart_protocol.read_response_tuple)
+        self.assertRaises(
+            transport_errors.UnknownSmartMethod, smart_protocol.read_response_tuple
+        )
         # The request has been finished.  There is no body to read, and
         # attempts to read one will fail.
         self.assertRaises(errors.ReadingCompleted, smart_protocol.read_body_bytes)
@@ -2352,7 +2359,7 @@ class TestVersionOneFeaturesInProtocolOne(
         smart_protocol = self.client_protocol_class(request)
         smart_protocol.call(b"foo")
         smart_protocol.read_response_tuple(True)
-        self.assertRaises(errors.ConnectionReset, smart_protocol.read_body_bytes)
+        self.assertRaises(ConnectionResetError, smart_protocol.read_body_bytes)
 
 
 class TestVersionOneFeaturesInProtocolTwo(
@@ -2377,8 +2384,7 @@ class TestVersionOneFeaturesInProtocolTwo(
         output = BytesIO()
         client_medium = medium.SmartSimplePipesClientMedium(None, output, "base")
         request = client_medium.get_request()
-        client_protocol = protocol.SmartClientRequestProtocolTwo(request)
-        del client_protocol
+        protocol.SmartClientRequestProtocolTwo(request)
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = BytesIO()
@@ -2586,7 +2592,7 @@ class TestVersionOneFeaturesInProtocolTwo(
         smart_protocol = self.client_protocol_class(request)
         smart_protocol.call(b"foo")
         smart_protocol.read_response_tuple(True)
-        self.assertRaises(errors.ConnectionReset, smart_protocol.read_body_bytes)
+        self.assertRaises(ConnectionResetError, smart_protocol.read_body_bytes)
 
 
 class TestSmartProtocolTwoSpecificsMixin:
@@ -2740,7 +2746,7 @@ class TestSmartProtocolTwoSpecificsMixin:
         smart_protocol.call(b"foo")
         smart_protocol.read_response_tuple(True)
         stream = smart_protocol.read_streamed_body()
-        self.assertRaises(errors.ConnectionReset, next, stream)
+        self.assertRaises(ConnectionResetError, next, stream)
 
     def test_client_read_response_tuple_sets_response_status(self):
         server_bytes = protocol.RESPONSE_VERSION_TWO + b"success\nok\n"
@@ -2768,7 +2774,9 @@ class TestSmartProtocolTwoSpecificsMixin:
         request = client_medium.get_request()
         smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
         smart_protocol.call(b"foo")
-        self.assertRaises(errors.UnknownSmartMethod, smart_protocol.read_response_tuple)
+        self.assertRaises(
+            transport_errors.UnknownSmartMethod, smart_protocol.read_response_tuple
+        )
         # The request has been finished.  There is no body to read, and
         # attempts to read one will fail.
         self.assertRaises(errors.ReadingCompleted, smart_protocol.read_body_bytes)
@@ -2856,6 +2864,7 @@ class TestProtocolThree(TestSmartProtocol):
         """Smoke test for the simplest possible v3 request: empty headers, no
         message parts.
         """
+        BytesIO()
         headers = b"\0\0\0\x02de"  # length-prefixed, bencoded empty dict
         end = b"e"
         request_bytes = headers + end
@@ -2868,6 +2877,7 @@ class TestProtocolThree(TestSmartProtocol):
         """Repeated calls to accept_bytes after the message end has been parsed
         accumlates the bytes in the unused_data attribute.
         """
+        BytesIO()
         headers = b"\0\0\0\x02de"  # length-prefixed, bencoded empty dict
         end = b"e"
         request_bytes = headers + end
@@ -2931,7 +2941,7 @@ class TestProtocolThree(TestSmartProtocol):
 
 class TestConventionalResponseHandlerBodyStream(tests.TestCase):
     def make_response_handler(self, response_bytes):
-        from breezy.bzr.smart.message import ConventionalResponseHandler
+        from ..smart.message import ConventionalResponseHandler
 
         response_handler = ConventionalResponseHandler()
         protocol_decoder = protocol.ProtocolThreeDecoder(response_handler)
@@ -2953,7 +2963,7 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
         stream = response_handler.read_streamed_body()
         self.assertEqual(b"aaa", next(stream))
         self.assertEqual(b"bbb", next(stream))
-        exc = self.assertRaises(errors.ErrorFromSmartServer, next, stream)
+        exc = self.assertRaises(transport_errors.ErrorFromSmartServer, next, stream)
         self.assertEqual((b"error", b"Exception", b"Boom!"), exc.error_tuple)
 
     def test_interrupted_by_connection_lost(self):
@@ -2964,7 +2974,7 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
         )
         response_handler = self.make_response_handler(interrupted_body_stream)
         stream = response_handler.read_streamed_body()
-        self.assertRaises(errors.ConnectionReset, next, stream)
+        self.assertRaises(ConnectionResetError, next, stream)
 
     def test_read_body_bytes_interrupted_by_connection_lost(self):
         interrupted_body_stream = (
@@ -2973,7 +2983,7 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
             b"b\0\0\xff\xffincomplete chunk"
         )
         response_handler = self.make_response_handler(interrupted_body_stream)
-        self.assertRaises(errors.ConnectionReset, response_handler.read_body_bytes)
+        self.assertRaises(ConnectionResetError, response_handler.read_body_bytes)
 
     def test_multiple_bytes_parts(self):
         multiple_bytes_parts = (
@@ -3009,7 +3019,7 @@ class TestConventionalRequestHandlerBodyStream(tests.TestCase):
         """Make a ConventionalRequestHandler for the given bytes using test
         doubles for the request_handler and the responder.
         """
-        from breezy.bzr.smart.message import ConventionalRequestHandler
+        from ..smart.message import ConventionalRequestHandler
 
         request_handler = InstrumentedRequestHandler()
         request_handler.response = _mod_request.SuccessfulSmartServerResponse(
@@ -3206,7 +3216,7 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         decoder, response_handler = self.make_conventional_response_decoder()
         decoder.accept_bytes(message_bytes)
         error = self.assertRaises(
-            errors.UnknownSmartMethod, response_handler.read_response_tuple
+            transport_errors.UnknownSmartMethod, response_handler.read_response_tuple
         )
         self.assertEqual(b"method-name", error.verb)
 
@@ -3220,7 +3230,7 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         decoder, response_handler = self.make_conventional_response_decoder()
         decoder.accept_bytes(message_bytes)
         error = self.assertRaises(
-            errors.ErrorFromSmartServer, response_handler.read_response_tuple
+            transport_errors.ErrorFromSmartServer, response_handler.read_response_tuple
         )
         self.assertEqual((b"first arg", b"second arg"), error.error_tuple)
 
@@ -3334,7 +3344,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             yield b"bbb"
             raise Exception("Boom!")
 
-        self.assertRaises(
+        self.assertRaises(  # noqa: B017
             Exception,
             requester.call_with_body_stream,
             (b"one arg",),
@@ -3422,7 +3432,7 @@ class TestResponseEncodingProtocolThree(tests.TestCase):
 
     def test_send_error_unknown_method(self):
         encoder, out_stream = self.make_response_encoder()
-        encoder.send_error(errors.UnknownSmartMethod("method name"))
+        encoder.send_error(transport_errors.UnknownSmartMethod("method name"))
         # Use assertEndsWith so that we don't compare the header, which varies
         # by breezy.__version__.
         self.assertEndsWith(
@@ -3472,7 +3482,7 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.assertEqual(
             expected_count,
             len(self.writes),
-            f"Too many writes: {len(self.writes)}, expected {expected_count}",
+            "Too many writes: %d, expected %d" % (len(self.writes), expected_count),
         )
 
     def test_send_error_writes_just_once(self):
@@ -3769,7 +3779,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
         )
         medium.expect_disconnect()
         self.assertRaises(
-            errors.SmartProtocolError,
+            transport_errors.SmartProtocolError,
             smart_client.call,
             b"method-name",
             b"arg 1",
@@ -3798,7 +3808,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
             b"bzr request 2\nmethod-name\n", b"bzr response 2\nfailed\nFooBarError\n"
         )
         err = self.assertRaises(
-            errors.ErrorFromSmartServer, smart_client.call, b"method-name"
+            transport_errors.ErrorFromSmartServer, smart_client.call, b"method-name"
         )
         self.assertEqual((b"FooBarError",), err.error_tuple)
         # Now the medium should have remembered the protocol version, so
@@ -3855,7 +3865,7 @@ class Test_SmartClientRequest(tests.TestCase):
         smart_request = client._SmartClientRequest(
             smart_client, b"append", (b"foo", b""), body=b"content\n"
         )
-        self.assertRaises(errors.ConnectionReset, smart_request._call, 3)
+        self.assertRaises(ConnectionResetError, smart_request._call, 3)
 
     def test__call_retries_get_bytes(self):
         response = self.make_response((b"ok",), b"content\n")
@@ -3868,13 +3878,13 @@ class Test_SmartClientRequest(tests.TestCase):
         self.assertEqual(b"content\n", response_handler.read_body_bytes())
 
     def test__call_noretry_get_bytes(self):
-        debug.debug_flags.add("noretry")
+        debug.set_debug_flag("noretry")
         response = self.make_response((b"ok",), b"content\n")
         _output, _vendor, smart_client = self.make_client_with_failing_medium(
             fail_at_write=False, response=response
         )
         smart_request = client._SmartClientRequest(smart_client, b"get", (b"foo",))
-        self.assertRaises(errors.ConnectionReset, smart_request._call, 3)
+        self.assertRaises(ConnectionResetError, smart_request._call, 3)
 
     def test__send_no_retry_pipes(self):
         client_read, _server_write = create_file_pipes()
@@ -3887,7 +3897,7 @@ class Test_SmartClientRequest(tests.TestCase):
         # Close the server side
         server_read.close()
         encoder, _response_handler = smart_request._construct_protocol(3)
-        self.assertRaises(errors.ConnectionReset, smart_request._send_no_retry, encoder)
+        self.assertRaises(ConnectionResetError, smart_request._send_no_retry, encoder)
 
     def test__send_read_response_sockets(self):
         listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -3905,13 +3915,13 @@ class Test_SmartClientRequest(tests.TestCase):
         # connection until we try to read again.
         handler = smart_request._send(3)
         self.assertRaises(
-            errors.ConnectionReset, handler.read_response_tuple, expect_body=False
+            ConnectionResetError, handler.read_response_tuple, expect_body=False
         )
 
     def test__send_retries_on_write(self):
         output, vendor, smart_client = self.make_client_with_failing_medium()
         smart_request = client._SmartClientRequest(smart_client, b"hello", ())
-        handler = smart_request._send(3)
+        smart_request._send(3)
         self.assertEqual(
             b"bzr message 3 (bzr 1.6)\n"  # protocol
             b"\x00\x00\x00\x02de"  # empty headers
@@ -3940,7 +3950,6 @@ class Test_SmartClientRequest(tests.TestCase):
             ],
             vendor.calls,
         )
-        del handler
 
     def test__send_doesnt_retry_read_failure(self):
         output, vendor, smart_client = self.make_client_with_failing_medium(
@@ -3967,14 +3976,14 @@ class Test_SmartClientRequest(tests.TestCase):
             ],
             vendor.calls,
         )
-        self.assertRaises(errors.ConnectionReset, handler.read_response_tuple)
+        self.assertRaises(ConnectionResetError, handler.read_response_tuple)
 
     def test__send_request_retries_body_stream_if_not_started(self):
         output, vendor, smart_client = self.make_client_with_failing_medium()
         smart_request = client._SmartClientRequest(
             smart_client, b"hello", (), body_stream=[b"a", b"b"]
         )
-        response_handler = smart_request._send(3)
+        smart_request._send(3)
         # We connect, get disconnected, and notice before consuming the stream,
         # so we try again one time and succeed.
         self.assertEqual(
@@ -4008,7 +4017,6 @@ class Test_SmartClientRequest(tests.TestCase):
             b"e",
             output.getvalue(),
         )
-        del response_handler
 
     def test__send_request_stops_if_body_started(self):
         # We intentionally use the python BytesIO so that we can subclass it.
@@ -4038,7 +4046,7 @@ class Test_SmartClientRequest(tests.TestCase):
         smart_request = client._SmartClientRequest(
             smart_client, b"hello", (), body_stream=[b"a", b"b"]
         )
-        self.assertRaises(errors.ConnectionReset, smart_request._send, 3)
+        self.assertRaises(ConnectionResetError, smart_request._send, 3)
         # We connect, and manage to get to the point that we start consuming
         # the body stream. The next write fails, so we just stop.
         self.assertEqual(
@@ -4063,10 +4071,10 @@ class Test_SmartClientRequest(tests.TestCase):
         )
 
     def test__send_disabled_retry(self):
-        debug.debug_flags.add("noretry")
+        debug.set_debug_flag("noretry")
         _output, vendor, smart_client = self.make_client_with_failing_medium()
         smart_request = client._SmartClientRequest(smart_client, b"hello", ())
-        self.assertRaises(errors.ConnectionReset, smart_request._send, 3)
+        self.assertRaises(ConnectionResetError, smart_request._send, 3)
         self.assertEqual(
             [
                 (
@@ -4316,7 +4324,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         """
         decoder = protocol.ChunkedBodyDecoder()
         self.assertRaises(
-            errors.SmartProtocolError, decoder.accept_bytes, b"bad header\n"
+            transport_errors.SmartProtocolError, decoder.accept_bytes, b"bad header\n"
         )
 
 
@@ -4394,7 +4402,7 @@ class HTTPTunnellingSmokeTest(tests.TestCase):
 
     def test_smart_http_medium_request_accept_bytes(self):
         medium = FakeHTTPMedium()
-        request = urllib.SmartClientHTTPMediumRequest(medium)
+        request = smart_http.SmartClientHTTPMediumRequest(medium)
         request.accept_bytes(b"abc")
         request.accept_bytes(b"def")
         self.assertEqual(None, medium.written_request)
