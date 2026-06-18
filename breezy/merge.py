@@ -203,7 +203,7 @@ class ConfigurableFileMerger(PerFileMerger):
     """
 
     name_prefix: str
-    default_files = None
+    default_files: list[str] | None = None
 
     def __init__(self, merger):
         """Initialize a configurable file merger.

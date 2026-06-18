@@ -1,0 +1,28 @@
+Fetching the upstream tarball from some other location
+------------------------------------------------------
+
+Status: Implemented
+Version: 0.18
+
+Rationale
+=========
+
+For a user of the plugin who is using a non-bzr upstream mode, but is not
+upstream they will have to get download the tarball from a website of FTP
+site or similar.
+
+In order to make moving to a new upstream version in this case easier
+the plugin could look for the tarball in a remote location if it's not found
+locally, then download it and place it locally.
+
+It's not a huge win, but it does mean that if it is set up correctly a new
+upstream just needs dch to try and test build.
+
+Design
+======
+
+If a watch file is included in the package, and the tarball is not found then
+uscan is asked to retrieve the desired version. It is then repacked if
+necessary and placed in the orig-dir so the build can be done, and the
+download wont have to be done next time.
+

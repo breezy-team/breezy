@@ -36,6 +36,9 @@ dependencies = [
     "urllib3>=1.24.1",
     "pyyaml",
     "vcsgraph",
+    "debmutate[watch]>=0.75",
+    "python_debian",
+    "distro-info",
 ]
 dynamic = ["version", "scripts"]
 
@@ -48,6 +51,8 @@ Repository = "https://github.com/breezy-team/breezy"
 fastimport = ["fastimport>=0.9.8"]
 git = ["dulwich>=1,<2"]
 launchpad = ["launchpadlib>=1.6.3"]
+udd = ["psycopg2"]
+apt = ["python-apt @ git+https://salsa.debian.org/apt-team/python-apt"]
 workspace = ["pyinotify", "pyasyncore;python_version>='3.12'"]
 doc = [
     "docutils",
@@ -93,6 +98,7 @@ breezy = [
     "tests/ssl_certs/server.crt",
     "py.typed",
 ]
+"breezy.plugins.debian" = ["py.typed"]
 
 [tool.setuptools.dynamic]
 version = {attr = "breezy.__version__"}
