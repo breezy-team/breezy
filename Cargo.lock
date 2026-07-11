@@ -210,6 +210,13 @@ name = "breezy-annotate"
 version = "3.4.0"
 
 [[package]]
+name = "breezy-cli"
+version = "3.4.0"
+dependencies = [
+ "pyo3",
+]
+
+[[package]]
 name = "breezy-git"
 version = "3.4.0"
 dependencies = [

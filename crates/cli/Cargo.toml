@@ -1,0 +1,13 @@
+[package]
+name = "breezy-cli"
+version = { workspace = true }
+edition = "2021"
+description = "Command-line launcher for Breezy"
+license = "GPL-2.0-or-later"
+
+[[bin]]
+name = "brz"
+path = "src/main.rs"
+
+[dependencies]
+pyo3 = { workspace = true, features = ["abi3"] }

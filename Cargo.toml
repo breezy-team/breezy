@@ -6,23 +6,18 @@ authors = [
 	"Jelmer Vernooij <jelmer@jelmer.uk>",
 ]
 edition = "2021"
-default-run = "brz"
 license = "GPL-2.0-or-later"
 description = "Friendly distributed version control system"
 repository = "https://github.com/breezy-team/breezy"
 homepage = "https://www.breezy-vcs.org/"
 documentation = "https://www.breezy-vcs.org/doc/"
-include = ["src/*.rs", "breezy/main.rs", "README.rst"]
+include = ["src/*.rs", "README.rst"]
 
 [workspace]
 members = ["crates/*"]
 
 [workspace.package]
 version = "3.4.0"
-
-[[bin]]
-name = "brz"
-path = "src/main.rs"
 
 [lib]
 
