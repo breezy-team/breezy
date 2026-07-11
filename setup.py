@@ -166,7 +166,11 @@ if (
     and "__pypy__" not in sys.builtin_module_names
     and sys.platform != "win32"
 ):
-    rust_extensions.append(RustExtension("brz", binding=Binding.Exec, strip=Strip.All))
+    rust_extensions.append(
+        RustExtension(
+            "brz", "crates/cli/Cargo.toml", binding=Binding.Exec, strip=Strip.All
+        )
+    )
 else:
     # Fall back to python main on cibuildwheels, since it doesn't provide
     # -lpython3.7 to link binaries against
