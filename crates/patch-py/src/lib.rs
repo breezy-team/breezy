@@ -34,24 +34,6 @@ create_exception!(
 import_exception!(breezy.errors, BinaryFile);
 
 #[pyfunction]
-#[pyo3(signature = (patch_contents, filename, output_filename = None, reverse = None))]
-fn patch(
-    patch_contents: Vec<Vec<u8>>,
-    filename: PathBuf,
-    output_filename: Option<PathBuf>,
-    reverse: Option<bool>,
-) -> PyResult<i32> {
-    let output_path = output_filename.as_deref();
-    breezy_patch::invoke::patch(
-        patch_contents.iter().map(|x| x.as_slice()),
-        filename.as_path(),
-        output_path,
-        reverse.unwrap_or(false),
-    )
-    .map_err(invoke_err_to_py_err)
-}
-
-#[pyfunction]
 fn diff3(
     out_file: PathBuf,
     mine_path: PathBuf,
@@ -112,26 +94,6 @@ fn invoke_err_to_py_err(err: breezy_patch::invoke::Error) -> PyErr {
             PatchFailed::new_err((exitcode, stderr))
         }
     }
-}
-
-/// Apply hunks by shelling out to patch(1). `breezy.patch` re-exports this;
-/// the in-process equivalent used by `breezy.patches` lives in `unified`.
-#[pyfunction]
-fn invoke_iter_patched_from_hunks(
-    py: Python,
-    orig_lines: Py<PyAny>,
-    hunks: Py<PyAny>,
-) -> PyResult<Py<PyAny>> {
-    let orig_lines = orig_lines.extract::<Vec<Vec<u8>>>(py)?;
-    let hunks = hunks.extract::<Vec<Vec<u8>>>(py)?;
-    let patched_lines = breezy_patch::invoke::iter_patched_from_hunks(
-        orig_lines.iter().map(|x| x.as_slice()),
-        hunks.iter().map(|x| x.as_slice()),
-    )
-    .map_err(invoke_err_to_py_err)?;
-
-    let pl = vec![PyBytes::new(py, &patched_lines)];
-    Ok(PyList::new(py, &pl)?.into())
 }
 
 fn parse_err_to_py_err(err: breezy_patch::parse::Error) -> PyErr {
@@ -241,10 +203,8 @@ fn format_patch_date(py: Python, secs: Py<PyAny>, offset: Option<Py<PyAny>>) -> 
 
 #[pymodule]
 fn _patch_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    m.add_wrapped(wrap_pyfunction!(patch))?;
     m.add_wrapped(wrap_pyfunction!(diff3))?;
     m.add_wrapped(wrap_pyfunction!(run_patch))?;
-    m.add_wrapped(wrap_pyfunction!(invoke_iter_patched_from_hunks))?;
     m.add_wrapped(wrap_pyfunction!(get_patch_names))?;
     m.add_wrapped(wrap_pyfunction!(iter_lines_handle_nl))?;
     m.add_wrapped(wrap_pyfunction!(parse_range))?;

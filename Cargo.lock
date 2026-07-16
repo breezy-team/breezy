@@ -262,7 +262,6 @@ dependencies = [
  "lazy_static",
  "patchkit",
  "regex",
- "tempfile",
 ]
 
 [[package]]

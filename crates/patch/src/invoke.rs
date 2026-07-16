@@ -1,9 +1,8 @@
 use breezy_osutils::textfile::check_text_path;
 use std::ffi::OsString;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use tempfile::NamedTempFile;
 
 pub enum Error {
     PatchInvokeError(
@@ -47,46 +46,6 @@ where
     let stderr = output.stderr;
     let status = output.status.code().unwrap_or(-1);
     Ok((stdout, stderr, status))
-}
-
-/// Apply a patch to a file, producing another output file.
-pub fn patch<'a, I>(
-    patch_contents: I,
-    filename: &Path,
-    output_filename: Option<&Path>,
-    reverse: bool,
-) -> Result<i32, Error>
-where
-    I: Iterator<Item = &'a [u8]>,
-{
-    let mut args: Vec<OsString> = vec![
-        "-f".into(),
-        "-s".into(),
-        "--posix".into(),
-        "--binary".into(),
-    ];
-    if reverse {
-        args.push("--reverse".into());
-    }
-    if let Some(output_filename) = output_filename {
-        args.extend(vec!["-o".into(), output_filename.into()]);
-    }
-    args.push(filename.into());
-    let (stdout, stderr, status) = write_to_cmd("patch", &args, patch_contents)
-        .map_err(|e| Error::PatchInvokeError(e.to_string(), String::new(), Some(Box::new(e))))?;
-    if status < 0 {
-        let err = if output_filename.is_some() {
-            assert!(stderr.is_empty());
-            &stdout
-        } else {
-            &stderr
-        };
-        return Err(Error::PatchFailed(
-            status,
-            String::from_utf8_lossy(err).to_string(),
-        ));
-    }
-    Ok(status)
 }
 
 /// Apply a three-way merge using `diff3`.
@@ -193,41 +152,4 @@ where
     }
     out.write_all(&output.stdout)?;
     Ok(())
-}
-
-/// Iterate through a series of lines with a patch applied.
-///
-/// This handles a single file and performs exact, not fuzzy patching.
-pub fn iter_patched_from_hunks<'a, I, H>(orig_lines: I, hunks: H) -> Result<Vec<u8>, Error>
-where
-    I: IntoIterator<Item = &'a [u8]>,
-    H: Iterator<Item = &'a [u8]>,
-{
-    let temp_file = NamedTempFile::new()?;
-    let mut f = BufWriter::new(temp_file);
-    for line in orig_lines {
-        f.write_all(line)?;
-    }
-    f.flush()?;
-    let temp_file_path = f.into_inner().unwrap().into_temp_path();
-    let args: Vec<OsString> = vec![
-        "-f".into(),
-        "-s".into(),
-        "--posix".into(),
-        "--binary".into(),
-        "--output=-".into(),
-        "--reject-file=-".into(),
-        "--input=-".into(),
-        temp_file_path.as_os_str().into(),
-    ];
-    let (stdout, stderr, status) = write_to_cmd("patch", &args, hunks)
-        .map_err(|e| Error::PatchInvokeError(e.to_string(), String::new(), Some(Box::new(e))))?;
-    if status != 0 {
-        return Err(Error::PatchFailed(
-            status,
-            String::from_utf8_lossy(&stderr).to_string(),
-        ));
-    }
-    assert!(stderr.is_empty());
-    Ok(stdout)
 }
