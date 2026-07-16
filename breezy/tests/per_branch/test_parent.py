@@ -21,8 +21,6 @@ import breezy.errors
 from breezy import urlutils
 from breezy.tests import TestCaseWithTransport, TestNotApplicable, TestSkipped
 
-from ...osutils import getcwd
-
 """Tests for Branch parent URL"""
 
 
@@ -72,12 +70,11 @@ class TestParent(TestCaseWithTransport):
     def test_get_invalid_parent(self):
         b = self.make_branch(".")
 
-        cwd = getcwd()
-        n_dirs = len(cwd.split("/"))
-
-        # Force the relative path to be something invalid
-        # This should attempt to go outside the filesystem
-        path = ("../" * (n_dirs + 5)) + "foo"
+        # Force the relative path to be something invalid by going up
+        # well past the URL root. Use a generous count: real branch URLs
+        # are at most a few dozen components deep; 100 ".." segments are
+        # always above-root regardless of cwd or platform path layout.
+        path = ("../" * 100) + "foo"
         b.lock_write()
         b._set_parent_location(path)
         b.unlock()

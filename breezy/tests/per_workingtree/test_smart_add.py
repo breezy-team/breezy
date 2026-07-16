@@ -54,7 +54,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree("tree")
         try:
             self.build_tree(["tree/" + filename])
-        except NoSuchFile as err:
+        except (transport.NoSuchFile, errors.IllegalPath) as err:
             if sys.platform == "win32":
                 raise tests.TestNotApplicable(
                     f"Cannot create files named {filename!r} on win32"

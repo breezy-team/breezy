@@ -205,14 +205,10 @@ class TestLocations(TestCase):
     def test_appdata_matches_environment(self):
         # Typically the APPDATA environment variable will match
         # get_appdata_location
-        # XXX - See bug 262874, which asserts the correct encoding is 'mbcs',
-        encoding = osutils.get_user_encoding()
         env_val = os.environ.get("APPDATA", None)
         if not env_val:
             raise TestSkipped("No APPDATA environment variable exists")
-        self.assertPathsEqual(
-            win32utils.get_appdata_location(), env_val.decode(encoding)
-        )
+        self.assertPathsEqual(win32utils.get_appdata_location(), env_val)
 
     def test_local_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
@@ -226,10 +222,7 @@ class TestLocations(TestCase):
         lad = win32utils.get_local_appdata_location()
         env = os.environ.get("LOCALAPPDATA")
         if env:
-            # XXX - See bug 262874, which asserts the correct encoding is
-            # 'mbcs'
-            encoding = osutils.get_user_encoding()
-            self.assertPathsEqual(lad, env.decode(encoding))
+            self.assertPathsEqual(lad, env)
 
 
 class TestSetHidden(TestCaseInTempDir):

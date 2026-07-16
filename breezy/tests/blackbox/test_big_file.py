@@ -24,15 +24,22 @@ memory.
 import contextlib
 import errno
 import os
-import resource
 import sys
 
 from breezy import tests
 
+# `resource` is POSIX-only; on Windows the rest of this module is unused.
+if sys.platform != "win32":
+    import resource
+
+    RESOURCE = resource.RLIMIT_AS
+else:
+    resource = None
+    RESOURCE = None
+
 BIG_FILE_SIZE = 1024 * 1024 * 500
 BIG_FILE_CHUNK_SIZE = 1024
 
-RESOURCE = resource.RLIMIT_AS
 LIMIT = 1024 * 1024 * 100
 
 
@@ -66,6 +73,10 @@ class TestAdd(tests.TestCaseWithTransport):
                 self.skipTest("not enough disk space for big file")
 
     def setUp(self):
+        if resource is None:
+            raise tests.TestNotApplicable(
+                "resource.RLIMIT_AS is only available on POSIX"
+            )
         super().setUp()
         cm = limit_memory(LIMIT)
         try:

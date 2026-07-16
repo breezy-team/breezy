@@ -371,7 +371,11 @@ fn _get_user_encoding() -> Option<String> {
 
 #[cfg(windows)]
 fn _get_user_encoding() -> Option<String> {
-    None
+    let cp = unsafe { winapi::um::winnls::GetACP() };
+    if cp == 0 {
+        return None;
+    }
+    Some(format!("cp{cp}"))
 }
 
 pub fn get_user_encoding() -> Option<String> {
@@ -429,10 +433,30 @@ pub fn is_local_pid_dead(pid: u32) -> bool {
 }
 
 #[cfg(windows)]
-pub fn is_local_pid_dead(_pid: u32) -> bool {
-    // No reliable cross-session way to tell on Windows without OpenProcess
-    // permissions; fall back to "don't know".
-    false
+pub fn is_local_pid_dead(pid: u32) -> bool {
+    use winapi::shared::minwindef::FALSE;
+    use winapi::um::errhandlingapi::GetLastError;
+    use winapi::um::handleapi::CloseHandle;
+    use winapi::um::processthreadsapi::OpenProcess;
+    use winapi::um::winnt::PROCESS_QUERY_LIMITED_INFORMATION;
+
+    const ERROR_INVALID_PARAMETER: u32 = 87;
+    const ERROR_ACCESS_DENIED: u32 = 5;
+
+    unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+        if !handle.is_null() {
+            CloseHandle(handle);
+            return false; // Process exists.
+        }
+        match GetLastError() {
+            // The PID is unknown to the OS — the process is gone.
+            ERROR_INVALID_PARAMETER => true,
+            // The process exists but we don't have rights to query it.
+            ERROR_ACCESS_DENIED => false,
+            _ => false, // Don't really know.
+        }
+    }
 }
 
 pub fn get_user_name() -> String {
