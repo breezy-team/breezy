@@ -10,3 +10,4 @@ crate-type = ["cdylib"]
 pyo3 = { workspace = true, features = ["extension-module", "chrono"]}
 pyo3-filelike = { workspace = true }
 breezy-patch = { path = "../patch" }
+patchkit = { workspace = true }

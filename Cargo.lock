@@ -1346,15 +1346,16 @@ name = "patch-py"
 version = "3.4.0"
 dependencies = [
  "breezy-patch",
+ "patchkit",
  "pyo3",
  "pyo3-filelike",
 ]
 
 [[package]]
 name = "patchkit"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c84e55b70d0851fe35c043b32204ea0fcc253f8695bef88d5b6bd62c5c75416c"
+checksum = "26add3ea4fe507c51abf03156ee4b2d03d65e6a6ec41ac31e95b00d27e6a896a"
 dependencies = [
  "chrono",
  "lazy-regex",

@@ -298,8 +298,9 @@ class PatchesTester(TestCase):
         orig_lines[parsed.hunks[0].orig_pos] = b"not what the patch expects\n"
         err = self.assertRaises(
             PatchConflict,
-            list,
-            iter_patched_from_hunks(orig_lines, parsed.hunks),
+            iter_patched_from_hunks,
+            orig_lines,
+            parsed.hunks,
         )
         self.assertEqual(err.orig_line, b"not what the patch expects")
 
