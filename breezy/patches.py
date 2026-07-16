@@ -67,8 +67,8 @@ class PatchConflict(BzrError):
             patch_line: Expected line content from patch.
         """
         self.line_no = line_no
-        self.orig_line = orig_line.rstrip("\n")
-        self.patch_line = patch_line.rstrip("\n")
+        self.orig_line = orig_line.rstrip(b"\n")
+        self.patch_line = patch_line.rstrip(b"\n")
 
 
 class MalformedHunkHeader(PatchSyntax):

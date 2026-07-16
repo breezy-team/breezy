@@ -31,6 +31,7 @@ from ..patches import (
     MalformedLine,
     MalformedPatchHeader,
     Patch,
+    PatchConflict,
     RemoveLine,
     difference_index,
     get_patch_names,
@@ -290,6 +291,17 @@ class PatchesTester(TestCase):
     def test_iter_patched_binary(self):
         binary_lines = self.data_lines("binary.patch")
         self.assertRaises(BinaryFiles, iter_patched, [], binary_lines)
+
+    def test_iter_patched_from_hunks_conflict(self):
+        parsed = parse_patch(self.datafile("diff-2"))
+        orig_lines = list(self.datafile("orig-2"))
+        orig_lines[parsed.hunks[0].orig_pos] = b"not what the patch expects\n"
+        err = self.assertRaises(
+            PatchConflict,
+            list,
+            iter_patched_from_hunks(orig_lines, parsed.hunks),
+        )
+        self.assertEqual(err.orig_line, b"not what the patch expects")
 
     def test_iter_patched_from_hunks(self):
         """Test a few patch files, and make sure they work."""
