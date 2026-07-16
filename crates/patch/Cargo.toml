@@ -13,3 +13,6 @@ patchkit = { workspace = true }
 regex = "1.3.9"
 lazy_static = "1.4.0"
 chrono = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.1.0"
