@@ -9,6 +9,8 @@ use std::ffi::OsString;
 use std::io::Write;
 use std::path::PathBuf;
 
+mod unified;
+
 #[cfg(unix)]
 fn os_string_from_bytes(bytes: Vec<u8>) -> OsString {
     use std::os::unix::ffi::OsStringExt;
@@ -112,8 +114,10 @@ fn invoke_err_to_py_err(err: breezy_patch::invoke::Error) -> PyErr {
     }
 }
 
+/// Apply hunks by shelling out to patch(1). `breezy.patch` re-exports this;
+/// the in-process equivalent used by `breezy.patches` lives in `unified`.
 #[pyfunction]
-fn iter_patched_from_hunks(
+fn invoke_iter_patched_from_hunks(
     py: Python,
     orig_lines: Py<PyAny>,
     hunks: Py<PyAny>,
@@ -240,7 +244,7 @@ fn _patch_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(patch))?;
     m.add_wrapped(wrap_pyfunction!(diff3))?;
     m.add_wrapped(wrap_pyfunction!(run_patch))?;
-    m.add_wrapped(wrap_pyfunction!(iter_patched_from_hunks))?;
+    m.add_wrapped(wrap_pyfunction!(invoke_iter_patched_from_hunks))?;
     m.add_wrapped(wrap_pyfunction!(get_patch_names))?;
     m.add_wrapped(wrap_pyfunction!(iter_lines_handle_nl))?;
     m.add_wrapped(wrap_pyfunction!(parse_range))?;
@@ -255,5 +259,20 @@ fn _patch_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
         py.get_type::<MalformedPatchHeader>(),
     )?;
     m.add("BinaryFiles", py.get_type::<BinaryFiles>())?;
+
+    m.add_wrapped(wrap_pyfunction!(unified::parse_line))?;
+    m.add_wrapped(wrap_pyfunction!(unified::hunk_from_header))?;
+    m.add_wrapped(wrap_pyfunction!(unified::parse_patch))?;
+    m.add_wrapped(wrap_pyfunction!(unified::parse_patches))?;
+    m.add_wrapped(wrap_pyfunction!(unified::iter_hunks))?;
+    m.add_wrapped(wrap_pyfunction!(unified::iter_patched_from_hunks))?;
+    m.add_class::<unified::HunkLine>()?;
+    m.add_class::<unified::ContextLine>()?;
+    m.add_class::<unified::InsertLine>()?;
+    m.add_class::<unified::RemoveLine>()?;
+    m.add_class::<unified::Hunk>()?;
+    m.add_class::<unified::BinaryPatch>()?;
+    m.add_class::<unified::Patch>()?;
+    m.add("NO_NL", PyBytes::new(py, patchkit::unified::NO_NL))?;
     Ok(())
 }
