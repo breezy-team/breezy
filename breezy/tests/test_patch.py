@@ -15,10 +15,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy.tests import TestCaseInTempDir, features
+from breezy.tests import TestCaseInTempDir
 
 from ..errors import BinaryFile
-from ..patch import PatchInvokeError, diff3, run_patch
+from ..patch import diff3, run_patch
 
 
 class TestPatch(TestCaseInTempDir):
@@ -31,17 +31,8 @@ class TestPatch(TestCaseInTempDir):
             f.write(b"\x00")
         self.assertRaises(BinaryFile, diff3, "unused", "this", "other", "base")
 
-    def test_missing_patch(self):
-        self.assertRaises(
-            PatchInvokeError, run_patch, ".", [], _patch_cmd="/unlikely/to/exist"
-        )
-
 
 class RunPatchTests(TestCaseInTempDir):
-    def setUp(self):
-        super().setUp()
-        self.requireFeature(features.patch_feature)
-
     def test_new_file(self):
         run_patch(
             ".",

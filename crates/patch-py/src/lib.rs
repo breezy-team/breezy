@@ -50,8 +50,7 @@ fn diff3(
 }
 
 #[pyfunction]
-#[pyo3(signature = (directory, patches, strip = None, reverse = None, dry_run = None, quiet = None, target_file = None, out = None, _patch_cmd = None))]
-#[allow(clippy::too_many_arguments)]
+#[pyo3(signature = (directory, patches, strip = None, reverse = None, dry_run = None, quiet = None, out = None))]
 fn run_patch(
     directory: PathBuf,
     patches: Vec<Vec<u8>>,
@@ -59,9 +58,7 @@ fn run_patch(
     reverse: Option<bool>,
     dry_run: Option<bool>,
     quiet: Option<bool>,
-    target_file: Option<&str>,
     out: Option<Py<PyAny>>,
-    _patch_cmd: Option<&str>,
 ) -> PyResult<()> {
     let mut out: Box<dyn Write> = if let Some(obj) = out {
         Box::new(PyBinaryFile::from(obj))
@@ -69,18 +66,27 @@ fn run_patch(
         Box::new(std::io::stdout())
     };
 
-    breezy_patch::invoke::run_patch(
+    breezy_patch::apply::run_patch(
         directory.as_path(),
         patches.iter().map(|x| x.as_slice()),
         strip.unwrap_or(0),
         reverse.unwrap_or(false),
         dry_run.unwrap_or(false),
         quiet.unwrap_or(true),
-        target_file,
         &mut out,
-        _patch_cmd,
+        // patch(1) was always invoked with --remove-empty-files.
+        true,
     )
-    .map_err(invoke_err_to_py_err)
+    .map_err(apply_err_to_py_err)
+}
+
+fn apply_err_to_py_err(err: breezy_patch::apply::Error) -> PyErr {
+    match err {
+        breezy_patch::apply::Error::Io(err) => err.into(),
+        breezy_patch::apply::Error::Malformed(err) => PatchSyntax::new_err(err),
+        // patch(1) exits 1 when a hunk fails, and reports on stdout.
+        breezy_patch::apply::Error::Failed(text) => PatchFailed::new_err((1, text)),
+    }
 }
 
 fn invoke_err_to_py_err(err: breezy_patch::invoke::Error) -> PyErr {

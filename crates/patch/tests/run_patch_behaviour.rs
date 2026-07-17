@@ -207,6 +207,35 @@ fn backs_up_the_original_unless_the_match_was_exact() {
     assert_eq!(file(&tree, "f.txt.orig").unwrap(), b"ctx1\nb\nctx2\n");
 }
 
+/// A file with no trailing newline keeps having none, on both sides of the
+/// change. The `\ No newline at end of file` marker is what says so.
+#[test]
+fn honours_the_no_newline_marker() {
+    let patch = b"--- a/f.txt\n+++ b/f.txt\n@@ -1,1 +1,1 @@\n-hello\n\\ No newline at end of file\n+goodbye\n\\ No newline at end of file\n";
+    let (o, tree) = both(&[("f.txt", b"hello")], patch, false);
+    assert_eq!(o.result, Ok(()));
+    assert_eq!(file(&tree, "f.txt").unwrap(), b"goodbye");
+
+    // A newline gained: the marker is on the original side only.
+    let gains = b"--- a/g.txt\n+++ b/g.txt\n@@ -1,1 +1,1 @@\n-hello\n\\ No newline at end of file\n+hello\n";
+    let (o, tree) = both(&[("g.txt", b"hello")], gains, false);
+    assert_eq!(o.result, Ok(()));
+    assert_eq!(file(&tree, "g.txt").unwrap(), b"hello\n");
+}
+
+/// Reversing can move a line that had no trailing newline into the middle of
+/// the file, where it needs one again.
+#[test]
+fn reverse_restores_a_newline_mid_file() {
+    let patch = b"--- a/f.txt\n+++ b/f.txt\n@@ -1,3 +1 @@\n line0\n-line1\n-line2\n\\ No newline at end of file\n";
+    let (o, tree) = both_with(&[("f.txt", b"prefix0\nline0\nline1\nline2")], patch, false, true);
+    assert_eq!(o.result, Ok(()));
+    assert_eq!(
+        file(&tree, "f.txt").unwrap(),
+        b"prefix0\nline1\nline2\nline0\nline1\nline2"
+    );
+}
+
 #[test]
 fn creates_a_file_from_dev_null() {
     let patch = b"--- /dev/null\n+++ b/new.txt\n@@ -0,0 +1,2 @@\n+one\n+two\n";
