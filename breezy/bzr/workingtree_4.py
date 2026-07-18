@@ -69,7 +69,7 @@ from dromedary import get_transport_from_path
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
 
-from .. import cache_utf8, debug, errors, osutils, trace
+from .. import debug, errors, osutils, trace
 from .. import revision as _mod_revision
 from ..lock import LogicalLockResult
 from ..lockdir import LockDir
@@ -369,7 +369,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
             raise AssertionError(current_entry)
         inv = Inventory(root_id=current_id)
         minikind_to_kind = dirstate.DirState._minikind_to_kind
-        utf8_decode = cache_utf8._utf8_decode
         # Track parent file_ids by dirblock path for directory entries
         parent_ids = {b"": current_id}
         for block in state._dirblocks[1:]:  # skip the root
@@ -385,7 +384,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # a parent tree only entry
                     continue
                 name = key[1]
-                name_unicode = utf8_decode(name)[0]
+                name_unicode = name.decode("utf-8")
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
                 if kind == "file":
@@ -2136,7 +2135,6 @@ class DirStateRevisionTree(InventoryTree):
         )
         # Turn some things into local variables
         minikind_to_kind = dirstate.DirState._minikind_to_kind
-        utf8_decode = cache_utf8._utf8_decode
         parent_ids = {b"": inv.root.file_id}
         for block in self._dirstate._dirblocks[1:]:  # skip root
             dirname = block[0]
@@ -2150,7 +2148,7 @@ class DirStateRevisionTree(InventoryTree):
                     continue
                 revid = revid or None
                 name = key[1]
-                name_unicode = utf8_decode(name)[0]
+                name_unicode = name.decode("utf-8")
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
                 if kind == "file":
@@ -2177,7 +2175,7 @@ class DirStateRevisionTree(InventoryTree):
                         name_unicode,
                         parent_id,
                         revision=revid,
-                        symlink_target=utf8_decode(fingerprint)[0],
+                        symlink_target=fingerprint.decode("utf-8"),
                     )
                 elif kind == "tree-reference":
                     inv_entry = TreeReference(
@@ -2752,8 +2750,6 @@ class InterDirStateTree(InterInventoryTree):
         # make all specific_files utf8
         search_specific_files_utf8 = set()
         for path in osutils.minimum_path_selection(specific_files):
-            # Note, if there are many specific files, using cache_utf8
-            # would be good here.
             search_specific_files_utf8.add(path.encode("utf8"))
 
         iter_changes = state._rs.iter_changes(

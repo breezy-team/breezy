@@ -49,7 +49,6 @@ lazy_import.lazy_import(
     globals(),
     """
 from breezy import (
-    cache_utf8,
     conflicts as _mod_conflicts,
     globbing,
     ignores,
@@ -1089,7 +1088,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 for s in RioReader(hashfile):
                     # RioReader reads in Unicode, so convert file_ids back to
                     # utf8
-                    file_id = cache_utf8.encode(s.get("file_id"))
+                    file_id = s.get("file_id").encode("utf-8")
                     try:
                         path = self.id2path(file_id)
                     except NoSuchId:

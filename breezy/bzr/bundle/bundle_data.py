@@ -30,7 +30,7 @@ from bzrformats.inventory import (
 )
 from bzrformats.xml5 import inventory_serializer_v5
 
-from ... import cache_utf8, osutils
+from ... import osutils
 from ...errors import BzrError, TestamentMismatch
 from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision
@@ -415,7 +415,7 @@ class BundleInfo:
             if last_changed is not None:
                 # last_changed will be a Unicode string because of how it was
                 # read. Convert it back to utf8.
-                changed_revision_id = cache_utf8.encode(last_changed)
+                changed_revision_id = last_changed.encode("utf-8")
             else:
                 changed_revision_id = revision_id
             bundle_tree.note_last_changed(path, changed_revision_id)
@@ -492,7 +492,7 @@ class BundleInfo:
                 )
             # This will be Unicode because of how the stream is read. Turn it
             # back into a utf8 file_id
-            file_id = cache_utf8.encode(info[1][8:])
+            file_id = info[1][8:].encode("utf-8")
 
             bundle_tree.note_id(file_id, path, kind)
             # this will be overridden in extra_info if executable is specified.
