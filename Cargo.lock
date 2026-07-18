@@ -116,7 +116,7 @@ dependencies = [
  "md-5",
  "memchr",
  "nix",
- "patiencediff",
+ "patiencediff 0.2.1",
  "pyo3",
  "rand 0.10.1",
  "regex",
@@ -197,6 +197,7 @@ dependencies = [
  "log",
  "nix",
  "once_cell",
+ "patiencediff 0.3.0",
  "percent-encoding",
  "pyo3",
  "regex",
@@ -1376,6 +1377,12 @@ name = "patiencediff"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c707262dd66fabcb1b2b79f2d65e2a1f8abb7e31005e882504c99680e009225"
+
+[[package]]
+name = "patiencediff"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1203e98a093ed5712d443d24cc752267c6ba23162321aeaf4837c425d3a9a597"
 
 [[package]]
 name = "percent-encoding"

@@ -49,6 +49,7 @@ from breezy.i18n import gettext
 from dromedary.errors import NoSuchFile
 
 from . import errors, osutils
+from ._cmd_rs import diff as _diff_rs
 from .registry import Registry
 from .trace import mutter, note, warning
 from .tree import FileTimestampUnavailable, Tree
@@ -94,48 +95,51 @@ def internal_diff(
         path_encoding: Encoding for path names.
         context_lines: Number of context lines to include.
     """
-    # FIXME: difflib is wrong if there is no trailing newline.
-    # The syntax used by patch seems to be "\ No newline at
-    # end of file" following the last diff line from that
-    # file.  This is not trivial to insert into the
-    # unified_diff output and it might be better to just fix
-    # or replace that function.
-
-    # In the meantime we at least make sure the patch isn't
-    # mangled.
+    # The patch syntax uses "\ No newline at end of file" following the last
+    # diff line from a file that lacks a trailing newline; the Rust helper
+    # inserts that marker and applies the /dev/null header workaround.
 
     if allow_binary is False:
         textfile.check_text_lines(oldlines)
         textfile.check_text_lines(newlines)
 
-    if sequence_matcher is None:
-        import patiencediff
+    if sequence_matcher is not None:
+        # A caller-supplied matcher is not supported by the native path, which
+        # always uses patience matching. Fall back to the pure-Python diff.
+        ud = unified_diff_bytes(
+            oldlines,
+            newlines,
+            fromfile=old_label.encode(path_encoding, "replace"),
+            tofile=new_label.encode(path_encoding, "replace"),
+            n=context_lines,
+            sequencematcher=sequence_matcher,
+        )
 
-        sequence_matcher = patiencediff.PatienceSequenceMatcher
-    ud = unified_diff_bytes(
-        oldlines,
-        newlines,
-        fromfile=old_label.encode(path_encoding, "replace"),
-        tofile=new_label.encode(path_encoding, "replace"),
-        n=context_lines,
-        sequencematcher=sequence_matcher,
-    )
+        ud = list(ud)
+        if len(ud) == 0:  # Identical contents, nothing to do
+            return
+        # work-around for difflib being too smart for its own good
+        # if /dev/null is "1,0", patch won't recognize it as /dev/null
+        if not oldlines:
+            ud[2] = ud[2].replace(b"-1,0", b"-0,0")
+        elif not newlines:
+            ud[2] = ud[2].replace(b"+1,0", b"+0,0")
 
-    ud = list(ud)
-    if len(ud) == 0:  # Identical contents, nothing to do
+        for line in ud:
+            to_file.write(line)
+            if not line.endswith(b"\n"):
+                to_file.write(b"\n\\ No newline at end of file\n")
+        to_file.write(b"\n")
         return
-    # work-around for difflib being too smart for its own good
-    # if /dev/null is "1,0", patch won't recognize it as /dev/null
-    if not oldlines:
-        ud[2] = ud[2].replace(b"-1,0", b"-0,0")
-    elif not newlines:
-        ud[2] = ud[2].replace(b"+1,0", b"+0,0")
 
-    for line in ud:
-        to_file.write(line)
-        if not line.endswith(b"\n"):
-            to_file.write(b"\n\\ No newline at end of file\n")
-    to_file.write(b"\n")
+    _diff_rs.internal_diff(
+        old_label.encode(path_encoding, "replace"),
+        oldlines,
+        new_label.encode(path_encoding, "replace"),
+        newlines,
+        to_file,
+        context_lines=context_lines,
+    )
 
 
 def unified_diff_bytes(
