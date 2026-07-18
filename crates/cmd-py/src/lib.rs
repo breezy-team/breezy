@@ -778,6 +778,66 @@ fn split(unsplit: &str, single_quotes_allowed: bool) -> Vec<String> {
     breezy::cmdline::split(unsplit, single_quotes_allowed)
 }
 
+/// Compare two sequences of byte lines and return the unified diff lines.
+///
+/// Mirrors `breezy.diff.unified_diff_bytes` for the default (patience) matcher.
+#[pyfunction]
+#[pyo3(signature = (a, b, fromfile=Vec::new(), tofile=Vec::new(), fromfiledate=Vec::new(), tofiledate=Vec::new(), n=breezy::diff::DEFAULT_CONTEXT_AMOUNT, lineterm=vec![b'\n']))]
+#[allow(clippy::too_many_arguments)]
+fn unified_diff_bytes<'py>(
+    py: Python<'py>,
+    a: Vec<Vec<u8>>,
+    b: Vec<Vec<u8>>,
+    fromfile: Vec<u8>,
+    tofile: Vec<u8>,
+    fromfiledate: Vec<u8>,
+    tofiledate: Vec<u8>,
+    n: usize,
+    lineterm: Vec<u8>,
+) -> Vec<Bound<'py, PyBytes>> {
+    let a_refs: Vec<&[u8]> = a.iter().map(|l| l.as_slice()).collect();
+    let b_refs: Vec<&[u8]> = b.iter().map(|l| l.as_slice()).collect();
+    breezy::diff::unified_diff_bytes(
+        &a_refs,
+        &b_refs,
+        &fromfile,
+        &tofile,
+        &fromfiledate,
+        &tofiledate,
+        n,
+        &lineterm,
+    )
+    .into_iter()
+    .map(|line| PyBytes::new(py, &line))
+    .collect()
+}
+
+/// Write a unified diff of two byte-line lists to a file-like object.
+///
+/// Implements the byte core of `breezy.diff.internal_diff`: the `/dev/null`
+/// header workaround, the "No newline at end of file" marker, and the trailing
+/// blank line. The binary check and label encoding stay on the Python side.
+#[pyfunction]
+#[pyo3(signature = (old_label, oldlines, new_label, newlines, to_file, context_lines=breezy::diff::DEFAULT_CONTEXT_AMOUNT))]
+fn internal_diff(
+    old_label: Vec<u8>,
+    oldlines: Vec<Vec<u8>>,
+    new_label: Vec<u8>,
+    newlines: Vec<Vec<u8>>,
+    to_file: Py<PyAny>,
+    context_lines: usize,
+) -> PyResult<()> {
+    let old_refs: Vec<&[u8]> = oldlines.iter().map(|l| l.as_slice()).collect();
+    let new_refs: Vec<&[u8]> = newlines.iter().map(|l| l.as_slice()).collect();
+    let out =
+        breezy::diff::internal_diff(&old_label, &old_refs, &new_label, &new_refs, context_lines);
+    if let Some(out) = out {
+        let mut writer = PyBinaryFile::from(to_file);
+        writer.write_all(&out)?;
+    }
+    Ok(())
+}
+
 #[pymodule]
 fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     // Route Rust `log` records to Python's `logging` module so that fixtures
@@ -866,6 +926,11 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     m.add_class::<TreeBuilder>()?;
 
+    let diffm = PyModule::new(py, "diff")?;
+    diffm.add_function(wrap_pyfunction!(unified_diff_bytes, &diffm)?)?;
+    diffm.add_function(wrap_pyfunction!(internal_diff, &diffm)?)?;
+    m.add_submodule(&diffm)?;
+
     // PyO3 submodule hack for proper import support
     let sys = py.import("sys")?;
     let modules = sys.getattr("modules")?;
@@ -876,6 +941,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.help", module_name), &helpm)?;
     modules.set_item(format!("{}.uncommit", module_name), &uncommitm)?;
     modules.set_item(format!("{}.cmdline", module_name), &cmdlinem)?;
+    modules.set_item(format!("{}.diff", module_name), &diffm)?;
 
     Ok(())
 }

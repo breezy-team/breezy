@@ -34,6 +34,7 @@ breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
 chrono = { workspace = true }
 bazaar = { version = "3.5", features = ["pyo3"] }
 dromedary = { workspace = true, default-features = false }
+patiencediff = { workspace = true }
 percent-encoding = "2"
 url = { workspace = true }
 regex = "1"
@@ -54,6 +55,7 @@ dirs = "6"
 [workspace.dependencies]
 nix = ">=0.26"
 patchkit = "0.3.8"
+patiencediff = { version = "0.3", default-features = false }
 pyo3 = ">=0.28,<0.30"
 pyo3-filelike = "0.5.2"
 pyo3-log = "0.13"

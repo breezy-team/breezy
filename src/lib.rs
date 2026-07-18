@@ -55,6 +55,9 @@ pub mod trace;
 /// Debugging utilities.
 pub mod debug;
 
+/// Unified diff generation.
+pub mod diff;
+
 /// Tree traits and types.
 pub mod tree;
 /// Tree builder utilities.
