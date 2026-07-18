@@ -20,6 +20,27 @@ import_exception!(breezy.errors, LockCorrupt);
 import_exception!(breezy.errors, NoSuchTag);
 import_exception!(breezy.errors, TagAlreadyExists);
 
+import_exception!(breezy.bugtracker, MalformedBugIdentifier);
+import_exception!(breezy.bugtracker, InvalidBugTrackerURL);
+import_exception!(breezy.bugtracker, InvalidBugUrl);
+import_exception!(breezy.bugtracker, InvalidLineInBugsProperty);
+import_exception!(breezy.bugtracker, InvalidBugStatus);
+
+fn map_bugtracker_error(err: breezy::bugtracker::Error) -> PyErr {
+    use breezy::bugtracker::Error;
+    match err {
+        Error::MalformedBugIdentifier { bug_id, reason } => {
+            MalformedBugIdentifier::new_err((bug_id, reason))
+        }
+        Error::InvalidBugTrackerUrl { abbreviation, url } => {
+            InvalidBugTrackerURL::new_err((abbreviation, url))
+        }
+        Error::InvalidBugUrl { url } => InvalidBugUrl::new_err((url,)),
+        Error::InvalidLineInBugsProperty { line } => InvalidLineInBugsProperty::new_err((line,)),
+        Error::InvalidBugStatus { status } => InvalidBugStatus::new_err((status,)),
+    }
+}
+
 fn map_gettext_error(err: gettext::Error) -> PyErr {
     let err_msg = err.to_string();
     match err {
@@ -653,6 +674,76 @@ fn remove_tags(
     })
 }
 
+#[pyfunction]
+fn bugtracker_check_integer_bug_id(bug_id: &str) -> PyResult<()> {
+    breezy::bugtracker::check_integer_bug_id(bug_id).map_err(map_bugtracker_error)
+}
+
+#[pyfunction]
+fn bugtracker_check_project_integer_bug_id(bug_id: &str) -> PyResult<()> {
+    breezy::bugtracker::check_project_integer_bug_id(bug_id).map_err(map_bugtracker_error)
+}
+
+#[pyfunction]
+fn bugtracker_unique_integer_bug_url(base_url: &str, bug_id: &str) -> PyResult<String> {
+    breezy::bugtracker::unique_integer_bug_url(base_url, bug_id).map_err(map_bugtracker_error)
+}
+
+#[pyfunction]
+fn bugtracker_project_integer_bug_url(
+    abbreviation: &str,
+    base_url: &str,
+    bug_id: &str,
+) -> PyResult<String> {
+    breezy::bugtracker::project_integer_bug_url(abbreviation, base_url, bug_id)
+        .map_err(map_bugtracker_error)
+}
+
+#[pyfunction]
+fn bugtracker_url_parametrized_integer_bug_url(
+    base_url: &str,
+    bug_area: &str,
+    bug_id: &str,
+) -> PyResult<String> {
+    breezy::bugtracker::url_parametrized_integer_bug_url(base_url, bug_area, bug_id)
+        .map_err(map_bugtracker_error)
+}
+
+#[pyfunction]
+fn bugtracker_url_parametrized_bug_url(
+    base_url: &str,
+    bug_area: &str,
+    bug_id: &str,
+) -> PyResult<String> {
+    breezy::bugtracker::url_parametrized_bug_url(base_url, bug_area, bug_id)
+        .map_err(map_bugtracker_error)
+}
+
+#[pyfunction]
+fn bugtracker_generic_bug_url(
+    abbreviation: &str,
+    base_url: &str,
+    bug_id: &str,
+) -> PyResult<String> {
+    breezy::bugtracker::generic_bug_url(abbreviation, base_url, bug_id)
+        .map_err(map_bugtracker_error)
+}
+
+#[pyfunction]
+fn bugtracker_encode_fixes_bug_urls(bug_urls: Vec<(String, String)>) -> PyResult<String> {
+    let refs: Vec<(&str, &str)> = bug_urls
+        .iter()
+        .map(|(u, t)| (u.as_str(), t.as_str()))
+        .collect();
+    breezy::bugtracker::encode_fixes_bug_urls(refs).map_err(map_bugtracker_error)
+}
+
+#[pyfunction]
+fn bugtracker_decode_bug_urls(bug_lines: Vec<String>) -> PyResult<Vec<(String, String)>> {
+    let refs: Vec<&str> = bug_lines.iter().map(|s| s.as_str()).collect();
+    breezy::bugtracker::decode_bug_urls(refs).map_err(map_bugtracker_error)
+}
+
 #[pymodule]
 fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     // Route Rust `log` records to Python's `logging` module so that fixtures
@@ -709,6 +800,21 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_rcp_location, m)?)?;
     m.add_function(wrap_pyfunction!(help_as_plain_text, m)?)?;
     m.add_function(wrap_pyfunction!(format_see_also, m)?)?;
+    m.add_function(wrap_pyfunction!(bugtracker_check_integer_bug_id, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        bugtracker_check_project_integer_bug_id,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(bugtracker_unique_integer_bug_url, m)?)?;
+    m.add_function(wrap_pyfunction!(bugtracker_project_integer_bug_url, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        bugtracker_url_parametrized_integer_bug_url,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(bugtracker_url_parametrized_bug_url, m)?)?;
+    m.add_function(wrap_pyfunction!(bugtracker_generic_bug_url, m)?)?;
+    m.add_function(wrap_pyfunction!(bugtracker_encode_fixes_bug_urls, m)?)?;
+    m.add_function(wrap_pyfunction!(bugtracker_decode_bug_urls, m)?)?;
     m.add_class::<LockHeldInfo>()?;
 
     let helpm = PyModule::new(py, "help")?;
