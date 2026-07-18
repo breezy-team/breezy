@@ -28,6 +28,9 @@ pub mod i18n {
 pub mod bedding;
 pub mod bugtracker;
 
+/// Command-line argument splitting.
+pub mod cmdline;
+
 /// Branch management traits and types.
 pub mod branch;
 /// Control directory management traits and types.
