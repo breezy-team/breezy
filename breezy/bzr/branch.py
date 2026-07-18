@@ -443,11 +443,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
             return None
 
     def _read_last_revision_info(self):
-        from .. import cache_utf8
-
         revision_string = self._transport.get_bytes("last-revision")
         revno, revision_id = revision_string.rstrip(b"\n").split(b" ", 1)
-        revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
         return revno, revision_id
 

@@ -30,7 +30,6 @@ lazy_import(
     """
 
 from breezy import (
-    cache_utf8,
     transform,
     )
 """,
@@ -64,7 +63,7 @@ class Conflict(BaseConflict):
         # the factory blindly transfers the Stanza values to __init__ and
         # Stanza is purely a Unicode api.
         if isinstance(file_id, str):
-            file_id = cache_utf8.encode(file_id)
+            file_id = file_id.encode("utf-8")
         self.file_id = file_id
 
     def as_stanza(self):
@@ -716,7 +715,7 @@ class HandledPathConflict(HandledConflict):
         # the factory blindly transfers the Stanza values to __init__,
         # so they can be unicode.
         if isinstance(conflict_file_id, str):
-            conflict_file_id = cache_utf8.encode(conflict_file_id)
+            conflict_file_id = conflict_file_id.encode("utf-8")
         self.conflict_file_id = conflict_file_id
 
     def _cmp_list(self):
