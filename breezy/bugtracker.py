@@ -31,7 +31,7 @@ configuration information, these tracker types can return an instance capable
 of converting bug IDs into URLs.
 """
 
-from . import errors, registry, urlutils
+from . import _cmd_rs, errors, registry
 
 
 class MalformedBugIdentifier(errors.BzrError):
@@ -151,17 +151,6 @@ class TrackerRegistry(registry.Registry):
                 return tracker
         raise UnknownBugTrackerAbbreviation(abbreviated_bugtracker_name, branch)
 
-    def help_topic(self, topic):
-        """Return help text for bug tracker topics.
-
-        Args:
-            topic: The help topic requested.
-
-        Returns:
-            Help text for the topic.
-        """
-        return _bugs_help
-
 
 tracker_registry = TrackerRegistry()
 """Registry of bug trackers."""
@@ -197,10 +186,7 @@ class IntegerBugTracker(BugTracker):
         Raises:
             MalformedBugIdentifier: If the bug_id is not an integer.
         """
-        try:
-            int(bug_id)
-        except ValueError as exc:
-            raise MalformedBugIdentifier(bug_id, "Must be an integer") from exc
+        _cmd_rs.bugtracker_check_integer_bug_id(bug_id)
 
 
 class UniqueIntegerBugTracker(IntegerBugTracker):
@@ -229,7 +215,7 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
 
     def _get_bug_url(self, bug_id):
         """Return the URL for bug_id."""
-        return self.base_url + str(bug_id)
+        return _cmd_rs.bugtracker_unique_integer_bug_url(self.base_url, str(bug_id))
 
 
 class ProjectIntegerBugTracker(IntegerBugTracker):
@@ -265,23 +251,13 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
         Raises:
             MalformedBugIdentifier: If the bug_id format is invalid.
         """
-        try:
-            (_project, bug_id) = bug_id.rsplit("/", 1)
-        except ValueError as exc:
-            raise MalformedBugIdentifier(bug_id, "Expected format: project/id") from exc
-        try:
-            int(bug_id)
-        except ValueError as exc:
-            raise MalformedBugIdentifier(bug_id, "Bug id must be an integer") from exc
+        _cmd_rs.bugtracker_check_project_integer_bug_id(bug_id)
 
     def _get_bug_url(self, bug_id):
-        (project, bug_id) = bug_id.rsplit("/", 1)
         """Return the URL for bug_id."""
-        if "{id}" not in self._base_url:
-            raise InvalidBugTrackerURL(self.abbreviation, self._base_url)
-        if "{project}" not in self._base_url:
-            raise InvalidBugTrackerURL(self.abbreviation, self._base_url)
-        return self._base_url.replace("{project}", project).replace("{id}", str(bug_id))
+        return _cmd_rs.bugtracker_project_integer_bug_url(
+            self.abbreviation, self._base_url, bug_id
+        )
 
 
 tracker_registry.register(
@@ -346,7 +322,9 @@ class URLParametrizedBugTracker(BugTracker):
 
     def _get_bug_url(self, bug_id):
         """Return a URL for a bug on this Trac instance."""
-        return urlutils.join(self._base_url, self._bug_area) + str(bug_id)
+        return _cmd_rs.bugtracker_url_parametrized_bug_url(
+            self._base_url, self._bug_area, str(bug_id)
+        )
 
 
 class URLParametrizedIntegerBugTracker(IntegerBugTracker, URLParametrizedBugTracker):
@@ -391,9 +369,9 @@ class GenericBugTracker(URLParametrizedBugTracker):
 
     def _get_bug_url(self, bug_id):
         """Given a validated bug_id, return the bug's web page's URL."""
-        if "{id}" not in self._base_url:
-            raise InvalidBugTrackerURL(self._abbreviation, self._base_url)
-        return self._base_url.replace("{id}", str(bug_id))
+        return _cmd_rs.bugtracker_generic_bug_url(
+            self._abbreviation, self._base_url, str(bug_id)
+        )
 
 
 tracker_registry.register("generic", GenericBugTracker())
@@ -413,12 +391,7 @@ def encode_fixes_bug_urls(bug_urls):
     :return: A string that will be set as the 'bugs' property of a revision
         as part of a commit.
     """
-    lines = []
-    for url, tag in bug_urls:
-        if " " in url:
-            raise InvalidBugUrl(url)
-        lines.append(f"{url} {tag}")
-    return "\n".join(lines)
+    return _cmd_rs.bugtracker_encode_fixes_bug_urls(list(bug_urls))
 
 
 def decode_bug_urls(bug_lines):
@@ -427,11 +400,4 @@ def decode_bug_urls(bug_lines):
     :param bug_lines: Contents of a bugs property
     :return: iterator over (url, status) tuples
     """
-    for line in bug_lines:
-        try:
-            url, status = line.split(None, 2)
-        except ValueError as exc:
-            raise InvalidLineInBugsProperty(line) from exc
-        if status not in ALLOWED_BUG_STATUSES:
-            raise InvalidBugStatus(status)
-        yield url, status
+    yield from _cmd_rs.bugtracker_decode_bug_urls(list(bug_lines))

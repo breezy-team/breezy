@@ -125,3 +125,336 @@ inventory::submit! {
         crate::help::HelpContents::Text(BUGS_HELP),
     )
 }
+
+/// Errors raised while resolving bug identifiers into URLs or while
+/// (de)serialising the ``bugs`` revision property.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Error {
+    /// A bug identifier could not be parsed.
+    MalformedBugIdentifier {
+        /// The identifier that could not be parsed.
+        bug_id: String,
+        /// Why the identifier was rejected.
+        reason: String,
+    },
+    /// A bug tracker URL template does not contain the ``{id}`` placeholder.
+    InvalidBugTrackerUrl {
+        /// The tracker's abbreviated name.
+        abbreviation: String,
+        /// The offending URL template.
+        url: String,
+    },
+    /// A bug URL contains a space and so cannot be encoded.
+    InvalidBugUrl {
+        /// The offending URL.
+        url: String,
+    },
+    /// A line in the bugs property could not be split into url and status.
+    InvalidLineInBugsProperty {
+        /// The malformed line.
+        line: String,
+    },
+    /// A bug status is not one of the allowed values.
+    InvalidBugStatus {
+        /// The unrecognised status.
+        status: String,
+    },
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::MalformedBugIdentifier { bug_id, reason } => write!(
+                f,
+                "Did not understand bug identifier {bug_id}: {reason}. \
+                 See \"brz help bugs\" for more information on this feature."
+            ),
+            Error::InvalidBugTrackerUrl { abbreviation, url } => write!(
+                f,
+                "The URL for bug tracker \"{abbreviation}\" doesn't contain {{id}}: {url}"
+            ),
+            Error::InvalidBugUrl { url } => write!(f, "Invalid bug URL: {url}"),
+            Error::InvalidLineInBugsProperty { line } => {
+                write!(f, "Invalid line in bugs property: '{line}'")
+            }
+            Error::InvalidBugStatus { status } => write!(f, "Invalid bug status: '{status}'"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+/// Check that a bug id is a plain integer, as required by
+/// [`unique_integer_bug_url`] and the Trac/Bugzilla trackers.
+pub fn check_integer_bug_id(bug_id: &str) -> Result<(), Error> {
+    if bug_id.parse::<i64>().is_err() {
+        return Err(Error::MalformedBugIdentifier {
+            bug_id: bug_id.to_string(),
+            reason: "Must be an integer".to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// Check that a bug id has the ``project/id`` shape, where ``id`` is an
+/// integer, as required by [`project_integer_bug_url`].
+pub fn check_project_integer_bug_id(bug_id: &str) -> Result<(), Error> {
+    let Some((_project, id)) = bug_id.rsplit_once('/') else {
+        return Err(Error::MalformedBugIdentifier {
+            bug_id: bug_id.to_string(),
+            reason: "Expected format: project/id".to_string(),
+        });
+    };
+    if id.parse::<i64>().is_err() {
+        return Err(Error::MalformedBugIdentifier {
+            bug_id: id.to_string(),
+            reason: "Bug id must be an integer".to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// Build the bug URL for a [`UniqueIntegerBugTracker`]-style tracker by
+/// appending the (validated integer) bug id to the base URL.
+pub fn unique_integer_bug_url(base_url: &str, bug_id: &str) -> Result<String, Error> {
+    check_integer_bug_id(bug_id)?;
+    Ok(format!("{base_url}{bug_id}"))
+}
+
+/// Build the bug URL for a [`ProjectIntegerBugTracker`]-style tracker by
+/// substituting ``{project}`` and ``{id}`` into the base URL template.
+pub fn project_integer_bug_url(
+    abbreviation: &str,
+    base_url: &str,
+    bug_id: &str,
+) -> Result<String, Error> {
+    check_project_integer_bug_id(bug_id)?;
+    let (project, id) = bug_id
+        .rsplit_once('/')
+        .expect("check_project_integer_bug_id guarantees a '/'");
+    if !base_url.contains("{id}") || !base_url.contains("{project}") {
+        return Err(Error::InvalidBugTrackerUrl {
+            abbreviation: abbreviation.to_string(),
+            url: base_url.to_string(),
+        });
+    }
+    Ok(base_url.replace("{project}", project).replace("{id}", id))
+}
+
+/// Build the bug URL for a URL-parametrized integer tracker (Trac, Bugzilla):
+/// join the configured base URL with the tracker's bug area and append the
+/// (validated integer) bug id.
+pub fn url_parametrized_integer_bug_url(
+    base_url: &str,
+    bug_area: &str,
+    bug_id: &str,
+) -> Result<String, Error> {
+    check_integer_bug_id(bug_id)?;
+    url_parametrized_bug_url(base_url, bug_area, bug_id)
+}
+
+/// Build the bug URL for a URL-parametrized tracker without integer
+/// validation: join the base URL with the bug area and append the bug id.
+pub fn url_parametrized_bug_url(
+    base_url: &str,
+    bug_area: &str,
+    bug_id: &str,
+) -> Result<String, Error> {
+    let joined =
+        dromedary::urlutils::join(base_url, &[bug_area]).map_err(|e| Error::InvalidBugUrl {
+            url: format!("{base_url}: {e:?}"),
+        })?;
+    Ok(format!("{joined}{bug_id}"))
+}
+
+/// Build the bug URL for a generic tracker by substituting ``{id}`` into the
+/// configured URL template.
+pub fn generic_bug_url(abbreviation: &str, base_url: &str, bug_id: &str) -> Result<String, Error> {
+    if !base_url.contains("{id}") {
+        return Err(Error::InvalidBugTrackerUrl {
+            abbreviation: abbreviation.to_string(),
+            url: base_url.to_string(),
+        });
+    }
+    Ok(base_url.replace("{id}", bug_id))
+}
+
+/// A bug fix status recorded in the ``bugs`` revision property.
+pub const FIXED: &str = "fixed";
+/// A related-bug status recorded in the ``bugs`` revision property.
+pub const RELATED: &str = "related";
+
+fn is_allowed_status(status: &str) -> bool {
+    status == FIXED || status == RELATED
+}
+
+/// Encode ``(url, tag)`` pairs into the value of a revision's ``bugs``
+/// property: one ``<url> <tag>`` line per pair.
+///
+/// Returns [`Error::InvalidBugUrl`] if any url contains a space, since a space
+/// would make the line ambiguous on decode.
+pub fn encode_fixes_bug_urls<'a, I>(bug_urls: I) -> Result<String, Error>
+where
+    I: IntoIterator<Item = (&'a str, &'a str)>,
+{
+    let mut lines = Vec::new();
+    for (url, tag) in bug_urls {
+        if url.contains(' ') {
+            return Err(Error::InvalidBugUrl {
+                url: url.to_string(),
+            });
+        }
+        lines.push(format!("{url} {tag}"));
+    }
+    Ok(lines.join("\n"))
+}
+
+/// Decode the lines of a ``bugs`` revision property into ``(url, status)``
+/// pairs.
+///
+/// Each line must contain exactly a url and an allowed status separated by
+/// whitespace; anything else is [`Error::InvalidLineInBugsProperty`] or
+/// [`Error::InvalidBugStatus`].
+pub fn decode_bug_urls<'a, I>(bug_lines: I) -> Result<Vec<(String, String)>, Error>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let mut result = Vec::new();
+    for line in bug_lines {
+        // Mirror Python's ``line.split(None, 2)`` followed by a two-way
+        // unpack: whitespace runs collapse, and a line with three or more
+        // fields fails the unpack rather than silently dropping the extra.
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        let [url, status] = fields[..] else {
+            return Err(Error::InvalidLineInBugsProperty {
+                line: line.to_string(),
+            });
+        };
+        if !is_allowed_status(status) {
+            return Err(Error::InvalidBugStatus {
+                status: status.to_string(),
+            });
+        }
+        result.push((url.to_string(), status.to_string()));
+    }
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unique_integer_appends_id() {
+        assert_eq!(
+            unique_integer_bug_url("http://bugs.example.com/foo", "1234").unwrap(),
+            "http://bugs.example.com/foo1234"
+        );
+    }
+
+    #[test]
+    fn unique_integer_rejects_non_integer() {
+        assert_eq!(
+            unique_integer_bug_url("http://bugs.example.com/", "red").unwrap_err(),
+            Error::MalformedBugIdentifier {
+                bug_id: "red".to_string(),
+                reason: "Must be an integer".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn project_integer_substitutes() {
+        assert_eq!(
+            project_integer_bug_url(
+                "github",
+                "https://github.com/{project}/issues/{id}",
+                "a/b/1234"
+            )
+            .unwrap(),
+            "https://github.com/a/b/issues/1234"
+        );
+    }
+
+    #[test]
+    fn project_integer_rejects_missing_project() {
+        assert!(matches!(
+            check_project_integer_bug_id("1234"),
+            Err(Error::MalformedBugIdentifier { .. })
+        ));
+    }
+
+    #[test]
+    fn generic_requires_id_placeholder() {
+        assert_eq!(
+            generic_bug_url("foo", "http://x/view.html", "1234").unwrap_err(),
+            Error::InvalidBugTrackerUrl {
+                abbreviation: "foo".to_string(),
+                url: "http://x/view.html".to_string(),
+            }
+        );
+        assert_eq!(
+            generic_bug_url("foo", "http://x/{id}/view.html", "ABC-1234").unwrap(),
+            "http://x/ABC-1234/view.html"
+        );
+    }
+
+    #[test]
+    fn url_parametrized_joins_area() {
+        assert_eq!(
+            url_parametrized_integer_bug_url("http://bugs.example.com/trac", "ticket/", "1234")
+                .unwrap(),
+            "http://bugs.example.com/trac/ticket/1234"
+        );
+    }
+
+    #[test]
+    fn encode_roundtrip() {
+        assert_eq!(
+            encode_fixes_bug_urls([
+                ("http://example.com/bugs/1", "fixed"),
+                ("http://example.com/bugs/2", "related"),
+            ])
+            .unwrap(),
+            "http://example.com/bugs/1 fixed\nhttp://example.com/bugs/2 related"
+        );
+        assert_eq!(encode_fixes_bug_urls([]).unwrap(), "");
+    }
+
+    #[test]
+    fn encode_rejects_space() {
+        assert_eq!(
+            encode_fixes_bug_urls([("http://example.com/bugs/ 1", "fixed")]).unwrap_err(),
+            Error::InvalidBugUrl {
+                url: "http://example.com/bugs/ 1".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn decode_pairs() {
+        assert_eq!(
+            decode_bug_urls(["http://example.com/bugs/1 fixed"]).unwrap(),
+            vec![("http://example.com/bugs/1".to_string(), "fixed".to_string())]
+        );
+        assert_eq!(decode_bug_urls([]).unwrap(), Vec::<(String, String)>::new());
+    }
+
+    #[test]
+    fn decode_rejects_three_fields() {
+        assert_eq!(
+            decode_bug_urls(["http://example.com/bugs/ 1 fixed"]).unwrap_err(),
+            Error::InvalidLineInBugsProperty {
+                line: "http://example.com/bugs/ 1 fixed".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn decode_rejects_bad_status() {
+        assert!(matches!(
+            decode_bug_urls(["http://example.com/bugs/1 bogus"]),
+            Err(Error::InvalidBugStatus { .. })
+        ));
+    }
+}
