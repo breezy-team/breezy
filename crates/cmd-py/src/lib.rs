@@ -744,6 +744,40 @@ fn bugtracker_decode_bug_urls(bug_lines: Vec<String>) -> PyResult<Vec<(String, S
     breezy::bugtracker::decode_bug_urls(refs).map_err(map_bugtracker_error)
 }
 
+/// Iterator that splits a command line into arguments.
+///
+/// This handles proper quoting and escaping of arguments on all platforms.
+#[pyclass(module = "breezy._cmd_rs.cmdline")]
+struct Splitter {
+    inner: breezy::cmdline::Splitter,
+}
+
+#[pymethods]
+impl Splitter {
+    #[new]
+    #[pyo3(signature = (command_line, single_quotes_allowed))]
+    fn new(command_line: &str, single_quotes_allowed: bool) -> Self {
+        Splitter {
+            inner: breezy::cmdline::Splitter::new(command_line, single_quotes_allowed),
+        }
+    }
+
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<(bool, String)> {
+        slf.inner.next()
+    }
+}
+
+/// Split a command line string into a list of arguments.
+#[pyfunction]
+#[pyo3(signature = (unsplit, single_quotes_allowed = true))]
+fn split(unsplit: &str, single_quotes_allowed: bool) -> Vec<String> {
+    breezy::cmdline::split(unsplit, single_quotes_allowed)
+}
+
 #[pymodule]
 fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     // Route Rust `log` records to Python's `logging` module so that fixtures
@@ -825,6 +859,11 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     uncommitm.add_function(wrap_pyfunction!(remove_tags, &uncommitm)?)?;
     m.add_submodule(&uncommitm)?;
 
+    let cmdlinem = PyModule::new(py, "cmdline")?;
+    cmdlinem.add_class::<Splitter>()?;
+    cmdlinem.add_function(wrap_pyfunction!(split, &cmdlinem)?)?;
+    m.add_submodule(&cmdlinem)?;
+
     m.add_class::<TreeBuilder>()?;
 
     // PyO3 submodule hack for proper import support
@@ -836,6 +875,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.i18n", module_name), &i18n)?;
     modules.set_item(format!("{}.help", module_name), &helpm)?;
     modules.set_item(format!("{}.uncommit", module_name), &uncommitm)?;
+    modules.set_item(format!("{}.cmdline", module_name), &cmdlinem)?;
 
     Ok(())
 }
