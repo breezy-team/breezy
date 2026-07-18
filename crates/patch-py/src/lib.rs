@@ -34,24 +34,6 @@ create_exception!(
 import_exception!(breezy.errors, BinaryFile);
 
 #[pyfunction]
-#[pyo3(signature = (patch_contents, filename, output_filename = None, reverse = None))]
-fn patch(
-    patch_contents: Vec<Vec<u8>>,
-    filename: PathBuf,
-    output_filename: Option<PathBuf>,
-    reverse: Option<bool>,
-) -> PyResult<i32> {
-    let output_path = output_filename.as_deref();
-    breezy_patch::invoke::patch(
-        patch_contents.iter().map(|x| x.as_slice()),
-        filename.as_path(),
-        output_path,
-        reverse.unwrap_or(false),
-    )
-    .map_err(invoke_err_to_py_err)
-}
-
-#[pyfunction]
 fn diff3(
     out_file: PathBuf,
     mine_path: PathBuf,
@@ -68,8 +50,7 @@ fn diff3(
 }
 
 #[pyfunction]
-#[pyo3(signature = (directory, patches, strip = None, reverse = None, dry_run = None, quiet = None, target_file = None, out = None, _patch_cmd = None))]
-#[allow(clippy::too_many_arguments)]
+#[pyo3(signature = (directory, patches, strip = None, reverse = None, dry_run = None, quiet = None, out = None))]
 fn run_patch(
     directory: PathBuf,
     patches: Vec<Vec<u8>>,
@@ -77,9 +58,7 @@ fn run_patch(
     reverse: Option<bool>,
     dry_run: Option<bool>,
     quiet: Option<bool>,
-    target_file: Option<&str>,
     out: Option<Py<PyAny>>,
-    _patch_cmd: Option<&str>,
 ) -> PyResult<()> {
     let mut out: Box<dyn Write> = if let Some(obj) = out {
         Box::new(PyBinaryFile::from(obj))
@@ -87,18 +66,27 @@ fn run_patch(
         Box::new(std::io::stdout())
     };
 
-    breezy_patch::invoke::run_patch(
+    breezy_patch::apply::run_patch(
         directory.as_path(),
         patches.iter().map(|x| x.as_slice()),
         strip.unwrap_or(0),
         reverse.unwrap_or(false),
         dry_run.unwrap_or(false),
         quiet.unwrap_or(true),
-        target_file,
         &mut out,
-        _patch_cmd,
+        // patch(1) was always invoked with --remove-empty-files.
+        true,
     )
-    .map_err(invoke_err_to_py_err)
+    .map_err(apply_err_to_py_err)
+}
+
+fn apply_err_to_py_err(err: breezy_patch::apply::Error) -> PyErr {
+    match err {
+        breezy_patch::apply::Error::Io(err) => err.into(),
+        breezy_patch::apply::Error::Malformed(err) => PatchSyntax::new_err(err),
+        // patch(1) exits 1 when a hunk fails, and reports on stdout.
+        breezy_patch::apply::Error::Failed(text) => PatchFailed::new_err((1, text)),
+    }
 }
 
 fn invoke_err_to_py_err(err: breezy_patch::invoke::Error) -> PyErr {
@@ -114,29 +102,10 @@ fn invoke_err_to_py_err(err: breezy_patch::invoke::Error) -> PyErr {
     }
 }
 
-/// Apply hunks by shelling out to patch(1). `breezy.patch` re-exports this;
-/// the in-process equivalent used by `breezy.patches` lives in `unified`.
-#[pyfunction]
-fn invoke_iter_patched_from_hunks(
-    py: Python,
-    orig_lines: Py<PyAny>,
-    hunks: Py<PyAny>,
-) -> PyResult<Py<PyAny>> {
-    let orig_lines = orig_lines.extract::<Vec<Vec<u8>>>(py)?;
-    let hunks = hunks.extract::<Vec<Vec<u8>>>(py)?;
-    let patched_lines = breezy_patch::invoke::iter_patched_from_hunks(
-        orig_lines.iter().map(|x| x.as_slice()),
-        hunks.iter().map(|x| x.as_slice()),
-    )
-    .map_err(invoke_err_to_py_err)?;
-
-    let pl = vec![PyBytes::new(py, &patched_lines)];
-    Ok(PyList::new(py, &pl)?.into())
-}
-
-fn parse_err_to_py_err(err: breezy_patch::parse::Error) -> PyErr {
+fn parse_err_to_py_err(err: patchkit::unified::Error) -> PyErr {
+    use patchkit::unified::Error;
     match err {
-        breezy_patch::parse::Error::BinaryFiles(path1, path2) => BinaryFiles::new_err((
+        Error::BinaryFiles(path1, path2) => BinaryFiles::new_err((
             PathBuf::from(os_string_from_bytes(path1))
                 .to_string_lossy()
                 .to_string(),
@@ -144,10 +113,9 @@ fn parse_err_to_py_err(err: breezy_patch::parse::Error) -> PyErr {
                 .to_string_lossy()
                 .to_string(),
         )),
-        breezy_patch::parse::Error::PatchSyntax(err, _line) => PatchSyntax::new_err(err),
-        breezy_patch::parse::Error::MalformedPatchHeader(err, _line) => {
-            MalformedPatchHeader::new_err(err)
-        }
+        Error::PatchSyntax(err, _line) => PatchSyntax::new_err(err),
+        Error::MalformedPatchHeader(err, _line) => MalformedPatchHeader::new_err(err),
+        Error::MalformedHunkHeader(err, _line) => MalformedPatchHeader::new_err(err),
     }
 }
 
@@ -159,10 +127,12 @@ fn get_patch_names<'a>(
     (Bound<'a, PyBytes>, Option<Bound<'a, PyBytes>>),
     (Bound<'a, PyBytes>, Option<Bound<'a, PyBytes>>),
 )> {
-    let names = breezy_patch::parse::get_patch_names(
-        patch_contents.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()),
-    )
-    .map_err(parse_err_to_py_err)?;
+    // Drive the Python iterator lazily: get_patch_names consumes only the ---/+++
+    // header lines, leaving the rest for a following iter_hunks on the same
+    // iterator, as breezy.patches.iter_patched relies on. It is generic over the
+    // line type, so owned Vec<u8> items from PyO3 work without collecting first.
+    let mut lines = patch_contents.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap());
+    let names = patchkit::unified::get_patch_names(&mut lines).map_err(parse_err_to_py_err)?;
 
     let py_orig = (
         PyBytes::new(py, &names.0 .0),
@@ -180,23 +150,25 @@ fn iter_lines_handle_nl<'a>(
     py: Python<'a>,
     iter_lines: Bound<'a, PyAny>,
 ) -> PyResult<Bound<'a, PyIterator>> {
-    let py_iter = iter_lines.try_iter()?;
-    let lines = breezy_patch::parse::iter_lines_handle_nl(
-        py_iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()),
-    );
-    let pl = lines.map(|x| PyBytes::new(py, &x)).collect::<Vec<_>>();
+    let lines: Vec<Vec<u8>> = iter_lines
+        .try_iter()?
+        .map(|x| x?.extract::<Vec<u8>>())
+        .collect::<PyResult<_>>()?;
+    let handled = patchkit::unified::iter_lines_handle_nl(lines.iter().map(|l| l.as_slice()));
+    let pl = handled.map(|x| PyBytes::new(py, x)).collect::<Vec<_>>();
     PyList::new(py, &pl)?.try_iter()
 }
 
 #[pyfunction]
 fn parse_range(textrange: &str) -> PyResult<(i32, i32)> {
-    breezy_patch::parse::parse_range(textrange)
+    patchkit::unified::parse_range(textrange)
+        .map(|(pos, range)| (pos as i32, range as i32))
         .map_err(|err| PyValueError::new_err(format!("Invalid range: {}", err)))
 }
 
 #[pyfunction]
 fn difference_index(atext: &[u8], btext: &[u8]) -> PyResult<Option<usize>> {
-    Ok(breezy_patch::parse::difference_index(atext, btext))
+    Ok(patchkit::unified::difference_index(atext, btext))
 }
 
 #[pyfunction]
@@ -241,10 +213,8 @@ fn format_patch_date(py: Python, secs: Py<PyAny>, offset: Option<Py<PyAny>>) -> 
 
 #[pymodule]
 fn _patch_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    m.add_wrapped(wrap_pyfunction!(patch))?;
     m.add_wrapped(wrap_pyfunction!(diff3))?;
     m.add_wrapped(wrap_pyfunction!(run_patch))?;
-    m.add_wrapped(wrap_pyfunction!(invoke_iter_patched_from_hunks))?;
     m.add_wrapped(wrap_pyfunction!(get_patch_names))?;
     m.add_wrapped(wrap_pyfunction!(iter_lines_handle_nl))?;
     m.add_wrapped(wrap_pyfunction!(parse_range))?;

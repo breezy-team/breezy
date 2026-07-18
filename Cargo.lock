@@ -1353,9 +1353,9 @@ dependencies = [
 
 [[package]]
 name = "patchkit"
-version = "0.3.5"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26add3ea4fe507c51abf03156ee4b2d03d65e6a6ec41ac31e95b00d27e6a896a"
+checksum = "dd3f7c4735d9b0a4490baa8f3e6f89d70bc471836c1f9d3faa87cdef88ac86c9"
 dependencies = [
  "chrono",
  "lazy-regex",
