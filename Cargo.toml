@@ -52,7 +52,7 @@ dirs = "6"
 
 [workspace.dependencies]
 nix = ">=0.26"
-patchkit = "0.3.7"
+patchkit = "0.3.8"
 pyo3 = ">=0.28,<0.30"
 pyo3-filelike = "0.5.2"
 pyo3-log = "0.13"

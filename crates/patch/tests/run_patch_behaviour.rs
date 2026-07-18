@@ -228,7 +228,12 @@ fn honours_the_no_newline_marker() {
 #[test]
 fn reverse_restores_a_newline_mid_file() {
     let patch = b"--- a/f.txt\n+++ b/f.txt\n@@ -1,3 +1 @@\n line0\n-line1\n-line2\n\\ No newline at end of file\n";
-    let (o, tree) = both_with(&[("f.txt", b"prefix0\nline0\nline1\nline2")], patch, false, true);
+    let (o, tree) = both_with(
+        &[("f.txt", b"prefix0\nline0\nline1\nline2")],
+        patch,
+        false,
+        true,
+    );
     assert_eq!(o.result, Ok(()));
     assert_eq!(
         file(&tree, "f.txt").unwrap(),
