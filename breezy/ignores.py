@@ -20,9 +20,10 @@ import contextlib
 import os
 from collections.abc import Iterable
 from io import BytesIO
-from typing import BinaryIO
 
-from . import bedding, trace
+from bzrformats.ignores import parse_ignore_file
+
+from . import bedding
 
 # ~/.config/breezy/ignore will be filled out using
 # this ignore list, if it does not exist
@@ -39,44 +40,6 @@ USER_DEFAULTS = [
     "__pycache__",
     "bzr-orphans",
 ]
-
-
-def parse_ignore_file(f: BinaryIO) -> set[str]:
-    """Parse an ignore file.
-
-    Continue in the case of utf8 decoding errors, and emit a warning when
-    such and error is found. Optimise for the common case -- no decoding
-    errors.
-    """
-    from .globbing import normalize_pattern
-
-    ignored = set()
-    ignore_file = f.read()
-    try:
-        # Try and parse whole ignore file at once.
-        unicode_lines = ignore_file.decode("utf8").split("\n")
-    except UnicodeDecodeError:
-        # Otherwise go though line by line and pick out the 'good'
-        # decodable lines
-        lines = ignore_file.split(b"\n")
-        unicode_lines = []
-        for line_number, line in enumerate(lines):
-            try:
-                unicode_lines.append(line.decode("utf-8"))
-            except UnicodeDecodeError:
-                # report error about line (idx+1)
-                trace.warning(
-                    ".bzrignore: On Line #%d, malformed utf8 character. "
-                    "Ignoring line." % (line_number + 1)
-                )
-
-    # Append each line to ignore list if it's not a comment line
-    for uline in unicode_lines:
-        uline = uline.rstrip("\r\n")
-        if not uline or uline.startswith("#"):
-            continue
-        ignored.add(normalize_pattern(uline))
-    return ignored
 
 
 def get_user_ignores():
