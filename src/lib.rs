@@ -58,6 +58,9 @@ pub mod debug;
 /// Unified diff generation.
 pub mod diff;
 
+/// Text wrapping with East Asian width support.
+pub mod utextwrap;
+
 /// Tree traits and types.
 pub mod tree;
 /// Tree builder utilities.

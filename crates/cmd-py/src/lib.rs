@@ -514,6 +514,7 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
 }
 
 mod help;
+mod utextwrap;
 
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
@@ -931,6 +932,10 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     diffm.add_function(wrap_pyfunction!(internal_diff, &diffm)?)?;
     m.add_submodule(&diffm)?;
 
+    let utextwrapm = PyModule::new(py, "utextwrap")?;
+    utextwrap::utextwrap(&utextwrapm)?;
+    m.add_submodule(&utextwrapm)?;
+
     // PyO3 submodule hack for proper import support
     let sys = py.import("sys")?;
     let modules = sys.getattr("modules")?;
@@ -942,6 +947,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.uncommit", module_name), &uncommitm)?;
     modules.set_item(format!("{}.cmdline", module_name), &cmdlinem)?;
     modules.set_item(format!("{}.diff", module_name), &diffm)?;
+    modules.set_item(format!("{}.utextwrap", module_name), &utextwrapm)?;
 
     Ok(())
 }
