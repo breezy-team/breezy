@@ -28,7 +28,7 @@ dependencies = [
     "bzrformats>=3.5.0",
     "catalogus",
     "configobj",
-    "dromedary>=0.1.3",
+    "dromedary>=0.1.7",
     "fastbencode",
     "patiencediff",
     "merge3",
