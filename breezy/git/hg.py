@@ -19,61 +19,63 @@
 
 import urllib.parse
 
+RESERVED_EXTRA_KEYS = ("author", "committer", "encoding", "message", "branch", "hg-git")
+
 
 def format_hg_metadata(renames, branch, extra):
     """Construct a tail with hg-git metadata.
 
-    :param renames: List of (oldpath, newpath) tuples with file renames
-    :param branch: Branch name
-    :param extra: Dictionary with extra data
-    :return: Tail for commit message
+    :param renames: List of (oldpath, newpath) tuples with file renames,
+        as bytes
+    :param branch: Branch name, as str
+    :param extra: Dictionary mapping str keys to bytes values
+    :return: Tail for commit message, as bytes
     """
-    extra_message = ""
+    extra_message = b""
     if branch != "default":
-        extra_message += "branch : " + branch + "\n"
+        extra_message += b"branch : " + branch.encode("utf-8") + b"\n"
 
-    if renames:
-        for oldfile, newfile in renames:
-            extra_message += "rename : " + oldfile + " => " + newfile + "\n"
+    for oldfile, newfile in renames:
+        extra_message += b"rename : " + oldfile + b" => " + newfile + b"\n"
 
-    for key, value in extra.iteritems():
-        if key in ("author", "committer", "encoding", "message", "branch", "hg-git"):
+    for key, value in extra.items():
+        if key in RESERVED_EXTRA_KEYS:
             continue
-        else:
-            extra_message += "extra : " + key + " : " + urllib.parse.quote(value) + "\n"
+        quoted = urllib.parse.quote_from_bytes(value).encode("ascii")
+        extra_message += b"extra : " + key.encode("utf-8") + b" : " + quoted + b"\n"
 
     if extra_message:
-        return "\n--HG--\n" + extra_message
+        return b"\n--HG--\n" + extra_message
     else:
-        return ""
+        return b""
 
 
 def extract_hg_metadata(message):
     """Extract Mercurial metadata from a commit message.
 
-    :param message: Commit message to extract from
-    :return: Tuple with original commit message, renames, branch and
-        extra data.
+    :param message: Commit message to extract from, as bytes
+    :return: Tuple with original commit message (bytes), renames
+        (dict of bytes to bytes), branch (str or None) and extra data
+        (dict of str to bytes).
     """
-    split = message.split("\n--HG--\n", 1)
+    split = message.split(b"\n--HG--\n", 1)
     renames = {}
     extra = {}
     branch = None
     if len(split) == 2:
         message, meta = split
-        lines = meta.split("\n")
-        for line in lines:
-            if line == "":
+        for line in meta.split(b"\n"):
+            if line == b"":
                 continue
-            command, data = line.split(" : ", 1)
-            if command == "rename":
-                before, after = data.split(" => ", 1)
+            command, data = line.split(b" : ", 1)
+            if command == b"rename":
+                before, after = data.split(b" => ", 1)
                 renames[after] = before
-            elif command == "branch":
-                branch = data
-            elif command == "extra":
-                before, after = data.split(" : ", 1)
-                extra[before] = urllib.parse.unquote(after)
+            elif command == b"branch":
+                branch = data.decode("utf-8")
+            elif command == b"extra":
+                before, after = data.split(b" : ", 1)
+                extra[before.decode("utf-8")] = urllib.parse.unquote_to_bytes(after)
             else:
-                raise KeyError(f"unknown hg-git metadata command {command}")
+                raise KeyError(f"unknown hg-git metadata command {command!r}")
     return (message, renames, branch, extra)
