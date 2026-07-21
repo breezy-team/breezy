@@ -4152,6 +4152,7 @@ def _test_suite_testmod_names():
         "breezy.tests.test_branchbuilder",
         "breezy.tests.test_bugtracker",
         "breezy.tests.test_clean_tree",
+        "breezy.tests.test_cmd_rs_tree",
         "breezy.tests.test_cmdline",
         "breezy.tests.test_commands",
         "breezy.tests.test_commit",
