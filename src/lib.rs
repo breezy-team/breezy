@@ -99,6 +99,10 @@ pub mod option;
 pub mod version;
 
 #[cfg(feature = "pyo3")]
+/// breezy's Python exceptions for errors that started in Rust.
+pub mod pyerrors;
+
+#[cfg(feature = "pyo3")]
 /// Python bindings for Tree.
 pub mod pytree;
 
