@@ -230,6 +230,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "breezy-hpss"
+version = "3.4.0"
+dependencies = [
+ "bendy",
+]
+
+[[package]]
 name = "breezy-osutils"
 version = "3.4.0"
 dependencies = [
@@ -838,6 +845,14 @@ dependencies = [
  "cfg-if",
  "libc",
  "windows-link",
+]
+
+[[package]]
+name = "hpss-py"
+version = "3.4.0"
+dependencies = [
+ "breezy-hpss",
+ "pyo3",
 ]
 
 [[package]]

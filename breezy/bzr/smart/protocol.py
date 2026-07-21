@@ -21,14 +21,13 @@ client and server.
 import _thread
 import struct
 import sys
-from collections import deque
 from io import BytesIO
 
 from bzrformats import smart as _smart_rs
 from dromedary import errors as transport_errors
-from fastbencode import bdecode_as_tuple, bencode
 
 import breezy
+from breezy import _hpss_rs
 
 from ... import debug, errors, osutils
 from ...trace import log_exception_quietly, mutter
@@ -94,49 +93,11 @@ def _recv_tuple(from_file):
     return _decode_tuple(req_line)
 
 
-def _decode_tuple(req_line):
-    r"""Decode a byte string into a tuple using smart protocol encoding.
-
-    The smart protocol encodes tuples by joining elements with ASCII 0x01
-    (SOH - Start of Header) characters and terminating with a newline.
-
-    Args:
-        req_line: Bytes representing an encoded tuple, or None/empty bytes.
-
-    Returns:
-        A tuple of byte strings, or None if req_line is None or empty.
-
-    Raises:
-        SmartProtocolError: If the line is not properly terminated with '\n'.
-    """
-    if req_line is None or req_line == b"":
-        return None
-    if not req_line.endswith(b"\n"):
-        raise transport_errors.SmartProtocolError(
-            f"request {req_line!r} not terminated"
-        )
-    return tuple(req_line[:-1].split(b"\x01"))
-
-
-def _encode_tuple(args):
-    """Encode a tuple of arguments to a bytestream using smart protocol encoding.
-
-    The smart protocol encodes tuples by joining elements with ASCII 0x01
-    (SOH - Start of Header) characters and terminating with a newline.
-
-    Args:
-        args: A tuple or sequence of byte string arguments to encode.
-
-    Returns:
-        A byte string representing the encoded tuple.
-
-    Raises:
-        TypeError: If any argument is a unicode string instead of bytes.
-    """
-    for arg in args:
-        if isinstance(arg, str):
-            raise TypeError(args)
-    return b"\x01".join(args) + b"\n"
+# Tuple encoding/decoding is implemented in Rust (breezy._hpss_rs). The smart
+# protocol encodes tuples by joining byte-string fields with ASCII 0x01 and
+# terminating with a newline.
+_decode_tuple = _hpss_rs._decode_tuple
+_encode_tuple = _hpss_rs._encode_tuple
 
 
 class Requester:
@@ -220,35 +181,17 @@ class SmartProtocolBase:
         r"""Encode binary data as a length-prefixed bulk data chunk.
 
         The smart protocol uses a simple length-prefixed format for bulk data:
-        - Length as decimal digits followed by newline
-        - The actual data bytes
-        - "done\n" terminator
-
-        Args:
-            body: Binary data to encode as a bulk data chunk.
-
-        Returns:
-            Encoded bulk data as bytes, ready to send over the wire.
+        a decimal length, a newline, the data, then a "done\n" terminator.
         """
-        return b"".join((b"%d\n" % len(body), body, b"done\n"))
+        return _hpss_rs._encode_bulk_data(body)
 
     def _serialise_offsets(self, offsets):
         """Serialize a list of readv offsets for transmission.
 
-        Readv operations allow efficient reading of multiple byte ranges
-        from a remote resource. Each offset is encoded as "start,length"
-        with offsets separated by newlines.
-
-        Args:
-            offsets: Iterable of (start, length) tuples specifying byte ranges.
-
-        Returns:
-            Serialized offsets as bytes, with each offset on a separate line.
+        Each (start, length) offset is encoded as "start,length", with offsets
+        separated by newlines.
         """
-        txt = []
-        for start, length in offsets:
-            txt.append(b"%d,%d" % (start, length))
-        return b"\n".join(txt)
+        return _hpss_rs._serialise_offsets(offsets)
 
 
 class SmartServerRequestProtocolOne(SmartProtocolBase):
@@ -746,390 +689,14 @@ class _StatefulDecoder:
             self._number_needed_bytes = e.count
 
 
-class ChunkedBodyDecoder(_StatefulDecoder):
-    r"""Decoder for HTTP-style chunked transfer encoding used in smart protocol v2+.
-
-    This decoder handles streaming response bodies that are sent as a series of
-    length-prefixed chunks, similar to HTTP/1.1 chunked transfer encoding.
-    It supports both normal data chunks and error conditions within the stream.
-
-    Protocol format:
-    1. "chunked\n" header
-    2. Series of chunks, each with:
-       - Hexadecimal length + "\n"
-       - Chunk data (length bytes)
-    3. "END\n" terminator
-
-    Error handling:
-    - "ERR\n" indicates error chunks follow
-    - Error chunks contain structured error information
-
-    Attributes:
-        chunk_in_progress: Current chunk being assembled, or None.
-        chunks: Queue of completed chunks ready for consumption.
-        error: True if processing error chunks.
-        error_in_progress: List of error chunk parts being assembled.
-
-    See `doc/developers/network-protocol.txt` for full format specification.
-    """
-
-    def __init__(self):
-        """Initialize a chunked body decoder.
-
-        Sets up the state machine to begin expecting the "chunked" header.
-        """
-        _StatefulDecoder.__init__(self)
-        self.state_accept = self._state_accept_expecting_header
-        self.chunk_in_progress = None
-        self.chunks = deque()
-        self.error = False
-        self.error_in_progress = None
-
-    def next_read_size(self):
-        """Calculate optimal number of bytes to read for the next parsing step.
-
-        This method helps optimize network I/O by suggesting how many bytes
-        should be read to make progress in the current decoder state. The
-        calculation accounts for protocol overhead and current parsing position.
-
-        Returns:
-            Suggested number of bytes to read, or 0/1 if no specific size needed.
-
-        Raises:
-            AssertionError: If decoder is in an unexpected state.
-        """
-        # Note: the shortest possible chunk is 2 bytes: '0\n', and the
-        # end-of-body marker is 4 bytes: 'END\n'.
-        if self.state_accept == self._state_accept_reading_chunk:
-            # We're expecting more chunk content.  So we're expecting at least
-            # the rest of this chunk plus an END chunk.
-            return self.bytes_left + 4
-        elif self.state_accept == self._state_accept_expecting_length:
-            if self._in_buffer_len == 0:
-                # We're expecting a chunk length.  There's at least two bytes
-                # left: a digit plus '\n'.
-                return 2
-            else:
-                # We're in the middle of reading a chunk length.  So there's at
-                # least one byte left, the '\n' that terminates the length.
-                return 1
-        elif self.state_accept == self._state_accept_reading_unused:
-            return 1
-        elif self.state_accept == self._state_accept_expecting_header:
-            return max(0, len("chunked\n") - self._in_buffer_len)
-        else:
-            raise AssertionError(f"Impossible state: {self.state_accept!r}")
-
-    def read_next_chunk(self):
-        """Retrieve the next completed chunk from the queue.
-
-        Returns chunks in the order they were received. If an error was
-        encountered during parsing, the returned chunk may be a
-        FailedSmartServerResponse object instead of bytes.
-
-        Returns:
-            Next chunk as bytes, FailedSmartServerResponse for errors,
-            or None if no chunks are available.
-        """
-        try:
-            return self.chunks.popleft()
-        except IndexError:
-            return None
-
-    def _extract_line(self):
-        """Extract a complete line from the input buffer.
-
-        Searches for and extracts text up to the first newline character.
-        The newline is consumed but not included in the returned data.
-
-        Returns:
-            Line content as bytes, excluding the newline character.
-
-        Raises:
-            _NeedMoreBytes: If no complete line is available in the buffer.
-        """
-        in_buf = self._get_in_buffer()
-        pos = in_buf.find(b"\n")
-        if pos == -1:
-            # We haven't read a complete line yet, so request more bytes before
-            # we continue.
-            raise _NeedMoreBytes(1)
-        line = in_buf[:pos]
-        # Trim the prefix (including '\n' delimiter) from the _in_buffer.
-        self._set_in_buffer(in_buf[pos + 1 :])
-        return line
-
-    def _finished(self):
-        """Complete the chunked decoding process and clean up state.
-
-        This method is called when the "END" marker is encountered, indicating
-        all chunks have been received. It handles final error processing if
-        needed and marks the decoder as finished.
-
-        Side Effects:
-            - Moves any remaining buffer data to unused_data
-            - Transitions to reading_unused state
-            - Creates FailedSmartServerResponse for any pending errors
-            - Sets finished_reading to True
-        """
-        self.unused_data = self._get_in_buffer()
-        self._in_buffer_list = []
-        self._in_buffer_len = 0
-        self.state_accept = self._state_accept_reading_unused
-        if self.error:
-            error_args = tuple(self.error_in_progress)
-            self.chunks.append(request.FailedSmartServerResponse(error_args))
-            self.error_in_progress = None
-        self.finished_reading = True
-
-    def _state_accept_expecting_header(self):
-        r"""State function: Parse and validate the chunked transfer header.
-
-        Expects to receive "chunked\n" as the first line of a chunked response.
-        Transitions to expecting chunk length on success.
-
-        Raises:
-            SmartProtocolError: If header is not "chunked".
-        """
-        prefix = self._extract_line()
-        if prefix == b"chunked":
-            self.state_accept = self._state_accept_expecting_length
-        else:
-            raise transport_errors.SmartProtocolError(
-                f'Bad chunked body header: "{prefix}"'
-            )
-
-    def _state_accept_expecting_length(self):
-        """State function: Parse chunk length or control markers.
-
-        Handles three possible inputs:
-        - Hexadecimal chunk length: Sets up for reading that many bytes
-        - "ERR": Switches to error mode for processing error chunks
-        - "END": Completes decoding and marks as finished
-
-        The hexadecimal length follows HTTP chunked encoding conventions.
-        """
-        prefix = self._extract_line()
-        if prefix == b"ERR":
-            self.error = True
-            self.error_in_progress = []
-            self._state_accept_expecting_length()
-            return
-        elif prefix == b"END":
-            # We've read the end-of-body marker.
-            # Any further bytes are unused data, including the bytes left in
-            # the _in_buffer.
-            self._finished()
-            return
-        else:
-            self.bytes_left = int(prefix, 16)
-            self.chunk_in_progress = b""
-            self.state_accept = self._state_accept_reading_chunk
-
-    def _state_accept_reading_chunk(self):
-        """State function: Read chunk data up to the expected length.
-
-        Accumulates bytes into the current chunk until the full length
-        is received. Handles partial reads gracefully by updating the
-        remaining byte count and continuing on the next call.
-
-        When complete, adds the chunk to the appropriate queue (normal
-        chunks or error chunks) and transitions back to expecting length.
-        """
-        in_buf = self._get_in_buffer()
-        in_buffer_len = len(in_buf)
-        self.chunk_in_progress += in_buf[: self.bytes_left]
-        self._set_in_buffer(in_buf[self.bytes_left :])
-        self.bytes_left -= in_buffer_len
-        if self.bytes_left <= 0:
-            # Finished with chunk
-            self.bytes_left = None
-            if self.error:
-                self.error_in_progress.append(self.chunk_in_progress)
-            else:
-                self.chunks.append(self.chunk_in_progress)
-            self.chunk_in_progress = None
-            self.state_accept = self._state_accept_expecting_length
-
-    def _state_accept_reading_unused(self):
-        """State function: Accumulate any extra data after decoding is complete.
-
-        This state is entered after "END" is received. Any additional bytes
-        are stored in unused_data for potential use by subsequent operations.
-        """
-        self.unused_data += self._get_in_buffer()
-        self._in_buffer_list = []
-
-
-class LengthPrefixedBodyDecoder(_StatefulDecoder):
-    r"""Decoder for length-prefixed bulk data used in smart protocol v1 and v2.
-
-    This decoder handles the simple bulk data format used for request and response
-    bodies in smart protocol versions 1 and 2. The format consists of:
-    1. Decimal length followed by newline
-    2. Exactly that many bytes of data
-    3. "done\n" trailer
-
-    This format is simpler than chunked encoding and is used when the total
-    data size is known in advance, such as for file contents or fixed-size
-    serialized data structures.
-
-    Protocol format example:
-        "1024\n"     (length)
-        <1024 bytes> (data)
-        "done\n"     (trailer)
-
-    Attributes:
-        _body: Accumulated body data.
-        _trailer_buffer: Buffer for reading the "done\n" trailer.
-        state_read: Current read state function for extracting decoded data.
-    """
-
-    def __init__(self):
-        """Initialize a length-prefixed body decoder.
-
-        Sets up the state machine to begin expecting a decimal length.
-        """
-        _StatefulDecoder.__init__(self)
-        self.state_accept = self._state_accept_expecting_length
-        self.state_read = self._state_read_no_data
-        self._body = b""
-        self._trailer_buffer = b""
-
-    def next_read_size(self):
-        """Calculate optimal number of bytes to read for the next parsing step.
-
-        Returns an estimate of how many bytes should be read to make progress
-        in the current state. This helps optimize I/O by suggesting larger
-        reads when possible (e.g., reading body + trailer together).
-
-        Returns:
-            Suggested number of bytes to read for optimal progress.
-        """
-        if self.bytes_left is not None:
-            # Ideally we want to read all the remainder of the body and the
-            # trailer in one go.
-            return self.bytes_left + 5
-        elif self.state_accept == self._state_accept_reading_trailer:
-            # Just the trailer left
-            return 5 - len(self._trailer_buffer)
-        elif self.state_accept == self._state_accept_expecting_length:
-            # There's still at least 6 bytes left ('\n' to end the length, plus
-            # 'done\n').
-            return 6
-        else:
-            # Reading excess data.  Either way, 1 byte at a time is fine.
-            return 1
-
-    def read_pending_data(self):
-        """Return any decoded body data that is ready for consumption.
-
-        This method uses the current read state function to extract available
-        data. Before the body is fully read, it returns empty bytes. Once body
-        parsing begins, it returns data incrementally.
-
-        Returns:
-            Decoded body data as bytes, or empty bytes if none available.
-        """
-        return self.state_read()
-
-    def _state_accept_expecting_length(self):
-        """State function: Parse the decimal length prefix.
-
-        Searches for a newline-terminated decimal number indicating how many
-        bytes of body data follow. Transitions to body reading state once
-        a complete length is available.
-
-        Side Effects:
-            - Sets bytes_left to the parsed length
-            - Transitions to reading_body state
-            - Switches to body_buffer read state
-        """
-        in_buf = self._get_in_buffer()
-        pos = in_buf.find(b"\n")
-        if pos == -1:
-            return
-        self.bytes_left = int(in_buf[:pos])
-        self._set_in_buffer(in_buf[pos + 1 :])
-        self.state_accept = self._state_accept_reading_body
-        self.state_read = self._state_read_body_buffer
-
-    def _state_accept_reading_body(self):
-        """State function: Accumulate body data up to the expected length.
-
-        Reads all available buffer data into the body, tracking how many bytes
-        remain. If more data than expected is available, the excess is moved
-        to the trailer buffer. Transitions to trailer reading when complete.
-
-        Side Effects:
-            - Accumulates data in _body
-            - Updates bytes_left counter
-            - Handles excess data in _trailer_buffer
-            - Transitions to reading_trailer state when body is complete
-        """
-        in_buf = self._get_in_buffer()
-        self._body += in_buf
-        self.bytes_left -= len(in_buf)
-        self._set_in_buffer(None)
-        if self.bytes_left <= 0:
-            # Finished with body
-            if self.bytes_left != 0:
-                self._trailer_buffer = self._body[self.bytes_left :]
-                self._body = self._body[: self.bytes_left]
-            self.bytes_left = None
-            self.state_accept = self._state_accept_reading_trailer
-
-    def _state_accept_reading_trailer(self):
-        r"""State function: Read and validate the "done\n" trailer.
-
-        Accumulates data until "done\n" is found, then completes decoding.
-        Any data after "done\n" is stored as unused_data.
-
-        TODO: Consider raising ProtocolViolation if trailer doesn't match.
-
-        Side Effects:
-            - Accumulates trailer data in _trailer_buffer
-            - Sets finished_reading when "done\n" found
-            - Stores excess data in unused_data
-        """
-        self._trailer_buffer += self._get_in_buffer()
-        self._set_in_buffer(None)
-        # TODO: what if the trailer does not match "done\n"?  Should this raise
-        # a ProtocolViolation exception?
-        if self._trailer_buffer.startswith(b"done\n"):
-            self.unused_data = self._trailer_buffer[len(b"done\n") :]
-            self.state_accept = self._state_accept_reading_unused
-            self.finished_reading = True
-
-    def _state_accept_reading_unused(self):
-        r"""State function: Accumulate unused data after decoding completes.
-
-        This state handles any additional data received after the "done\\n"
-        trailer. All such data is stored in unused_data.
-        """
-        self.unused_data += self._get_in_buffer()
-        self._set_in_buffer(None)
-
-    def _state_read_no_data(self):
-        """Read state function: Return empty data when no body is available yet.
-
-        Returns:
-            Empty bytes, indicating no decoded data is available.
-        """
-        return b""
-
-    def _state_read_body_buffer(self):
-        """Read state function: Return and clear the accumulated body data.
-
-        This implements a "read once" pattern where the body data is returned
-        and then cleared, ensuring each piece of data is only consumed once.
-
-        Returns:
-            All accumulated body data as bytes, clearing the internal buffer.
-        """
-        result = self._body
-        self._body = b""
-        return result
+# The body decoders are implemented in Rust (breezy._hpss_rs).
+#
+# ChunkedBodyDecoder handles the HTTP-style chunked transfer encoding used
+# in protocol v2+; LengthPrefixedBodyDecoder handles the simpler
+# length-prefixed bulk format of v1 and v2. See doc/developers/
+# network-protocol.txt for the wire formats.
+ChunkedBodyDecoder = _hpss_rs.ChunkedBodyDecoder
+LengthPrefixedBodyDecoder = _hpss_rs.LengthPrefixedBodyDecoder
 
 
 class SmartClientRequestProtocolOne(
@@ -1582,7 +1149,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     def _extract_prefixed_bencoded_data(self):
         prefixed_bytes = self._extract_length_prefixed_bytes()
         try:
-            decoded = bdecode_as_tuple(prefixed_bytes)
+            decoded = _hpss_rs._bdecode_as_tuple(prefixed_bytes)
         except ValueError as e:
             raise transport_errors.SmartProtocolError(
                 f"Bytes {prefixed_bytes!r} not bencoded"
@@ -1741,40 +1308,34 @@ class _ProtocolThreeEncoder:
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
-        txt = []
-        for start, length in offsets:
-            txt.append(b"%d,%d" % (start, length))
-        return b"\n".join(txt)
+        return _hpss_rs._serialise_offsets(offsets)
 
     def _write_protocol_version(self):
         self._write_func(MESSAGE_VERSION_THREE)
 
     def _write_prefixed_bencode(self, structure):
-        bytes = bencode(structure)
+        bytes = _hpss_rs._bencode(structure)
         self._write_func(struct.pack("!L", len(bytes)))
         self._write_func(bytes)
 
     def _write_headers(self, headers):
-        self._write_prefixed_bencode(headers)
+        self._write_func(_hpss_rs._v3_headers(list(headers.items())))
 
     def _write_structure(self, args):
-        self._write_func(b"s")
         utf8_args = []
         for arg in args:
             if isinstance(arg, str):
                 utf8_args.append(arg.encode("utf8"))
             else:
                 utf8_args.append(arg)
-        self._write_prefixed_bencode(utf8_args)
+        self._write_func(_hpss_rs._v3_structure(utf8_args))
 
     def _write_end(self):
         self._write_func(b"e")
         self.flush()
 
     def _write_prefixed_body(self, bytes):
-        self._write_func(b"b")
-        self._write_func(struct.pack("!L", len(bytes)))
-        self._write_func(bytes)
+        self._write_func(_hpss_rs._v3_prefixed_body(bytes))
 
     def _write_chunked_body_start(self):
         self._write_func(b"oC")
