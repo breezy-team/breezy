@@ -132,3 +132,53 @@ class TestRustTreeBinding(TestCaseWithTransport):
         wrapped.unlock()
         with tree.lock_read():
             self.assertEqual([], tree.get_parent_ids())
+
+
+class TestRustBranchBinding(TestCaseWithTransport):
+    """The Branch binding wrapping a Python branch (Python -> Rust -> Python)."""
+
+    def make_committed_branch(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree_contents([("tree/f", b"x\n")])
+        tree.add(["f"])
+        revid = tree.commit("one")
+        return tree.branch, revid
+
+    def test_query_methods(self):
+        branch, revid = self.make_committed_branch()
+        wrapped = _cmd_rs.Branch(branch)
+        self.assertEqual(revid, wrapped.last_revision())
+        self.assertEqual(branch.revno(), wrapped.revno())
+        self.assertEqual(branch.last_revision_info(), wrapped.last_revision_info())
+        self.assertEqual(branch.supports_tags(), wrapped.supports_tags())
+
+    def test_get_rev_id(self):
+        branch, revid = self.make_committed_branch()
+        wrapped = _cmd_rs.Branch(branch)
+        self.assertEqual(revid, wrapped.get_rev_id(1))
+
+    def test_heads_to_fetch(self):
+        # heads_to_fetch returns sets in Python; the tip is a must-fetch head.
+        branch, revid = self.make_committed_branch()
+        wrapped = _cmd_rs.Branch(branch)
+        must, _if_present = wrapped.heads_to_fetch()
+        self.assertIn(revid, must)
+
+    def test_get_tag_dict(self):
+        branch, revid = self.make_committed_branch()
+        branch.tags.set_tag("v1", revid)
+        wrapped = _cmd_rs.Branch(branch)
+        self.assertEqual({"v1": revid}, wrapped.get_tag_dict())
+
+    def test_set_and_get_parent(self):
+        branch, _revid = self.make_committed_branch()
+        wrapped = _cmd_rs.Branch(branch)
+        wrapped.set_parent("../other")
+        self.assertIn("other", wrapped.get_parent())
+
+    def test_not_stacked_raises(self):
+        from breezy.errors import NotStacked
+
+        branch, _revid = self.make_committed_branch()
+        wrapped = _cmd_rs.Branch(branch)
+        self.assertRaises(NotStacked, wrapped.get_stacked_on_url)

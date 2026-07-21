@@ -514,6 +514,7 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
     Ok(breezy::help::format_see_also(see_also.unwrap().as_slice()))
 }
 
+mod branch;
 mod commands;
 mod email_message;
 mod help;
@@ -1766,6 +1767,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<tree::MutableTree>()?;
     m.add_class::<tree::WorkingTree>()?;
     m.add_class::<tree::RevisionTree>()?;
+    m.add_class::<branch::Branch>()?;
 
     let diffm = PyModule::new(py, "diff")?;
     diffm.add_function(wrap_pyfunction!(unified_diff_bytes, &diffm)?)?;
