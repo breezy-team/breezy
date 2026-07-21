@@ -17,63 +17,18 @@
 
 """Compatibility for hg-git."""
 
-import urllib.parse
+from .._git_rs import extract_hg_metadata  # noqa: F401
+from .._git_rs import format_hg_metadata as _format_hg_metadata
 
 
 def format_hg_metadata(renames, branch, extra):
     """Construct a tail with hg-git metadata.
 
-    :param renames: List of (oldpath, newpath) tuples with file renames
-    :param branch: Branch name
-    :param extra: Dictionary with extra data
-    :return: Tail for commit message
+    :param renames: List of (oldpath, newpath) tuples with file renames,
+        as bytes
+    :param branch: Branch name, as str
+    :param extra: Dictionary mapping str keys to bytes values
+    :return: Tail for commit message, as bytes
     """
-    extra_message = ""
-    if branch != "default":
-        extra_message += "branch : " + branch + "\n"
-
-    if renames:
-        for oldfile, newfile in renames:
-            extra_message += "rename : " + oldfile + " => " + newfile + "\n"
-
-    for key, value in extra.iteritems():
-        if key in ("author", "committer", "encoding", "message", "branch", "hg-git"):
-            continue
-        else:
-            extra_message += "extra : " + key + " : " + urllib.parse.quote(value) + "\n"
-
-    if extra_message:
-        return "\n--HG--\n" + extra_message
-    else:
-        return ""
-
-
-def extract_hg_metadata(message):
-    """Extract Mercurial metadata from a commit message.
-
-    :param message: Commit message to extract from
-    :return: Tuple with original commit message, renames, branch and
-        extra data.
-    """
-    split = message.split("\n--HG--\n", 1)
-    renames = {}
-    extra = {}
-    branch = None
-    if len(split) == 2:
-        message, meta = split
-        lines = meta.split("\n")
-        for line in lines:
-            if line == "":
-                continue
-            command, data = line.split(" : ", 1)
-            if command == "rename":
-                before, after = data.split(" => ", 1)
-                renames[after] = before
-            elif command == "branch":
-                branch = data
-            elif command == "extra":
-                before, after = data.split(" : ", 1)
-                extra[before] = urllib.parse.unquote(after)
-            else:
-                raise KeyError(f"unknown hg-git metadata command {command}")
-    return (message, renames, branch, extra)
+    renames = [(oldfile, newfile) for (oldfile, newfile) in renames]
+    return _format_hg_metadata(renames, branch, list(extra.items()))

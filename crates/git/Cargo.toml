@@ -13,3 +13,4 @@ homepage = "https://www.breezy-vcs.org/"
 breezy-osutils = { path = "../osutils" }
 breezy = { path = "../.." }
 dromedary = { workspace = true }
+percent-encoding = "2"

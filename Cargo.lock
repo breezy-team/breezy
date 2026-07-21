@@ -226,6 +226,7 @@ dependencies = [
  "breezy",
  "breezy-osutils",
  "dromedary",
+ "percent-encoding",
 ]
 
 [[package]]

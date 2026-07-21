@@ -45,8 +45,14 @@ This extra metadata is stored in so-called "supplements":
   * TreeSupplement
 """
 
-from io import BytesIO
 from typing import Any
+
+from .._git_rs import (
+    generate_roundtripping_metadata as _generate_roundtripping_metadata,
+)
+from .._git_rs import (
+    parse_roundtripping_metadata as _parse_roundtripping_metadata,
+)
 
 
 class CommitSupplement:
@@ -86,24 +92,16 @@ class TreeSupplement:
 
 def parse_roundtripping_metadata(text):
     """Parse Bazaar roundtripping metadata."""
+    revision_id, parent_ids, properties, testament3_sha1 = (
+        _parse_roundtripping_metadata(text)
+    )
     ret = CommitSupplement()
-    f = BytesIO(text)
-    for l in f.readlines():
-        (key, value) = l.split(b":", 1)
-        if key == b"revision-id":
-            ret.revision_id = value.strip()
-        elif key == b"parent-ids":
-            ret.explicit_parent_ids = tuple(value.strip().split(b" "))
-        elif key == b"testament3-sha1":
-            ret.verifiers[b"testament3-sha1"] = value.strip()
-        elif key.startswith(b"property-"):
-            name = key[len(b"property-") :]
-            if name not in ret.properties:
-                ret.properties[name] = value[1:].rstrip(b"\n")
-            else:
-                ret.properties[name] += b"\n" + value[1:].rstrip(b"\n")
-        else:
-            raise ValueError
+    ret.revision_id = revision_id
+    if parent_ids is not None:
+        ret.explicit_parent_ids = tuple(parent_ids)
+    ret.properties = dict(properties)
+    if testament3_sha1 is not None:
+        ret.verifiers[b"testament3-sha1"] = testament3_sha1
     return ret
 
 
@@ -113,17 +111,12 @@ def generate_roundtripping_metadata(metadata, encoding):
     :param metadata: A `CommitSupplement` instance
     :return: String with revision metadata
     """
-    lines = []
-    if metadata.revision_id:
-        lines.append(b"revision-id: %s\n" % metadata.revision_id)
-    if metadata.explicit_parent_ids:
-        lines.append(b"parent-ids: %s\n" % b" ".join(metadata.explicit_parent_ids))
-    for key in sorted(metadata.properties.keys()):
-        for l in metadata.properties[key].split(b"\n"):
-            lines.append(b"property-%s: %s\n" % (key, l))
-    if b"testament3-sha1" in metadata.verifiers:
-        lines.append(b"testament3-sha1: %s\n" % metadata.verifiers[b"testament3-sha1"])
-    return b"".join(lines)
+    return _generate_roundtripping_metadata(
+        metadata.revision_id,
+        metadata.explicit_parent_ids,
+        list(metadata.properties.items()),
+        metadata.verifiers.get(b"testament3-sha1"),
+    )
 
 
 def extract_bzr_metadata(message):
