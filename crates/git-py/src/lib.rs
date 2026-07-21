@@ -1,6 +1,7 @@
 use breezy_git::roundtrip::{CommitSupplement, SupplementParts};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
+use std::collections::HashMap;
 
 type PyParts = (
     Option<Py<PyBytes>>,
@@ -57,6 +58,44 @@ fn generate_roundtripping_metadata(
     PyBytes::new(py, &out).unbind()
 }
 
+type HgExtract = (
+    Py<PyBytes>,
+    HashMap<Vec<u8>, Vec<u8>>,
+    Option<String>,
+    HashMap<String, Vec<u8>>,
+);
+
+/// Extract Mercurial metadata from a commit message.
+///
+/// Returns `(message, renames, branch, extra)`.
+#[pyfunction]
+fn extract_hg_metadata(py: Python<'_>, message: &[u8]) -> PyResult<HgExtract> {
+    let md = breezy_git::hg::extract_hg_metadata(message).map_err(|e| match e {
+        breezy_git::hg::ParseError::UnknownCommand(_) => {
+            PyErr::new::<pyo3::exceptions::PyKeyError, _>((e.to_string(),))
+        }
+        _ => PyErr::new::<pyo3::exceptions::PyValueError, _>((e.to_string(),)),
+    })?;
+    Ok((
+        PyBytes::new(py, &md.message).unbind(),
+        md.renames,
+        md.branch,
+        md.extra,
+    ))
+}
+
+/// Construct a commit-message tail carrying hg-git metadata.
+#[pyfunction]
+fn format_hg_metadata(
+    py: Python<'_>,
+    renames: Vec<(Vec<u8>, Vec<u8>)>,
+    branch: &str,
+    extra: Vec<(String, Vec<u8>)>,
+) -> Py<PyBytes> {
+    let out = breezy_git::hg::format_hg_metadata(&renames, branch, &extra);
+    PyBytes::new(py, &out).unbind()
+}
+
 #[pyfunction]
 fn bzr_url_to_git_url(location: &str) -> PyResult<(String, Option<String>, Option<String>)> {
     let (url, revno, branch) = breezy_git::bzr_url_to_git_url(location)
@@ -79,5 +118,7 @@ pub fn _git_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(get_cache_dir))?;
     m.add_wrapped(wrap_pyfunction!(parse_roundtripping_metadata))?;
     m.add_wrapped(wrap_pyfunction!(generate_roundtripping_metadata))?;
+    m.add_wrapped(wrap_pyfunction!(extract_hg_metadata))?;
+    m.add_wrapped(wrap_pyfunction!(format_hg_metadata))?;
     Ok(())
 }

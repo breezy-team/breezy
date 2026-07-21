@@ -1,3 +1,4 @@
+pub mod hg;
 pub mod roundtrip;
 
 pub fn bzr_url_to_git_url(
