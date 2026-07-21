@@ -1,59 +1,58 @@
-use breezy_git::roundtrip::CommitSupplement;
+use breezy_git::roundtrip::{CommitSupplement, SupplementParts};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
+
+type PyParts = (
+    Option<Py<PyBytes>>,
+    Option<Vec<Py<PyBytes>>>,
+    Vec<(Py<PyBytes>, Py<PyBytes>)>,
+    Option<Py<PyBytes>>,
+);
+
+/// Convert the decomposed metadata parts to plain Python bytes objects.
+fn parts_to_py(py: Python<'_>, parts: SupplementParts) -> PyParts {
+    let revision_id = parts.revision_id.map(|v| PyBytes::new(py, &v).unbind());
+    let parent_ids = parts.explicit_parent_ids.map(|ids| {
+        ids.into_iter()
+            .map(|v| PyBytes::new(py, &v).unbind())
+            .collect()
+    });
+    let properties = parts
+        .properties
+        .into_iter()
+        .map(|(k, v)| (PyBytes::new(py, &k).unbind(), PyBytes::new(py, &v).unbind()))
+        .collect();
+    let testament3 = parts.testament3_sha1.map(|v| PyBytes::new(py, &v).unbind());
+    (revision_id, parent_ids, properties, testament3)
+}
 
 /// Parse Bazaar roundtripping metadata into its component parts.
 ///
 /// Returns `(revision_id, parent_ids, properties, testament3_sha1)`; the
 /// caller assembles these into a `CommitSupplement`.
 #[pyfunction]
-fn parse_roundtripping_metadata(py: Python, text: &[u8]) -> PyResult<Py<PyAny>> {
+fn parse_roundtripping_metadata(py: Python<'_>, text: &[u8]) -> PyResult<PyParts> {
     let md = breezy_git::roundtrip::parse_roundtripping_metadata(text)
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>((e.to_string(),)))?;
-    parsed_to_py(py, md)
-}
-
-fn parsed_to_py(py: Python, md: CommitSupplement) -> PyResult<Py<PyAny>> {
-    let revision_id = md.revision_id.map(|v| PyBytes::new(py, &v).unbind());
-    let parent_ids = md.explicit_parent_ids.map(|ids| {
-        ids.into_iter()
-            .map(|v| PyBytes::new(py, &v).unbind())
-            .collect::<Vec<_>>()
-    });
-    let properties: Vec<(Py<PyBytes>, Py<PyBytes>)> = md
-        .properties
-        .into_iter()
-        .map(|(k, v)| (PyBytes::new(py, &k).unbind(), PyBytes::new(py, &v).unbind()))
-        .collect();
-    let testament3 = md
-        .verifiers
-        .get(b"testament3-sha1".as_slice())
-        .map(|v| PyBytes::new(py, v).unbind());
-    Ok((revision_id, parent_ids, properties, testament3)
-        .into_pyobject(py)?
-        .unbind()
-        .into())
+    Ok(parts_to_py(py, md.into_parts()))
 }
 
 /// Serialize roundtripping metadata from its component parts.
 #[pyfunction]
 #[pyo3(signature = (revision_id, explicit_parent_ids, properties, testament3_sha1))]
 fn generate_roundtripping_metadata(
-    py: Python,
+    py: Python<'_>,
     revision_id: Option<Vec<u8>>,
     explicit_parent_ids: Option<Vec<Vec<u8>>>,
     properties: Vec<(Vec<u8>, Vec<u8>)>,
     testament3_sha1: Option<Vec<u8>>,
 ) -> Py<PyBytes> {
-    let mut md = CommitSupplement {
+    let md = CommitSupplement::from_parts(SupplementParts {
         revision_id,
         explicit_parent_ids,
         properties,
-        ..Default::default()
-    };
-    if let Some(sha1) = testament3_sha1 {
-        md.verifiers.insert(b"testament3-sha1".to_vec(), sha1);
-    }
+        testament3_sha1,
+    });
     let out = breezy_git::roundtrip::generate_roundtripping_metadata(&md);
     PyBytes::new(py, &out).unbind()
 }

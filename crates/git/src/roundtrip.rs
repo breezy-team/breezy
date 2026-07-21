@@ -6,6 +6,18 @@
 
 use std::collections::HashMap;
 
+/// The only verifier that is serialized into the roundtripping trailer.
+const TESTAMENT3_SHA1: &[u8] = b"testament3-sha1";
+
+/// The plain decomposed form of a [`CommitSupplement`], mirroring the
+/// attributes the Python wrapper carries.
+pub struct SupplementParts {
+    pub revision_id: Option<Vec<u8>>,
+    pub explicit_parent_ids: Option<Vec<Vec<u8>>>,
+    pub properties: Vec<(Vec<u8>, Vec<u8>)>,
+    pub testament3_sha1: Option<Vec<u8>>,
+}
+
 /// Metadata for a Bazaar revision roundtripped into Git.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CommitSupplement {
@@ -21,6 +33,42 @@ impl CommitSupplement {
         self.revision_id.is_none()
             && self.properties.is_empty()
             && self.explicit_parent_ids.is_none()
+    }
+
+    /// The testament3-sha1 verifier, the only one round-tripped.
+    pub fn testament3_sha1(&self) -> Option<&[u8]> {
+        self.verifiers.get(TESTAMENT3_SHA1).map(|v| v.as_slice())
+    }
+
+    pub fn set_testament3_sha1(&mut self, sha1: Vec<u8>) {
+        self.verifiers.insert(TESTAMENT3_SHA1.to_vec(), sha1);
+    }
+
+    /// Decompose into the plain parts the Python `CommitSupplement`
+    /// wrapper mirrors: `(revision_id, parent_ids, properties,
+    /// testament3_sha1)`. Only the round-tripped verifier is exposed.
+    pub fn into_parts(self) -> SupplementParts {
+        let testament3 = self.testament3_sha1().map(|v| v.to_vec());
+        SupplementParts {
+            revision_id: self.revision_id,
+            explicit_parent_ids: self.explicit_parent_ids,
+            properties: self.properties,
+            testament3_sha1: testament3,
+        }
+    }
+
+    /// Rebuild from the plain parts produced by [`into_parts`].
+    pub fn from_parts(parts: SupplementParts) -> Self {
+        let mut ret = CommitSupplement {
+            revision_id: parts.revision_id,
+            explicit_parent_ids: parts.explicit_parent_ids,
+            properties: parts.properties,
+            ..Default::default()
+        };
+        if let Some(sha1) = parts.testament3_sha1 {
+            ret.set_testament3_sha1(sha1);
+        }
+        ret
     }
 
     fn set_property(&mut self, name: Vec<u8>, value: Vec<u8>) {
@@ -79,9 +127,8 @@ pub fn parse_roundtripping_metadata(text: &[u8]) -> Result<CommitSupplement, Par
                     .map(|s| s.to_vec())
                     .collect(),
             );
-        } else if key == b"testament3-sha1" {
-            ret.verifiers
-                .insert(b"testament3-sha1".to_vec(), strip(value).to_vec());
+        } else if key == TESTAMENT3_SHA1 {
+            ret.set_testament3_sha1(strip(value).to_vec());
         } else if let Some(name) = key.strip_prefix(b"property-") {
             // Drop the single leading space after the colon, then strip
             // trailing newlines.
@@ -127,8 +174,9 @@ pub fn generate_roundtripping_metadata(metadata: &CommitSupplement) -> Vec<u8> {
             lines.push(b'\n');
         }
     }
-    if let Some(sha1) = metadata.verifiers.get(b"testament3-sha1".as_slice()) {
-        lines.extend_from_slice(b"testament3-sha1: ");
+    if let Some(sha1) = metadata.testament3_sha1() {
+        lines.extend_from_slice(TESTAMENT3_SHA1);
+        lines.extend_from_slice(b": ");
         lines.extend_from_slice(sha1);
         lines.push(b'\n');
     }
@@ -217,6 +265,14 @@ mod tests {
     fn parse_revid() {
         let md = parse_roundtripping_metadata(b"revision-id: foo\n").unwrap();
         assert_eq!(Some(b"foo".to_vec()), md.revision_id);
+    }
+
+    #[test]
+    fn parts_round_trip_testament3() {
+        let md = parse_roundtripping_metadata(b"testament3-sha1: deadbeef\n").unwrap();
+        let parts = md.clone().into_parts();
+        assert_eq!(Some(b"deadbeef".to_vec()), parts.testament3_sha1);
+        assert_eq!(md, CommitSupplement::from_parts(parts));
     }
 
     #[test]
