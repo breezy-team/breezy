@@ -182,3 +182,42 @@ class TestRustBranchBinding(TestCaseWithTransport):
         branch, _revid = self.make_committed_branch()
         wrapped = _cmd_rs.Branch(branch)
         self.assertRaises(NotStacked, wrapped.get_stacked_on_url)
+
+
+class TestRustRepositoryBinding(TestCaseWithTransport):
+    """The Repository binding wrapping a Python repository."""
+
+    def make_committed_repo(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree_contents([("tree/f", b"x\n")])
+        tree.add(["f"])
+        revid = tree.commit("one")
+        return tree.branch.repository, revid
+
+    def test_has_revision(self):
+        repo, revid = self.make_committed_repo()
+        wrapped = _cmd_rs.Repository(repo)
+        self.assertTrue(wrapped.has_revision(revid))
+        self.assertFalse(wrapped.has_revision(b"missing-revid"))
+
+    def test_all_revision_ids(self):
+        repo, revid = self.make_committed_repo()
+        wrapped = _cmd_rs.Repository(repo)
+        self.assertEqual([revid], wrapped.all_revision_ids())
+
+    def test_get_revision(self):
+        repo, revid = self.make_committed_repo()
+        wrapped = _cmd_rs.Repository(repo)
+        self.assertEqual(revid, wrapped.get_revision(revid).revision_id)
+
+    def test_supports_rich_root(self):
+        repo, _revid = self.make_committed_repo()
+        wrapped = _cmd_rs.Repository(repo)
+        self.assertEqual(repo.supports_rich_root(), wrapped.supports_rich_root())
+
+    def test_get_rev_id_for_revno(self):
+        repo, revid = self.make_committed_repo()
+        wrapped = _cmd_rs.Repository(repo)
+        # Returns a (found, revision_id) tuple; the tip is revno 1.
+        with repo.lock_read():
+            self.assertEqual((True, revid), wrapped.get_rev_id_for_revno(1, (1, revid)))

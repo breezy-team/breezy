@@ -522,6 +522,7 @@ mod native;
 mod optparse;
 mod registry;
 mod rename_map;
+mod repository;
 mod tree;
 mod utextwrap;
 
@@ -1768,6 +1769,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<tree::WorkingTree>()?;
     m.add_class::<tree::RevisionTree>()?;
     m.add_class::<branch::Branch>()?;
+    m.add_class::<repository::Repository>()?;
 
     let diffm = PyModule::new(py, "diff")?;
     diffm.add_function(wrap_pyfunction!(unified_diff_bytes, &diffm)?)?;
