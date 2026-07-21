@@ -92,8 +92,8 @@ class TreeSupplement:
 
 def parse_roundtripping_metadata(text):
     """Parse Bazaar roundtripping metadata."""
-    revision_id, parent_ids, properties, testament3_sha1 = _parse_roundtripping_metadata(
-        text
+    revision_id, parent_ids, properties, testament3_sha1 = (
+        _parse_roundtripping_metadata(text)
     )
     ret = CommitSupplement()
     ret.revision_id = revision_id
