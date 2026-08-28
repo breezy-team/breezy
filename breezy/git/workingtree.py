@@ -1113,7 +1113,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 return
             if action is not None:
                 parent_path = posixpath.dirname(filepath)
-                parent_id = self.path2id(parent_path)
+                parent_id = self._path2id(parent_path)
                 parent_ie = self._get_dir_ie(parent_path, parent_id)
                 file_id = action(self, parent_ie, filepath, kind)
                 if file_id is not None:
@@ -1719,13 +1719,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 for _dir_path, _dir_ie in self._add_missing_parent_ids(parent, dir_ids):
                     pass
                 if kind == "tree-reference" and recurse_nested:
-                    ie = self._get_dir_ie(path, self.path2id(path))
+                    ie = self._get_dir_ie(path, self._path2id(path))
                     yield (posixpath.relpath(path, from_dir), "V", "directory", ie)
                     continue
                 if kind == "directory":
                     if path != from_dir:
                         if self._has_dir(encoded_path):
-                            ie = self._get_dir_ie(path, self.path2id(path))
+                            ie = self._get_dir_ie(path, self._path2id(path))
                             status = "V"
                         elif self.is_ignored(path):
                             status = "I"
@@ -1785,7 +1785,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """
         encode_git_path(path)
         with self.lock_read():
-            parent_id = self.path2id(path)
+            parent_id = self._path2id(path)
             found_any = False
             for item_path, value in self.index.iteritems():
                 decoded_item_path = decode_git_path(item_path)
@@ -2056,7 +2056,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         prefix = encode_git_path(prefix)
         per_dir = defaultdict(set)
         if prefix == b"":
-            per_dir[("", self.path2id(""))] = set()
+            per_dir[("", self._path2id(""))] = set()
 
         def add_entry(path, kind):
             if path == b"" or not path.startswith(prefix):
@@ -2064,7 +2064,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             (dirname, child_name) = posixpath.split(path)
             add_entry(dirname, "directory")
             dirname = decode_git_path(dirname)
-            dir_file_id = self.path2id(dirname)
+            dir_file_id = self._path2id(dirname)
             if not isinstance(value, (tuple, IndexEntry)):
                 raise ValueError(value)
             per_dir[(dirname, dir_file_id)].add(
@@ -2073,7 +2073,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     decode_git_path(child_name),
                     kind,
                     None,
-                    self.path2id(decode_git_path(path)),
+                    self._path2id(decode_git_path(path)),
                     kind,
                 )
             )

@@ -1912,7 +1912,7 @@ class GitPreviewTree(PreviewTree, GitTree):
             return None
         return annotate.reannotate([old_annotation], lines, default_revision)
 
-    def path2id(self, path):
+    def _path2id(self, path):
         """Convert a path to a file ID.
 
         Args:
