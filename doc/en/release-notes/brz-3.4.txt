@@ -32,6 +32,15 @@ New Features
    with ``--message``, ``--author`` or ``--commit-time``.
    (Jelmer Vernooĳ)
 
+ * Added a forge plugin for Gitea, following the same pattern as the
+   existing GitHub and GitLab plugins. Since Gitea is self-hosted,
+   detection follows GitLab's approach: a hostname with stored
+   credentials is trusted directly, and an unrecognized hostname is
+   probed via the instance's unauthenticated ``/api/v1/version``
+   endpoint. Supports repository lookup, branch publishing, and
+   merge proposal creation, update, and merging.
+   (caretaker-janitor)
+
 Improvements
 ************
 
