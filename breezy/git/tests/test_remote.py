@@ -29,6 +29,7 @@ from dromedary.errors import (
 from dulwich import porcelain
 from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
+from dulwich.server import update_server_info
 
 from ...branch import Branch
 from ...controldir import ControlDir
@@ -39,9 +40,11 @@ from ...errors import (
 )
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature
+from ...tests.http_utils import TestCaseWithRedirectedWebserver
 from ...urlutils import join as urljoin
 from ..mapping import default_mapping
 from ..remote import (
+    BzrGitHttpClient,
     GitRemoteRevisionTree,
     GitSmartRemoteNotSupported,
     HeadUpdateFailed,
@@ -987,3 +990,31 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
 
         self.overrideAttr(t._repository.controldir._client, "archive", raise_unsupp)
         self.assertRaises(GitSmartRemoteNotSupported, t.archive, "tgz", "foo.tar.gz")
+
+
+class BzrGitHttpClientTests(TestCaseWithRedirectedWebserver):
+    def setUp(self):
+        super().setUp()
+        repo = GitRepo.init("repo", mkdir=True)
+        self.addCleanup(repo.close)
+        self.commit_id = repo.get_worktree().commit(
+            message=b"message",
+            committer=b"committer <committer@example.com>",
+            author=b"author <author@example.com>",
+            ref=b"refs/heads/trunk",
+        )
+        update_server_info(repo)
+
+    def test_get_refs(self):
+        client = BzrGitHttpClient(self.get_new_transport())
+        refs = client.get_refs("repo/.git")
+        self.assertEqual(self.commit_id, refs.refs[b"refs/heads/trunk"])
+
+    def test_redirect_location_after_a_redirect(self):
+        client = BzrGitHttpClient(self.get_old_transport())
+        response, _ = client._http_request(
+            self.get_old_url("repo/.git/info/refs"), headers={}
+        )
+        self.assertEqual(
+            self.get_new_url("repo/.git/info/refs"), response.redirect_location
+        )
