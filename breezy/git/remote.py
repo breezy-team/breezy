@@ -1344,7 +1344,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
                 self._response = response
                 self.status = response.status
                 self.content_type = response.getheader("Content-Type")
-                self.redirect_location = response._actual.geturl()
+                self.redirect_location = response.final_url
 
             def readlines(self):
                 return self._response.readlines()
