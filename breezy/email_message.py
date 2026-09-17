@@ -14,18 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""A convenience class around email.Message and email.MIMEMultipart."""
-
-from email.header import Header
-from email.message import Message
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.utils import formataddr, parseaddr
+"""A convenience class for building the email messages breezy sends."""
 
 from . import __version__ as _breezy_version
+from ._cmd_rs import email_message as _email_message_rs
 from .errors import BzrBadParameterNotUnicode
-from .osutils import safe_unicode
 from .smtp_connection import SMTPConnection
+
+_USER_AGENT = f"Bazaar ({_breezy_version})"
+
+
+def _translate_unicode_errors(func, *args, **kwargs):
+    """Call func, reporting non-unicode arguments as breezy errors."""
+    try:
+        return func(*args, **kwargs)
+    except _email_message_rs.BadParameterNotUnicode as e:
+        raise BzrBadParameterNotUnicode(e.args[0]) from e
 
 
 class EmailMessage:
@@ -53,22 +57,14 @@ class EmailMessage:
         body any byte string will be accepted; if it's not ASCII or UTF-8,
         it'll be sent with charset=8-bit.
         """
-        self._headers = {}
-        self._body = body
-        self._parts = []
-
-        if isinstance(to_address, (bytes, str)):
-            to_address = [to_address]
-
-        to_addresses = []
-
-        for addr in to_address:
-            to_addresses.append(self.address_to_encoded_header(addr))
-
-        self._headers["To"] = ", ".join(to_addresses)
-        self._headers["From"] = self.address_to_encoded_header(from_address)
-        self._headers["Subject"] = Header(safe_unicode(subject))
-        self._headers["User-Agent"] = f"Bazaar ({_breezy_version})"
+        self._msg = _translate_unicode_errors(
+            _email_message_rs.EmailMessage,
+            from_address,
+            to_address,
+            subject,
+            body,
+            _USER_AGENT,
+        )
 
     def add_inline_attachment(self, body, filename=None, mime_subtype="plain"):
         """Add an inline attachment to the message.
@@ -83,14 +79,10 @@ class EmailMessage:
 
         The attachment body will be displayed inline, so do not use this
         function to attach binary attachments.
-        """
-        # add_inline_attachment() has been called, so the message will be a
-        # MIMEMultipart; add the provided body, if any, as the first attachment
-        if self._body is not None:
-            self._parts.append((self._body, None, "plain"))
-            self._body = None
 
-        self._parts.append((body, filename, mime_subtype))
+        :raises ValueError: if the filename or subtype contains a line break.
+        """
+        self._msg.add_inline_attachment(body, filename, mime_subtype)
 
     def as_string(self, boundary=None):
         """Return the entire formatted message as a string.
@@ -98,40 +90,13 @@ class EmailMessage:
         :param boundary: The boundary to use between MIME parts, if applicable.
             Used for tests.
         """
-        if not self._parts:
-            msgobj = Message()
-            if self._body is not None:
-                body, encoding = self.string_with_encoding(self._body)
-                msgobj.set_payload(body, encoding)
-        else:
-            msgobj = MIMEMultipart()
-
-            if boundary is not None:
-                msgobj.set_boundary(boundary)
-
-            for body, filename, mime_subtype in self._parts:
-                body, encoding = self.string_with_encoding(body)
-                payload = MIMEText(body, mime_subtype, encoding)
-
-                if filename is not None:
-                    content_type = payload["Content-Type"]
-                    content_type += f'; name="{filename}"'
-                    payload.replace_header("Content-Type", content_type)
-
-                payload["Content-Disposition"] = "inline"
-                msgobj.attach(payload)
-
-        # sort headers here to ease testing
-        for header, value in sorted(self._headers.items()):
-            msgobj[header] = value
-
-        return msgobj.as_string()
+        return self._msg.as_string(boundary)
 
     __str__ = as_string
 
     def get(self, header, failobj=None):
         """Get a header from the message, returning failobj if not present."""
-        return self._headers.get(header, failobj)
+        return self._msg.get(header, failobj)
 
     def __getitem__(self, header):
         """Get a header from the message, returning None if not present.
@@ -139,7 +104,7 @@ class EmailMessage:
         This method intentionally does not raise KeyError to mimic the behavior
         of __getitem__ in email.Message.
         """
-        return self._headers.get(header, None)
+        return self._msg[header]
 
     def __setitem__(self, header, value):
         """Set a header in the message.
@@ -148,7 +113,7 @@ class EmailMessage:
             header: The header name to set.
             value: The value to set for the header.
         """
-        return self._headers.__setitem__(header, value)
+        self._msg[header] = value
 
     @staticmethod
     def send(
@@ -179,18 +144,13 @@ class EmailMessage:
     def address_to_encoded_header(address):
         """RFC2047-encode an address if necessary.
 
-        :param address: An unicode string, or UTF-8 byte string.
+        :param address: An unicode string.
         :return: A possibly RFC2047-encoded string.
+        :raises ValueError: if the address itself is not ASCII.
         """
-        if not isinstance(address, str):
-            raise BzrBadParameterNotUnicode(address)
-        # Can't call Header over all the address, because that encodes both the
-        # name and the email address, which is not permitted by RFCs.
-        user, email = parseaddr(address)
-        if not user:
-            return email
-        else:
-            return formataddr((str(Header(safe_unicode(user))), email))
+        return _translate_unicode_errors(
+            _email_message_rs.address_to_encoded_header, address
+        )
 
     @staticmethod
     def string_with_encoding(string_):
@@ -200,23 +160,4 @@ class EmailMessage:
         :return: A tuple (str, encoding), where encoding is one of 'ascii',
             'utf-8', or '8-bit', in that preferred order.
         """
-        # Python's email module base64-encodes the body whenever the charset is
-        # not explicitly set to ascii. Because of this, and because we want to
-        # avoid base64 when it's not necessary in order to be most compatible
-        # with the capabilities of the receiving side, we check with encode()
-        # and decode() whether the body is actually ascii-only.
-        if isinstance(string_, str):
-            try:
-                return (string_.encode("ascii"), "ascii")
-            except UnicodeEncodeError:
-                return (string_.encode("utf-8"), "utf-8")
-        else:
-            try:
-                string_.decode("ascii")
-                return (string_, "ascii")
-            except UnicodeDecodeError:
-                try:
-                    string_.decode("utf-8")
-                    return (string_, "utf-8")
-                except UnicodeDecodeError:
-                    return (string_, "8-bit")
+        return _email_message_rs.string_with_encoding(string_)
