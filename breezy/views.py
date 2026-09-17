@@ -24,14 +24,10 @@ when first accessed. Clients should do, for example:
 
 __docformat__ = "google"
 
-import re
-
+from bzrformats import views as _mod_views_format
 from dromedary.errors import NoSuchFile
 
 from . import errors, osutils
-
-_VIEWS_FORMAT_MARKER_RE = re.compile(b"Bazaar views format (\\d+)")
-_VIEWS_FORMAT1_MARKER = b"Bazaar views format 1\n"
 
 
 class NoSuchView(errors.BzrError):
@@ -238,53 +234,11 @@ class PathBasedViews(_Views):
 
     def _serialize_view_content(self, keywords, view_dict):
         """Convert view keywords and a view dictionary into a stream."""
-        lines = [_VIEWS_FORMAT1_MARKER]
-        for key in keywords:
-            line = f"{key}={keywords[key]}\n"
-            lines.append(line.encode("utf-8"))
-        if view_dict:
-            lines.append(b"views:\n")
-            for view in sorted(view_dict):
-                view_data = "{}\0{}\n".format(view, "\0".join(view_dict[view]))
-                lines.append(view_data.encode("utf-8"))
-        return b"".join(lines)
+        return _mod_views_format.serialize_view_content(keywords, view_dict)
 
     def _deserialize_view_content(self, view_content):
         """Convert a stream into view keywords and a dictionary of views."""
-        # as a special case to make initialization easy, an empty definition
-        # maps to no current view and an empty view dictionary
-        if view_content == b"":
-            return {}, {}
-        lines = view_content.splitlines()
-        match = _VIEWS_FORMAT_MARKER_RE.match(lines[0])
-        if not match:
-            raise ValueError("format marker missing from top of views file")
-        elif match.group(1) != b"1":
-            raise ValueError(f"cannot decode views format {match.group(1)}")
-        try:
-            keywords = {}
-            views = {}
-            in_views = False
-            for line in lines[1:]:
-                text = line.decode("utf-8")
-                if in_views:
-                    parts = text.split("\0")
-                    view = parts.pop(0)
-                    views[view] = parts
-                elif text == "views:":
-                    in_views = True
-                    continue
-                elif text.find("=") >= 0:
-                    # must be a name-value pair
-                    keyword, value = text.split("=", 1)
-                    keywords[keyword] = value
-                else:
-                    raise ValueError("failed to deserialize views line %s", text)
-            return keywords, views
-        except ValueError as e:
-            raise ValueError(
-                f"failed to deserialize views content {view_content!r}: {e}"
-            ) from e
+        return _mod_views_format.deserialize_view_content(view_content)
 
 
 class DisabledViews(_Views):
@@ -327,7 +281,7 @@ def view_display_str(view_files, encoding=None):
       encoding: the encoding to display the files in
     """
     if encoding is None:
-        return ", ".join(view_files)
+        return _mod_views_format.view_display_str(view_files)
     else:
         return ", ".join([v.encode(encoding, "replace") for v in view_files])
 
