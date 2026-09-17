@@ -58,6 +58,9 @@ pub mod debug;
 /// Unified diff generation.
 pub mod diff;
 
+/// Email message construction.
+pub mod email_message;
+
 /// Text wrapping with East Asian width support.
 pub mod utextwrap;
 

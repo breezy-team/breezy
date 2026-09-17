@@ -197,6 +197,44 @@ class TestEmailMessage(tests.TestCase):
             BzrBadParameterNotUnicode, EmailMessage.address_to_encoded_header, address
         )
 
+    def test_headers_reject_embedded_headers(self):
+        # A line break in a header value would forge a second header. It is
+        # rejected when the value is set, rather than when the message is
+        # formatted as the email module did.
+        self.assertRaises(
+            ValueError,
+            EmailMessage,
+            "from@from.com",
+            "to@to.com",
+            "subject\nBcc: injected@to.com",
+        )
+        msg = EmailMessage("from@from.com", "to@to.com", "subject")
+        self.assertRaises(
+            ValueError, msg.__setitem__, "Cc", "cc@cc.com\nBcc: injected@to.com"
+        )
+        self.assertRaises(ValueError, msg.add_inline_attachment, "body", "a\nb.txt")
+
+    def test_addresses_reject_non_ascii(self):
+        # RFCs do not permit encoding the address itself, only a display name.
+        self.assertRaises(
+            ValueError,
+            EmailMessage.address_to_encoded_header,
+            "Name <p\xe9rez@ejemplo.com>",
+        )
+
+    def test_malformed_addresses_yield_no_destination(self):
+        # Guessing here could turn a malformed address into a deliverable one.
+        for address in [
+            "a <b> <c@d.com>",
+            "foo <bar@baz.com> extra",
+            "a@b.com, c@d.com",
+        ]:
+            self.assertEqual("", EmailMessage.address_to_encoded_header(address))
+
+    def test_body_line_endings_are_normalised(self):
+        msg = EmailMessage("from@from.com", "to@to.com", "subject", b"a\r\nb\rc")
+        self.assertEqual("a\nb\nc", msg.as_string().split("\n\n", 1)[1])
+
     def test_string_with_encoding(self):
         pairs = {
             "Pepe": (b"Pepe", "ascii"),
