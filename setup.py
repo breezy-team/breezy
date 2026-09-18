@@ -158,6 +158,11 @@ rust_extensions = [
     ),
     RustExtension("breezy._git_rs", "crates/git-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._hpss_rs", "crates/hpss-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension(
+        "breezy._configobj_rs",
+        "crates/configobj-py/Cargo.toml",
+        binding=Binding.PyO3,
+    ),
 ]
 
 entry_points = {}

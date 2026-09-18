@@ -19,7 +19,7 @@
 See ``bzr help rules`` for details.
 """
 
-import configobj
+import breezy._configobj_rs as configobj
 
 from . import bedding, cmdline, errors, globbing, osutils
 

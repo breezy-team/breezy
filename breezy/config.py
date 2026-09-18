@@ -78,13 +78,12 @@ __docformat__ = "google"
 
 import os
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from io import BytesIO
 from typing import cast
 
-import configobj
-
 import breezy
+import breezy._configobj_rs as configobj
 
 from .lazy_import import lazy_import
 
@@ -329,13 +328,6 @@ def signing_policy_from_unicode(signature_string):
     raise ValueError(f"Invalid signing policy '{signature_string}'")
 
 
-def _has_triplequote_bug():
-    """True if triple quote logic is reversed, see lp:710410."""
-    conf = configobj.ConfigObj()
-    quote = getattr(conf, "_get_triple_quote", None)
-    return bool(quote and quote('"""') != "'''")
-
-
 class ConfigObj(configobj.ConfigObj):
     """Extended ConfigObj with Breezy-specific functionality."""
 
@@ -348,22 +340,6 @@ class ConfigObj(configobj.ConfigObj):
         """
         # We define our own interpolation mechanism calling it option expansion
         super().__init__(infile=infile, interpolation=False, **kwargs)
-
-    if _has_triplequote_bug():
-
-        def _get_triple_quote(self, value):
-            """Work around ConfigObj triple quote bug.
-
-            Args:
-                value: The value to determine triple quote style for.
-
-            Returns:
-                The corrected triple quote string.
-            """
-            quot = super()._get_triple_quote(value)
-            if quot == configobj.tdquot:
-                return configobj.tsquot
-            return configobj.tdquot
 
     def get_bool(self, section, key) -> bool:
         """Get a boolean value from a specific section and key.
@@ -591,7 +567,7 @@ class Config:
         if expand:
             if isinstance(value, list):
                 value = self._expand_options_in_list(value)
-            elif isinstance(value, dict):
+            elif isinstance(value, Mapping):
                 trace.warning(
                     f'Cannot expand "{option_name}":'
                     " Dicts do not support option expansion"
@@ -1009,7 +985,13 @@ class IniBasedConfig(Config):
         config_id = self.config_id()
         for section_name, section in sections:
             for name, value in section.iteritems():
-                yield (name, parser._quote(value), section_name, config_id, parser)
+                yield (
+                    name,
+                    configobj.quote(value),
+                    section_name,
+                    config_id,
+                    parser,
+                )
 
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
@@ -2855,13 +2837,6 @@ def float_from_store(unicode_str):
     return float(unicode_str)
 
 
-# Use an empty dict to initialize an empty configobj avoiding all parsing and
-# encoding checks
-_list_converter_config = configobj.ConfigObj(
-    {}, encoding="utf-8", list_values=True, interpolation=False
-)
-
-
 class ListOption(Option):
     """Option definition for list values."""
 
@@ -2897,12 +2872,9 @@ class ListOption(Option):
         """
         if not isinstance(unicode_str, str):
             raise TypeError
-        # Now inject our string directly as unicode. All callers got their
-        # value from configobj, so values that need to be quoted are already
-        # properly quoted.
-        _list_converter_config.reset()
-        _list_converter_config._parse([f"list={unicode_str}"])
-        maybe_list = _list_converter_config["list"]
+        # All callers got their value from configobj, so values that need
+        # to be quoted are already properly quoted.
+        maybe_list = configobj.parse_value(unicode_str)
         if isinstance(maybe_list, str):
             if maybe_list:
                 # A single value, most probably the user forgot (or didn't care
@@ -4024,12 +3996,7 @@ class IniFileStore(Store):
         Returns:
             The quoted value suitable for storage.
         """
-        try:
-            # configobj conflates automagical list values and quoting
-            self._config_obj.list_values = True
-            return self._config_obj._quote(value)
-        finally:
-            self._config_obj.list_values = False
+        return configobj.quote(value)
 
     def unquote(self, value):
         """Unquote a configuration value from storage.
@@ -4041,9 +4008,8 @@ class IniFileStore(Store):
             The unquoted value.
         """
         if value and isinstance(value, str):
-            # _unquote doesn't handle None nor empty strings nor anything that
-            # is not a string, really.
-            value = self._config_obj._unquote(value)
+            # unquote is for text; None and empty strings pass through.
+            value = configobj.unquote(value)
         return value
 
     def external_url(self):

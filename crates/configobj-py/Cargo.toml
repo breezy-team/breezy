@@ -1,0 +1,12 @@
+[package]
+name = "configobj-py"
+version = { workspace = true }
+edition = "2021"
+
+[lib]
+name = "_configobj_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { workspace = true, features = ["extension-module"] }
+configobj = { workspace = true }

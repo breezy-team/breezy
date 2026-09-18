@@ -1,41 +1,37 @@
 [build-system]
-requires = [
-    "setuptools>=60",
-    "setuptools-rust",
-    "setuptools-gettext>=0.1.4",
-]
+requires = ["setuptools>=60", "setuptools-rust", "setuptools-gettext>=0.1.4"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "breezy"
-maintainers = [{name = "Breezy Developers", email = "team@breezy-vcs.org"}]
+maintainers = [{ name = "Breezy Developers", email = "team@breezy-vcs.org" }]
 description = "Friendly distributed version control system"
 readme = "README.rst"
 license = "GPL-2.0-or-later"
 classifiers = [
-    "Development Status :: 6 - Mature",
-    "Environment :: Console",
-    "Intended Audience :: Developers",
-    "Intended Audience :: System Administrators",
-    "Operating System :: OS Independent",
-    "Operating System :: POSIX",
-    "Programming Language :: Python",
-    "Programming Language :: Rust",
-    "Topic :: Software Development :: Version Control",
+	"Development Status :: 6 - Mature",
+	"Environment :: Console",
+	"Intended Audience :: Developers",
+	"Intended Audience :: System Administrators",
+	"Operating System :: OS Independent",
+	"Operating System :: POSIX",
+	"Programming Language :: Python",
+	"Programming Language :: Rust",
+	"Topic :: Software Development :: Version Control",
 ]
 requires-python = ">=3.10,<3.15"
 dependencies = [
-    "bzrformats>=3.5.2",
-    "catalogus",
-    "configobj",
-    "dromedary>=0.1.7",
-    "fastbencode",
-    "patiencediff",
-    "merge3",
-    "dulwich>=1,<2",
-    "urllib3>=1.24.1",
-    "pyyaml",
-    "vcsgraph>=0.3.0",
+	"bzrformats>=3.5.2",
+	"catalogus",
+	"configobj",
+	"dromedary>=0.1.7",
+	"fastbencode",
+	"patiencediff",
+	"merge3",
+	"dulwich>=1,<2",
+	"urllib3>=1.24.1",
+	"pyyaml",
+	"vcsgraph>=0.3.0",
 ]
 dynamic = ["version", "scripts"]
 
@@ -49,30 +45,20 @@ fastimport = ["fastimport>=0.9.8"]
 git = ["dulwich>=1,<2"]
 launchpad = ["launchpadlib>=1.6.3"]
 workspace = ["pyinotify", "pyasyncore;python_version>='3.12'"]
-doc = [
-    "docutils",
-    "setuptools",
-    "sphinx",
-    "sphinx_epytext",
-]
+doc = ["docutils", "setuptools", "sphinx", "sphinx_epytext"]
 pgp = ["gpg"]
 github = ["github"]
 paramiko = ["paramiko>=1.6.2"]
 subunit = ["python-subunit"]
 dev = [
-    "testtools>=0.9.9",
-    "testscenarios",
-    "python-subunit",
-    "ruff==0.13.0",
-    "types-paramiko",
-    "types-PyYAML",
+	"testtools>=0.9.9",
+	"testscenarios",
+	"python-subunit",
+	"ruff==0.13.0",
+	"types-paramiko",
+	"types-PyYAML",
 ]
-testing = [
-    "testtools",
-    "testscenarios",
-    "python-subunit",
-    "dulwich>=0.24.3",
-]
+testing = ["testtools", "testscenarios", "python-subunit", "dulwich>=0.24.3"]
 
 [tool.setuptools]
 zip-safe = false
@@ -84,18 +70,18 @@ namespaces = false
 
 [tool.setuptools.package-data]
 breezy = [
-    "doc/api/*.txt",
-    "tests/test_patches_data/*",
-    "help_topics/en/*.txt",
-    "tests/ssl_certs/ca.crt",
-    "tests/ssl_certs/server_without_pass.key",
-    "tests/ssl_certs/server_with_pass.key",
-    "tests/ssl_certs/server.crt",
-    "py.typed",
+	"doc/api/*.txt",
+	"tests/test_patches_data/*",
+	"help_topics/en/*.txt",
+	"tests/ssl_certs/ca.crt",
+	"tests/ssl_certs/server_without_pass.key",
+	"tests/ssl_certs/server_with_pass.key",
+	"tests/ssl_certs/server.crt",
+	"py.typed",
 ]
 
 [tool.setuptools.dynamic]
-version = {attr = "breezy.__version__"}
+version = { attr = "breezy.__version__" }
 
 [tool.mypy]
 ignore_missing_imports = true
@@ -105,72 +91,72 @@ extend-exclude = ["lib", "bin"]
 
 [tool.ruff.lint]
 select = [
-    "ANN",  # annotations
-    "D",  # pydocstyle
-    "E",  # pycodestyle
-    "F",  # pyflakes
-    "N",  # naming
-    "B",  # bugbear
-    "I",  # isort
-    "S",  # bandit
-    "TCH", # typecheck
-    "INT", # gettext
-   "SIM", # simplify
-    "C4",  # comprehensions
-    "UP",  # pyupgrade
-    "RUF", # ruf-specific
+	"ANN", # annotations
+	"D",   # pydocstyle
+	"E",   # pycodestyle
+	"F",   # pyflakes
+	"N",   # naming
+	"B",   # bugbear
+	"I",   # isort
+	"S",   # bandit
+	"TCH", # typecheck
+	"INT", # gettext
+	"SIM", # simplify
+	"C4",  # comprehensions
+	"UP",  # pyupgrade
+	"RUF", # ruf-specific
 ]
 ignore = [
-    "ANN001",
-    "ANN002",
-    "ANN003",  # missing-type-arg
-    "ANN201",
-    "ANN202",
-    "ANN204",
-    "ANN205",
-    "ANN206",
-    "D205",  # 1 blank line required between summary line and description
-    "D417",  # Missing argument descriptions in the docstring
-    "F821",  # undefined-name
-    "E501",  # line too long
-    "D402",  # Missing blank line after last section
-    "E402",  # module level import not at top of file
-    "E741",  # ambiguous variable name
-    "F405",  # name may be undefined, or defined from star imports
-    "N801",  # Naming convention violation: invalid constant name
-    "N802",  # Naming convention violation: invalid variable name
-    "N804",  # Naming convention violation: invalid lowercase variable name
-    "N806",  # Naming convention violation: invalid lowercase function name
-    "N818",  # Naming convention violation: invalid argument name
-    "N999",  # Naming convention violation: invalid module name
+	"ANN001",
+	"ANN002",
+	"ANN003", # missing-type-arg
+	"ANN201",
+	"ANN202",
+	"ANN204",
+	"ANN205",
+	"ANN206",
+	"D205",   # 1 blank line required between summary line and description
+	"D417",   # Missing argument descriptions in the docstring
+	"F821",   # undefined-name
+	"E501",   # line too long
+	"D402",   # Missing blank line after last section
+	"E402",   # module level import not at top of file
+	"E741",   # ambiguous variable name
+	"F405",   # name may be undefined, or defined from star imports
+	"N801",   # Naming convention violation: invalid constant name
+	"N802",   # Naming convention violation: invalid variable name
+	"N804",   # Naming convention violation: invalid lowercase variable name
+	"N806",   # Naming convention violation: invalid lowercase function name
+	"N818",   # Naming convention violation: invalid argument name
+	"N999",   # Naming convention violation: invalid module name
 
-    "S602",  # subprocess with shell=True
-    "S603",  # check for execution of untrusted input
-    "S105",  # "hardcoded password"; false positives on "pwd"
-    "S106",  # "hardcoded password"; false positives on "pwd"
-    "S110",  # "consider logging exception"
+	"S602", # subprocess with shell=True
+	"S603", # check for execution of untrusted input
+	"S105", # "hardcoded password"; false positives on "pwd"
+	"S106", # "hardcoded password"; false positives on "pwd"
+	"S110", # "consider logging exception"
 
-    "S101",  # use of assert
-    "S317",  # use defusedxml
+	"S101", # use of assert
+	"S317", # use defusedxml
 
-    # This triggers for docstrings that uses __doc__
-    "D104", # Missing docstring in public package
+	# This triggers for docstrings that uses __doc__
+	"D104", # Missing docstring in public package
 
-    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
-    "RUF005", # Consider iterable concatenation instead of list concatenation
-    "RUF015", # Prefer next() of single slice access
+	"RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+	"RUF005", # Consider iterable concatenation instead of list concatenation
+	"RUF015", # Prefer next() of single slice access
 
-    "SIM102", # Use a single `if` statement instead of nested `if` statements
-    "SIM105", # Use `contextlib.suppress
-    "SIM108", # Use ternary operator
-    "SIM114", # Combine `if` branches using logical `or` operator
-    "SIM115", # Use context handler for opening files
+	"SIM102", # Use a single `if` statement instead of nested `if` statements
+	"SIM105", # Use `contextlib.suppress
+	"SIM108", # Use ternary operator
+	"SIM114", # Combine `if` branches using logical `or` operator
+	"SIM115", # Use context handler for opening files
 
-    # This is unsafe for breezy, where several objects (e.g. VersionedFiles)
-    # have a keys() method but no __iter__
-    "SIM118", # Use `key in dict` instead of `key in dict.keys()`
-    "UP031",  # Use format-specifier instead of `str.format` call
-    "UP032",  # Use f-string instead of `format` call; f-strings break gettext
+	# This is unsafe for breezy, where several objects (e.g. VersionedFiles)
+	# have a keys() method but no __iter__
+	"SIM118", # Use `key in dict` instead of `key in dict.keys()`
+	"UP031",  # Use format-specifier instead of `str.format` call
+	"UP032",  # Use f-string instead of `format` call; f-strings break gettext
 ]
 # These are actually fine, but they make mypy more strict and then it fails.
 unfixable = ["ANN204"]
@@ -178,11 +164,56 @@ unfixable = ["ANN204"]
 [tool.ruff.lint.extend-per-file-ignores]
 "breezy/plugins/po_merge/tests/test_po_merge.py" = ["RUF001"]
 # Ignore docstring requirements for test files
-"breezy/tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
-"breezy/bzr/tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
-"breezy/*/tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
-"breezy/**/test_*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
-"breezy/**/*_test.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"breezy/tests/**/*.py" = [
+	"D100",
+	"D101",
+	"D102",
+	"D103",
+	"D104",
+	"D105",
+	"D106",
+	"D107",
+]
+"breezy/bzr/tests/**/*.py" = [
+	"D100",
+	"D101",
+	"D102",
+	"D103",
+	"D104",
+	"D105",
+	"D106",
+	"D107",
+]
+"breezy/*/tests/**/*.py" = [
+	"D100",
+	"D101",
+	"D102",
+	"D103",
+	"D104",
+	"D105",
+	"D106",
+	"D107",
+]
+"breezy/**/test_*.py" = [
+	"D100",
+	"D101",
+	"D102",
+	"D103",
+	"D104",
+	"D105",
+	"D106",
+	"D107",
+]
+"breezy/**/*_test.py" = [
+	"D100",
+	"D101",
+	"D102",
+	"D103",
+	"D104",
+	"D105",
+	"D106",
+	"D107",
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
