@@ -27,6 +27,7 @@ i18n = ["dep:gettext"]
 pyo3 = []
 
 [dependencies]
+base64 = { workspace = true }
 pyo3 = { workspace = true, features = ["abi3"] }
 gettext = { workspace = true, optional = true }
 log = { workspace = true }
@@ -54,6 +55,7 @@ nix = { workspace = true, features = ["fs"] }
 dirs = "6"
 
 [workspace.dependencies]
+base64 = "0.22"
 nix = ">=0.26"
 patchkit = "0.3.8"
 patiencediff = { version = "0.3", default-features = false }

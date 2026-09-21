@@ -513,6 +513,7 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
     Ok(breezy::help::format_see_also(see_also.unwrap().as_slice()))
 }
 
+mod email_message;
 mod help;
 mod utextwrap;
 
@@ -936,6 +937,10 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     utextwrap::utextwrap(&utextwrapm)?;
     m.add_submodule(&utextwrapm)?;
 
+    let email_messagem = PyModule::new(py, "email_message")?;
+    email_message::email_message(&email_messagem)?;
+    m.add_submodule(&email_messagem)?;
+
     // PyO3 submodule hack for proper import support
     let sys = py.import("sys")?;
     let modules = sys.getattr("modules")?;
@@ -948,6 +953,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.cmdline", module_name), &cmdlinem)?;
     modules.set_item(format!("{}.diff", module_name), &diffm)?;
     modules.set_item(format!("{}.utextwrap", module_name), &utextwrapm)?;
+    modules.set_item(format!("{}.email_message", module_name), &email_messagem)?;
 
     Ok(())
 }
