@@ -44,6 +44,11 @@ Bug Fixes
 .. Fixes for situations where brz would previously crash or give incorrect
    or undesirable results.
 
+ * Use the clone URL's scheme and port when probing a GitLab instance,
+   rather than always assuming HTTPS on the default port. Fixes forge
+   probing against a self-hosted GitLab served over plain ``http`` or on
+   a non-default port. (Zainab Mehmut)
+
 Documentation
 *************
 
