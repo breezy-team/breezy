@@ -394,6 +394,21 @@ def parse_gitlab_url(url):
     return host, path
 
 
+def api_base_url(url):
+    """Return the web API base URL for a GitLab clone URL.
+
+    An http(s) clone URL serves the web API from the same host and port, so
+    reuse both. A git+ssh URL carries no web port, so fall back to HTTPS on
+    the bare host.
+    """
+    (scheme, _user, _password, host, port, _path) = urlutils.parse_url(url)
+    if scheme not in ("http", "https"):
+        scheme, port = "https", None
+    if port == (443 if scheme == "https" else 80):
+        port = None
+    return str(urlutils.URL(scheme, None, None, host, port, "/"))
+
+
 def parse_gitlab_branch_url(branch):
     """Parse a branch object to extract GitLab hostname, project path, and branch name.
 
@@ -1764,12 +1779,11 @@ class GitLab(Forge):
             by checking for the X-Gitlab-Feature-Category header.
         """
         try:
-            (host, project) = parse_gitlab_url(url)
+            (_host, project) = parse_gitlab_url(url)
         except NotGitLabUrl as e:
             raise UnsupportedForge(url) from e
-        transport = get_transport(
-            f"https://{host}", possible_transports=possible_transports
-        )
+        base_url = api_base_url(url)
+        transport = get_transport(base_url, possible_transports=possible_transports)
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
             instance = cls(transport, credentials.get("private_token"))
@@ -1778,7 +1792,12 @@ class GitLab(Forge):
         try:
             resp = transport.request(
                 "GET",
-                f"https://{host}/api/v4/projects/{urlutils.quote(str(project), '')}",
+                urlutils.join(
+                    base_url,
+                    "api",
+                    "v4",
+                    f"projects/{urlutils.quote(str(project), '')}",
+                ),
             )
         except transport_errors.UnexpectedHttpStatus as e:
             raise UnsupportedForge(url) from e
@@ -1789,7 +1808,7 @@ class GitLab(Forge):
             if not resp.getheader("X-Gitlab-Feature-Category"):
                 raise UnsupportedForge(url)
             if resp.status in (200, 401):
-                raise GitLabLoginMissing(f"https://{host}/")
+                raise GitLabLoginMissing(base_url)
             raise UnsupportedForge(url)
 
     @classmethod
