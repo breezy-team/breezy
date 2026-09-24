@@ -167,6 +167,21 @@ def parse_gitea_url(url):
     return host, path
 
 
+def api_base_url(url):
+    """Return the web API base URL for a Gitea clone URL.
+
+    An http(s) clone URL serves the web API from the same host and port, so
+    reuse both. A git+ssh URL carries no web port, so fall back to HTTPS on
+    the bare host.
+    """
+    (scheme, _user, _password, host, port, _path) = urlutils.parse_url(url)
+    if scheme not in ("http", "https"):
+        scheme, port = "https", None
+    if port == (443 if scheme == "https" else 80):
+        port = None
+    return str(urlutils.URL(scheme, None, None, host, port, "/"))
+
+
 def parse_gitea_branch_url(branch):
     """Parse a branch into (hostname, owner/repo, branch_name)."""
     url = urlutils.strip_segment_parameters(branch.user_url)
@@ -737,11 +752,11 @@ class Gitea(Forge):
     def probe_from_url(cls, url, possible_transports=None):
         """Create a Gitea instance from a project URL, if credentials exist."""
         try:
-            (host, _project) = parse_gitea_url(url)
+            parse_gitea_url(url)
         except NotGiteaUrl as e:
             raise UnsupportedForge(url) from e
         transport = get_transport(
-            f"https://{host}", possible_transports=possible_transports
+            api_base_url(url), possible_transports=possible_transports
         )
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
