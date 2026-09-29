@@ -57,6 +57,12 @@ class ApiBaseUrlTests(TestCase):
             api_base_url("git+ssh://git@gitlab.example.com:2222/jelmer/x"),
         )
 
+    def test_credentials_are_dropped(self):
+        self.assertEqual(
+            "http://gitlab.example.com:3000/",
+            api_base_url("http://user:pw@gitlab.example.com:3000/jelmer/x"),
+        )
+
     def test_ipv6_host_is_bracketed(self):
         self.assertEqual(
             "http://[2001:db8::1]:8080/",
