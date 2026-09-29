@@ -22,10 +22,12 @@ from ..forge import (
     Forge,
     MergeProposal,
     UnsupportedForge,
+    api_base_url,
     determine_title,
     get_forge,
     get_proposal_by_url,
 )
+from ..transport import get_transport
 
 
 class SampleMergeProposal(MergeProposal):
@@ -140,4 +142,67 @@ Release version 5.1
 And here are some more details.
 """
             ),
+        )
+
+
+class ApiBaseUrlTests(tests.TestCase):
+    def test_https_default_port(self):
+        self.assertEqual(
+            "https://gitlab.com/", api_base_url("https://gitlab.com/jelmer/example")
+        )
+
+    def test_http_keeps_scheme_and_port(self):
+        self.assertEqual(
+            "http://forge.example.com:3000/",
+            api_base_url("http://forge.example.com:3000/jelmer/example"),
+        )
+
+    def test_https_keeps_non_default_port(self):
+        self.assertEqual(
+            "https://forge.example.com:8443/",
+            api_base_url("https://forge.example.com:8443/jelmer/example"),
+        )
+
+    def test_explicit_default_port_dropped(self):
+        # A token stored against the port-less URL must still match.
+        self.assertEqual(
+            "https://forge.example.com/",
+            api_base_url("https://forge.example.com:443/jelmer/example"),
+        )
+        self.assertEqual(
+            "http://forge.example.com/",
+            api_base_url("http://forge.example.com:80/jelmer/example"),
+        )
+
+    def test_ssh_falls_back_to_https(self):
+        # A git+ssh URL's port is an SSH port, not a web one.
+        self.assertEqual(
+            "https://forge.example.com/",
+            api_base_url("git+ssh://git@forge.example.com:2222/jelmer/example"),
+        )
+
+    def test_credentials_are_dropped(self):
+        self.assertEqual(
+            "http://forge.example.com:3000/",
+            api_base_url("http://user:pw@forge.example.com:3000/jelmer/example"),
+        )
+
+    def test_ipv6_host_is_bracketed(self):
+        self.assertEqual(
+            "http://[2001:db8::1]:3000/",
+            api_base_url("http://[2001:db8::1]:3000/jelmer/example"),
+        )
+
+    def test_root_instance_matches_the_old_base(self):
+        # The stored token is matched against transport.base.
+        self.assertEqual(
+            get_transport("https://gitlab.com").base,
+            api_base_url("https://gitlab.com/jelmer/example"),
+        )
+
+    def test_subpath_is_dropped(self):
+        # Known limitation, see the docstring.
+        self.assertEqual(
+            "https://example.com/",
+            api_base_url("https://example.com/forge/jelmer/example"),
         )
