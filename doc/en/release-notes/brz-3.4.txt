@@ -119,6 +119,11 @@ Bug Fixes
    library is not installed, such as Launchpad without launchpadlib,
    instead of failing. (Zainab Mehmut)
 
+ * Use a project URL's scheme and port when probing a GitLab or Gitea
+   instance, rather than always assuming HTTPS on the default port. Fixes
+   forge probing against a self-hosted instance served over plain ``http``
+   or on a non-default port. (Zainab Mehmut)
+
 Documentation
 *************
 
@@ -158,6 +163,9 @@ API Changes
  * The ``Command``, ``Option``, ``RegistryOption``, ``Hooks``, ``HookPoint``
    and ``Registry`` base classes are implemented in Rust. They can still be
    subclassed. (Jelmer Vernooĳ)
+
+ * New ``breezy.forge.api_base_url``, which derives the base URL of a
+   forge's web API from a project URL. (Zainab Mehmut)
 
 Internals
 *********
