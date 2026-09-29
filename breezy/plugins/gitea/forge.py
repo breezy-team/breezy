@@ -32,6 +32,7 @@ from ...forge import (
     NoSuchProject,
     PrerequisiteBranchUnsupported,
     UnsupportedForge,
+    api_base_url,
     determine_title,
 )
 from ...git.urls import git_url_to_bzr_url
@@ -775,11 +776,11 @@ class Gitea(Forge):
     def probe_from_url(cls, url, possible_transports=None):
         """Create a Gitea instance from a project URL, if credentials exist."""
         try:
-            (host, _project) = parse_gitea_url(url)
+            parse_gitea_url(url)
         except NotGiteaUrl as e:
             raise UnsupportedForge(url) from e
         transport = get_transport(
-            f"https://{host}", possible_transports=possible_transports
+            api_base_url(url), possible_transports=possible_transports
         )
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
