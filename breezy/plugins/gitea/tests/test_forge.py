@@ -15,12 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import json
+import threading
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from dromedary import errors as transport_errors
 
-from breezy.forge import NoSuchProject
-from breezy.tests import TestCase
+from breezy.forge import NoSuchProject, UnsupportedForge
+from breezy.tests import TestCase, TestCaseInTempDir
 
 from ..forge import (
     DEFAULT_PAGE_SIZE,
@@ -30,6 +32,7 @@ from ..forge import (
     parse_gitea_merge_request_url,
     parse_gitea_url,
     parse_timestring,
+    store_gitea_token,
 )
 
 
@@ -252,3 +255,67 @@ class DeleteProjectTests(TestCase):
 
     def test_unexpected_status(self):
         self.assertRaises(transport_errors.UnexpectedHttpStatus, self.delete, 500)
+
+
+class ForgeServer:
+    """A loopback HTTP server that answers API requests from a table."""
+
+    def __init__(self, responses):
+        requests = self.requests = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                requests.append(("GET", self.path, self.headers.get("Authorization")))
+                status, payload = responses.get(self.path, (404, {}))
+                data = json.dumps(payload).encode("utf-8")
+                self.send_response(status)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def log_message(self, format, *args):
+                pass
+
+        self._httpd = HTTPServer(("127.0.0.1", 0), Handler)
+        self._thread = threading.Thread(target=self._httpd.serve_forever, args=(0.01,))
+        self.url = f"http://127.0.0.1:{self._httpd.server_port}/"
+
+    def start(self):
+        self._thread.start()
+
+    def stop(self):
+        self._httpd.shutdown()
+        self._thread.join()
+        self._httpd.server_close()
+
+
+class ProbeFromUrlTests(TestCaseInTempDir):
+    def serve(self, responses):
+        server = ForgeServer(responses)
+        server.start()
+        self.addCleanup(server.stop)
+        return server
+
+    def test_scheme_and_port_preserved(self):
+        server = self.serve({"/api/v1/user": (200, {"login": "jelmer"})})
+        store_gitea_token("local", server.url, "sekrit")
+        forge = Gitea.probe_from_url(server.url + "jelmer/example")
+        self.assertEqual(server.url, forge.base_url)
+        self.assertEqual([("GET", "/api/v1/user", "token sekrit")], server.requests)
+
+    def test_ssh_url_probed_over_https(self):
+        transports = []
+        self.assertRaises(
+            UnsupportedForge,
+            Gitea.probe_from_url,
+            "git+ssh://git@gitea.example.com:2222/jelmer/example",
+            possible_transports=transports,
+        )
+        self.assertEqual(["https://gitea.example.com/"], [t.base for t in transports])
+
+    def test_no_credentials(self):
+        server = self.serve({})
+        self.assertRaises(
+            UnsupportedForge, Gitea.probe_from_url, server.url + "jelmer/example"
+        )
+        self.assertEqual([], server.requests)
