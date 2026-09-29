@@ -42,6 +42,7 @@ from ...tests.features import ExecutableFeature
 from ...urlutils import join as urljoin
 from ..mapping import default_mapping
 from ..remote import (
+    BzrGitHttpClient,
     GitRemoteRevisionTree,
     GitSmartRemoteNotSupported,
     HeadUpdateFailed,
@@ -987,3 +988,66 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
 
         self.overrideAttr(t._repository.controldir._client, "archive", raise_unsupp)
         self.assertRaises(GitSmartRemoteNotSupported, t.archive, "tgz", "foo.tar.gz")
+
+
+class StubHttpResponse:
+    """Carries only the attributes dromedary's HTTP response offers."""
+
+    status = 200
+
+    def __init__(self, final_url):
+        self.final_url = final_url
+
+    def getheader(self, name, default=None):
+        if name == "Content-Type":
+            return "application/x-git-upload-pack-advertisement"
+        return default
+
+    def read(self, size=None):
+        return b""
+
+    def readlines(self):
+        return []
+
+
+class StubHttpTransport:
+    def __init__(self, response):
+        self.response = response
+        self.requests = []
+
+    def external_url(self):
+        return "http://example.com/repo/"
+
+    def request(self, method, url, body=None, headers=None, retries=None):
+        self.requests.append((method, url, body, headers))
+        return self.response
+
+
+class BzrGitHttpClientTests(TestCase):
+    def wrap(self, url, final_url):
+        self.transport = StubHttpTransport(StubHttpResponse(final_url))
+        client = BzrGitHttpClient(self.transport)
+        response, read = client._http_request(url, headers={})
+        return response, read
+
+    def test_redirect_location_from_final_url(self):
+        url = "http://example.com/repo/info/refs?service=git-upload-pack"
+        response, read = self.wrap(url, url)
+        self.assertEqual(200, response.status)
+        self.assertEqual(
+            "application/x-git-upload-pack-advertisement", response.content_type
+        )
+        self.assertEqual(url, response.redirect_location)
+        self.assertEqual(b"", read())
+        self.assertEqual(
+            [("GET", url, None, {"Pragma": "no-cache"})], self.transport.requests
+        )
+
+    def test_redirect_location_after_a_redirect(self):
+        response, _read = self.wrap(
+            "http://example.com/repo/info/refs",
+            "http://example.com/moved/info/refs",
+        )
+        self.assertEqual(
+            "http://example.com/moved/info/refs", response.redirect_location
+        )
