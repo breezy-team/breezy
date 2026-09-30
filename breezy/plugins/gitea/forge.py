@@ -789,6 +789,18 @@ class Gitea(Forge):
         raise UnsupportedForge(url)
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        """Create a Gitea instance from a hostname, if credentials exist."""
+        for _name, credentials in iter_tokens():
+            if urlutils.parse_url(credentials["url"])[3] != hostname:
+                continue
+            transport = get_transport(
+                credentials["url"], possible_transports=possible_transports
+            )
+            return cls(transport, credentials.get("private_token"))
+        raise UnsupportedForge(hostname)
+
+    @classmethod
     def iter_instances(cls):
         """Iterate over Gitea instances for all stored credentials."""
         for _name, credentials in iter_tokens():
