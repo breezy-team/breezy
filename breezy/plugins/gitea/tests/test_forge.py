@@ -15,12 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import json
+import os
 from datetime import datetime
 
 from dromedary import errors as transport_errors
 
-from breezy.forge import NoSuchProject
-from breezy.tests import TestCase
+from breezy import bedding
+from breezy.forge import NoSuchProject, UnsupportedForge
+from breezy.tests import TestCase, TestCaseInTempDir
 
 from ..forge import (
     DEFAULT_PAGE_SIZE,
@@ -252,3 +254,22 @@ class DeleteProjectTests(TestCase):
 
     def test_unexpected_status(self):
         self.assertRaises(transport_errors.UnexpectedHttpStatus, self.delete, 500)
+
+
+class ProbeFromHostnameTests(TestCaseInTempDir):
+    def setUp(self):
+        super().setUp()
+        os.makedirs(bedding.config_dir(), exist_ok=True)
+        with open(os.path.join(bedding.config_dir(), "gitea.conf"), "w") as f:
+            f.write(
+                "[example]\n"
+                "url = http://gitea.example.com:3000/\n"
+                "private_token = sekrit\n"
+            )
+
+    def test_known_hostname(self):
+        forge = Gitea.probe_from_hostname("gitea.example.com")
+        self.assertEqual("gitea.example.com", forge.base_hostname)
+
+    def test_unknown_hostname(self):
+        self.assertRaises(UnsupportedForge, Gitea.probe_from_hostname, "codeberg.org")
