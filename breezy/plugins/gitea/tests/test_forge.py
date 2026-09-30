@@ -29,6 +29,7 @@ from ..forge import (
     Gitea,
     NotGiteaUrl,
     NotMergeRequestUrl,
+    iter_tokens,
     parse_gitea_merge_request_url,
     parse_gitea_url,
     parse_timestring,
@@ -256,16 +257,20 @@ class DeleteProjectTests(TestCase):
         self.assertRaises(transport_errors.UnexpectedHttpStatus, self.delete, 500)
 
 
-class ProbeFromHostnameTests(TestCaseInTempDir):
+class GiteaConfigTestCase(TestCaseInTempDir):
+    def write_config(self, name, contents):
+        os.makedirs(bedding.config_dir(), exist_ok=True)
+        with open(os.path.join(bedding.config_dir(), name), "w") as f:
+            f.write(contents)
+
+
+class ProbeFromHostnameTests(GiteaConfigTestCase):
     def setUp(self):
         super().setUp()
-        os.makedirs(bedding.config_dir(), exist_ok=True)
-        with open(os.path.join(bedding.config_dir(), "gitea.conf"), "w") as f:
-            f.write(
-                "[example]\n"
-                "url = http://gitea.example.com:3000/\n"
-                "private_token = sekrit\n"
-            )
+        self.write_config(
+            "gitea.conf",
+            "[example]\nurl = http://gitea.example.com:3000/\nprivate_token = sekrit\n",
+        )
 
     def test_known_hostname(self):
         forge = Gitea.probe_from_hostname("gitea.example.com")
@@ -273,3 +278,15 @@ class ProbeFromHostnameTests(TestCaseInTempDir):
 
     def test_unknown_hostname(self):
         self.assertRaises(UnsupportedForge, Gitea.probe_from_hostname, "codeberg.org")
+
+
+class IterTokensTests(GiteaConfigTestCase):
+    def test_entry_without_url_is_skipped(self):
+        self.write_config(
+            "authentication.conf",
+            "[gitea]\nforge = gitea\nprivate_token = sekrit\n",
+        )
+        self.assertRaises(
+            UnsupportedForge, Gitea.probe_from_hostname, "gitea.example.com"
+        )
+        self.assertEqual([], list(iter_tokens()))

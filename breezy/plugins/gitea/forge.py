@@ -138,7 +138,7 @@ def iter_tokens():
 
     auth_config = AuthenticationConfig()
     for name, creds in auth_config._get_config().iteritems():
-        if creds.get("forge") == "gitea":
+        if creds.get("forge") == "gitea" and "url" in creds:
             yield name, creds
 
 
