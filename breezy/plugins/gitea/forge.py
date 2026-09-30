@@ -792,7 +792,10 @@ class Gitea(Forge):
     def probe_from_hostname(cls, hostname, possible_transports=None):
         """Create a Gitea instance from a hostname, if credentials exist."""
         for _name, credentials in iter_tokens():
-            if urlutils.parse_url(credentials["url"])[3] != hostname:
+            (_scheme, _user, _password, host, _port, _path) = urlutils.parse_url(
+                credentials["url"]
+            )
+            if not host or host.lower() != hostname.lower():
                 continue
             transport = get_transport(
                 credentials["url"], possible_transports=possible_transports

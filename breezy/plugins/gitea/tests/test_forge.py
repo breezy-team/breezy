@@ -281,6 +281,10 @@ class ProbeFromHostnameTests(GiteaConfigTestCase):
     def test_unknown_hostname(self):
         self.assertRaises(UnsupportedForge, Gitea.probe_from_hostname, "codeberg.org")
 
+    def test_hostname_case_is_ignored(self):
+        forge = Gitea.probe_from_hostname("Gitea.Example.COM")
+        self.assertEqual("http://gitea.example.com:3000/", forge.base_url)
+
     def test_first_matching_instance_wins(self):
         self.write_config(
             "gitea.conf",
