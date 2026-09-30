@@ -275,9 +275,20 @@ class ProbeFromHostnameTests(GiteaConfigTestCase):
     def test_known_hostname(self):
         forge = Gitea.probe_from_hostname("gitea.example.com")
         self.assertEqual("gitea.example.com", forge.base_hostname)
+        self.assertEqual("http://gitea.example.com:3000/", forge.base_url)
+        self.assertEqual({"Authorization": "token sekrit"}, forge.headers)
 
     def test_unknown_hostname(self):
         self.assertRaises(UnsupportedForge, Gitea.probe_from_hostname, "codeberg.org")
+
+    def test_first_matching_instance_wins(self):
+        self.write_config(
+            "gitea.conf",
+            "[three]\nurl = http://gitea.example.com:3000/\nprivate_token = a\n"
+            "[eight]\nurl = http://gitea.example.com:8080/\nprivate_token = b\n",
+        )
+        forge = Gitea.probe_from_hostname("gitea.example.com")
+        self.assertEqual("http://gitea.example.com:3000/", forge.base_url)
 
 
 class IterTokensTests(GiteaConfigTestCase):
