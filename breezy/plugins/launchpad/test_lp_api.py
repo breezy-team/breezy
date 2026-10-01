@@ -82,3 +82,53 @@ class TestCacheDirectory(TestCase):
             self.assertRaises(EnvironmentError, lp_api.get_cache_directory)
         else:
             self.assertEqual(expected_path, lp_api.get_cache_directory())
+
+
+class TestGetAuthEngine(TestCase):
+    """Tests for get_auth_engine."""
+
+    _test_needs_features = [launchpadlib_feature]
+
+    def test_engine_is_keyed_on_the_application_name(self):
+        from launchpadlib.credentials import RequestTokenAuthorizationEngine
+
+        from . import lp_api
+
+        # Constructed here only to work out the expected key.
+        expected = RequestTokenAuthorizationEngine(
+            "production", application_name="breezy"
+        )
+        engine = lp_api.get_auth_engine("production")
+        self.assertEqual(expected.unique_consumer_id, engine.unique_consumer_id)
+
+    def _get_auth_engine_against(self, launchpad):
+        from . import lp_api
+
+        self.overrideAttr(lp_api, "Launchpad", launchpad)
+        self.assertEqual("engine", lp_api.get_auth_engine("production"))
+
+    def test_keyword_only_factory(self):
+        recorded = {}
+
+        class KeywordOnly:
+            @classmethod
+            def authorization_engine_factory(cls, **kwargs):
+                recorded.update(kwargs)
+                return "engine"
+
+        self._get_auth_engine_against(KeywordOnly)
+        self.assertEqual(
+            {"service_root": "production", "application_name": "breezy"}, recorded
+        )
+
+    def test_positional_only_factory(self):
+        recorded = []
+
+        class PositionalOnly:
+            @classmethod
+            def authorization_engine_factory(cls, *args):
+                recorded.extend(args)
+                return "engine"
+
+        self._get_auth_engine_against(PositionalOnly)
+        self.assertEqual(["production", "breezy"], recorded)
