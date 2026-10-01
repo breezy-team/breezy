@@ -5,6 +5,14 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.23
+##########
+
+ * launchpad: Fix authorization engine creation against newer
+   launchpadlib, which made ``Launchpad.authorization_engine_factory``
+   take keyword arguments only. Enumerating forges raised ``TypeError``
+   before this. (Zainab Mehmut)
+
 brz 3.3.22
 ##########
 
