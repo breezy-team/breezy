@@ -107,7 +107,13 @@ def get_auth_engine(base_url):
     Returns:
         Authorization engine instance for authenticating with Launchpad.
     """
-    return Launchpad.authorization_engine_factory(base_url, "breezy")
+    try:
+        return Launchpad.authorization_engine_factory(
+            service_root=base_url, application_name="breezy"
+        )
+    except TypeError:
+        # launchpadlib before 2.2 took positional arguments only.
+        return Launchpad.authorization_engine_factory(base_url, "breezy")
 
 
 def get_credential_store():
