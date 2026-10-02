@@ -22,11 +22,11 @@ import threading
 from io import BytesIO
 from textwrap import dedent
 
-import configobj
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from testtools import matchers
 
+import breezy._configobj_rs as configobj
 from breezy.transport import remote as transport_remote
 
 from .. import (
@@ -464,6 +464,23 @@ eggs'''
         # now we're trying to read it back
         co2 = config.ConfigObj(BytesIO(output))
         self.assertEqual(triple_quotes_value, co2["test"])
+
+    def test_write_outfile_can_read_config(self):
+        # The config must not be locked while outfile.write runs, since
+        # that is arbitrary Python code.
+        co = config.ConfigObj()
+        co["test"] = "value"
+        seen = []
+
+        class Outfile(BytesIO):
+            def write(self, data):
+                seen.append(co["test"])
+                return super().write(data)
+
+        outfile = Outfile()
+        co.write(outfile=outfile)
+        self.assertEqual(["value"], seen)
+        self.assertEqual(b"test = value\n", outfile.getvalue())
 
 
 erroneous_config = b"""[section] # line 1

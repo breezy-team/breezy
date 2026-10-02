@@ -17,10 +17,11 @@
 
 import time
 
-import configobj
 from fastimport import commands, processor
 from fastimport import errors as plugin_errors
 from fastimport.helpers import invert_dictset
+
+import breezy._configobj_rs as configobj
 
 from .... import debug, delta, errors, osutils, progress
 from .... import revision as _mod_revision
