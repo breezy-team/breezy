@@ -99,7 +99,6 @@ __all__ = [
     "sha_strings",
     "size_sha_file",
     "split_lines",
-    "split_lines",
     "splitpath",
     "supports_executable",
     "supports_hardlinks",
