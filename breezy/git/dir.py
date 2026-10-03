@@ -213,12 +213,11 @@ class GitDir(ControlDir):
             from .refs import branch_name_to_ref
 
             return branch_name_to_ref(branch)
-        segment_parameters = getattr(
-            self.user_transport, "get_segment_parameters", lambda: {}
-        )()
-        ref = segment_parameters.get("ref")
+        from .urls import ref_from_segment_parameters
+
+        ref = ref_from_segment_parameters(self.user_transport.base)
         if ref is not None:
-            return urlutils.unquote_to_bytes(ref)
+            return ref
         if branch is None and getattr(self, "_get_selected_branch", False):
             branch = self._get_selected_branch()
             if branch is not None:
@@ -977,10 +976,10 @@ class LocalGitDir(GitDir):
             try:
                 branch_name = ref_to_branch_name(target_ref)
             except ValueError:
-                params = {"ref": urlutils.quote(target_ref.decode("utf-8"), "")}
+                params = None
             else:
                 if branch_name != "":
-                    params = {"branch": urlutils.quote(branch_name, "")}
+                    params = {"branch": branch_name}
                 else:
                     params = {}
             try:
@@ -994,6 +993,10 @@ class LocalGitDir(GitDir):
                     ).rstrip("/.git/")
                     + "/"
                 )
+            if params is None:
+                from .urls import join_ref_segment_parameter
+
+                return join_ref_segment_parameter(base_url, target_ref)
             return urlutils.join_segment_parameters(base_url, params)
         return None
 

@@ -4417,7 +4417,7 @@ class LocationMatcher(SectionMatcher):
         if branch_name is None:
             self.branch_name = urlutils.basename(self.location)
         else:
-            self.branch_name = urlutils.unescape(branch_name)
+            self.branch_name = branch_name
 
     def _get_matching_sections(self):
         """Get all sections matching ``location``."""

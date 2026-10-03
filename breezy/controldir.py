@@ -431,7 +431,7 @@ class ControlDir(ControlComponent):
         branch = self.root_transport.get_segment_parameters().get("branch")
         if branch is None:
             branch = ""
-        return urlutils.unescape(branch)
+        return branch
 
     def has_workingtree(self):
         """Tell if this controldir contains a working tree.

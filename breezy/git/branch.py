@@ -59,7 +59,11 @@ from .refs import (
     tag_name_to_ref,
 )
 from .unpeel_map import UnpeelMap
-from .urls import bzr_url_to_git_url, git_url_to_bzr_url
+from .urls import (
+    bzr_url_to_git_url,
+    git_url_to_bzr_url,
+    join_ref_segment_parameter,
+)
 
 
 def _update_tip(source, target, revid, overwrite=False):
@@ -763,14 +767,30 @@ class GitBranch(ForeignBranch):
         except ValueError:
             self.name = None
             if self.ref is not None:
-                params = {"ref": urlutils.escape(self.ref, safe="")}
+                try:
+                    params = {"ref": self.ref.decode("utf-8")}
+                except UnicodeDecodeError:
+                    self._set_ref_segment_parameter()
         else:
             if self.name:
-                params = {"branch": urlutils.escape(self.name, safe="")}
+                params = {"branch": self.name}
         for k, v in params.items():
             self._user_transport.set_segment_parameter(k, v)
             self._control_transport.set_segment_parameter(k, v)
         self.base = controldir.user_transport.base
+
+    def _set_ref_segment_parameter(self):
+        # A str segment parameter value can not hold a ref that is not UTF-8.
+        from ..transport import get_transport_from_url
+
+        self._user_transport = get_transport_from_url(
+            join_ref_segment_parameter(self._user_transport.base, self.ref),
+            possible_transports=[self._user_transport],
+        )
+        self._control_transport = get_transport_from_url(
+            join_ref_segment_parameter(self._control_transport.base, self.ref),
+            possible_transports=[self._control_transport],
+        )
 
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
