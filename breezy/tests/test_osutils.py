@@ -21,9 +21,12 @@ import contextlib
 import errno
 import os
 import socket
+import subprocess
 import sys
 import tempfile
 from io import BytesIO
+
+import breezy
 
 from .. import errors, osutils, tests, trace
 from . import features, file_utils
@@ -277,6 +280,33 @@ class TestDateTime(tests.TestCase):
         self.assertIsInstance(offset, int)
         eighteen_hours = 18 * 3600
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+    def test_local_time_offset_follows_tz(self):
+        if sys.platform == "win32":
+            raise tests.TestNotApplicable("TZ rules are POSIX-specific")
+
+        # chrono only notices a change of TZ once a second, so check in a
+        # fresh process. POSIX TZ rules need no time zone database; the sign
+        # is inverted, so "XYZ-2" is two hours east of UTC.
+        def offset_in(tz):
+            env = dict(os.environ, TZ=tz)
+            env["PYTHONPATH"] = os.pathsep.join(
+                [os.path.dirname(os.path.dirname(breezy.__file__))]
+                + [p for p in [env.get("PYTHONPATH")] if p]
+            )
+            out = subprocess.check_output(
+                [
+                    sys.executable,
+                    "-c",
+                    "from breezy import osutils;"
+                    " print(osutils.local_time_offset(1000000000))",
+                ],
+                env=env,
+            )
+            return int(out)
+
+        self.assertEqual(7200, offset_in("XYZ-2"))
+        self.assertEqual(-18000, offset_in("XYZ+5"))
 
 
 class TestFdatasync(tests.TestCaseInTempDir):
