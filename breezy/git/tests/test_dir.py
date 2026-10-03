@@ -36,6 +36,18 @@ class TestGitDir(tests.TestCaseInTempDir):
             gd.get_branch_reference(),
         )
 
+    def test_get_branch_reference_non_utf8(self):
+        r = GitRepo.init(".")
+        r.refs.set_symbolic_ref(b"HEAD", b"refs/heads/caf\xe9")
+
+        gd = controldir.ControlDir.open(".")
+        self.assertEqual(
+            "{},ref=refs%2Fheads%2Fcaf%E9".format(
+                urlutils.local_path_to_url(os.path.abspath("."))
+            ),
+            gd.get_branch_reference(),
+        )
+
     def test_get_reference_loop(self):
         r = GitRepo.init(".")
         r.refs.set_symbolic_ref(b"refs/heads/loop", b"refs/heads/loop")
