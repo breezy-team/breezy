@@ -58,18 +58,43 @@ def git_url_to_bzr_url(location, branch=None, ref=None):
             branch = None
         else:
             ref = None
-    if ref or branch:
-        params = {}
-        if ref:
-            params["ref"] = urlutils.quote_from_bytes(ref, safe="")
-        if branch:
-            params["branch"] = urlutils.escape(branch, safe="")
-        location = urlutils.join_segment_parameters(location, params)
+    if ref:
+        location = join_ref_segment_parameter(location, ref)
+    elif branch:
+        location = urlutils.join_segment_parameters(location, {"branch": branch})
     return location
+
+
+def join_ref_segment_parameter(url, ref):
+    """Set the ref segment parameter of a URL.
+
+    Args:
+      url: A URL, as string
+      ref: Ref, as bytes; it does not have to be valid UTF-8
+    """
+    base, subsegments = urlutils.split_segment_parameters_raw(url)
+    subsegments = [s for s in subsegments if not s.startswith("ref=")]
+    subsegments.append("ref=" + urlutils.quote_from_bytes(ref, safe=""))
+    subsegments.sort(key=lambda s: s.partition("=")[0])
+    return urlutils.join_segment_parameters_raw(base, *subsegments)
+
+
+def ref_from_segment_parameters(url):
+    """Return the ref segment parameter of a URL.
+
+    Args:
+      url: A URL, as string
+    Returns: Ref as bytes, or None if the URL has no ref segment parameter
+    """
+    _base, subsegments = urlutils.split_segment_parameters_raw(url)
+    for subsegment in subsegments:
+        if subsegment.startswith("ref="):
+            return urlutils.unquote_to_bytes(subsegment[len("ref=") :])
+    return None
 
 
 def bzr_url_to_git_url(location):
     target_url, target_params = urlutils.split_segment_parameters(location)
     branch = target_params.get("branch")
-    ref = target_params.get("ref")
+    ref = ref_from_segment_parameters(location)
     return target_url, branch, ref

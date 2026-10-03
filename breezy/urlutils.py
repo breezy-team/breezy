@@ -490,6 +490,8 @@ def split_segment_parameters_raw(url):
 def split_segment_parameters(url):
     """Split the segment parameters of the last segment of a URL.
 
+    The parameter values are returned unescaped.
+
     Args:
       url: A relative or absolute URL
     Returns: (url, segment_parameters)
@@ -505,7 +507,7 @@ def split_segment_parameters(url):
             raise TypeError(key)
         if not isinstance(value, str):
             raise TypeError(value)
-        parameters[key] = value
+        parameters[key] = unquote(value)
     return (base_url, parameters)
 
 
@@ -543,10 +545,11 @@ def join_segment_parameters(url, parameters):
 
     The parameters of the last segment in the URL will be updated; if a
     parameter with the same key already exists it will be overwritten.
+    The parameter values are escaped, so they should be passed in unescaped.
 
     Args:
       url: A URL, as string
-      parameters: Dictionary of parameters, keys and values as bytestrings
+      parameters: Dictionary of parameters, keys and values as strings
     """
     (base, existing_parameters) = split_segment_parameters(url)
     new_parameters = {}
@@ -562,7 +565,11 @@ def join_segment_parameters(url, parameters):
             raise InvalidURLJoin("= exists in parameter key", url, parameters)
         new_parameters[key] = value
     return join_segment_parameters_raw(
-        base, *["{}={}".format(*item) for item in sorted(new_parameters.items())]
+        base,
+        *[
+            "{}={}".format(key, quote(value, safe=""))
+            for key, value in sorted(new_parameters.items())
+        ],
     )
 
 

@@ -567,12 +567,16 @@ class RemoteGitDir(GitDir):
         try:
             branch_name = ref_to_branch_name(target_ref)
         except ValueError:
-            params = {"ref": urlutils.quote(target_ref.decode("utf-8"), "")}
+            params = None
         else:
             if branch_name != "":
-                params = {"branch": urlutils.quote(branch_name, "")}
+                params = {"branch": branch_name}
             else:
                 params = {}
+        if params is None:
+            from .urls import join_ref_segment_parameter
+
+            return join_ref_segment_parameter(self.user_url.rstrip("/"), target_ref)
         return urlutils.join_segment_parameters(self.user_url.rstrip("/"), params)
 
     def open_branch(

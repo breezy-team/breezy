@@ -458,7 +458,10 @@ class Transport:
         raise NotImplementedError(self.external_url)
 
     def get_segment_parameters(self):
-        """Return the segment parameters for the top segment of the URL."""
+        """Return the segment parameters for the top segment of the URL.
+
+        The parameter values are unescaped.
+        """
         return self._segment_parameters
 
     def set_segment_parameter(self, name, value):
@@ -466,7 +469,7 @@ class Transport:
 
         Args:
           name: Segment parameter name (urlencoded string)
-          value: Segment parameter value (urlencoded string)
+          value: Segment parameter value (unescaped string)
         """
         if value is None:
             try:

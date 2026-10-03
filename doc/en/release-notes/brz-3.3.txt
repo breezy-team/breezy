@@ -13,6 +13,14 @@ brz 3.3.23
    take keyword arguments only. Enumerating forges raised ``TypeError``
    before this. (Zainab Mehmut)
 
+ * ``urlutils.join_segment_parameters`` now escapes parameter values and
+   ``urlutils.split_segment_parameters`` unescapes them, so that values
+   containing ``/``, ``,`` or ``%`` (such as the name of a colocated
+   branch) round-trip. ``Transport.get_segment_parameters`` and
+   ``Transport.set_segment_parameter`` likewise deal in unescaped values.
+   Callers should no longer escape or unescape the values themselves.
+   (Zainab Mehmut)
+
 brz 3.3.22
 ##########
 

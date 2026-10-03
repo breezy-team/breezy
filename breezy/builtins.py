@@ -130,9 +130,7 @@ def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
         (colocated, this_url) = _is_colocated(control_dir, possible_transports)
 
         if colocated:
-            return urlutils.join_segment_parameters(
-                this_url, {"branch": urlutils.escape(location)}
-            )
+            return urlutils.join_segment_parameters(this_url, {"branch": location})
         else:
             return urlutils.join(this_url, "..", urlutils.escape(location))
     return location
