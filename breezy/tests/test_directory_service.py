@@ -173,3 +173,10 @@ class TestColocatedDirectory(TestCaseWithTransport):
             ),
             directories.dereference("co:foo"),
         )
+
+    def test_lookup_with_slash(self):
+        default = self.make_branch(".")
+        self.assertEqual(
+            default.controldir.user_url + ",branch=foo%2Fbar",
+            directories.dereference("co:foo/bar"),
+        )

@@ -199,6 +199,25 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
             target_branch.base, repo.controldir.open_branch(name="foo/bar").base
         )
 
+    def test_open_by_url_with_slash(self):
+        repo = self.make_repository("branch-1")
+        try:
+            target_branch = self.create_branch(repo.controldir, name="foo/bar")
+        except errors.InvalidBranchName:
+            raise tests.TestNotApplicable(
+                "format does not support branches with / in their name"
+            )
+        self.assertEqual(
+            urlutils.join_segment_parameters(
+                repo.controldir.user_url, {"branch": "foo/bar"}
+            ),
+            target_branch.user_url,
+        )
+        re_made_branch = Branch.open(target_branch.user_url)
+        self.assertEqual("foo/bar", re_made_branch.name)
+        self.assertEqual(target_branch.control_url, re_made_branch.control_url)
+        self.assertEqual(target_branch.user_url, re_made_branch.user_url)
+
     def test_branch_reference(self):
         referenced = self.make_branch("referenced")
         repo = self.make_repository("repo")
