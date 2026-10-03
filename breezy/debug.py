@@ -23,7 +23,7 @@ See `bzr help debug-flags` or `breezy/help_topics/en/debug-flags.txt`
 for a list of the available options.
 """
 
-debug_flags = set()
+debug_flags: set[str] = set()
 
 
 def set_debug_flags_from_config():

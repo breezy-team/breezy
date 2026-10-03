@@ -54,9 +54,20 @@ class BzrBackendRepo(BackendRepo):
         self.mapping = mapping
         self.repo_dir = ControlDir.open_from_transport(transport)
         self.repo = self.repo_dir.find_repository()
-        self.object_store = get_object_store(self.repo)
-        self.refs = get_refs_container(self.repo_dir, self.object_store)
-        self.object_format = self.object_store.object_format
+        self._object_store = get_object_store(self.repo)
+        self._refs = get_refs_container(self.repo_dir, self._object_store)
+
+    @property
+    def object_store(self):
+        return self._object_store
+
+    @property
+    def refs(self):
+        return self._refs
+
+    @property
+    def object_format(self):
+        return self._object_store.object_format
 
     def get_refs(self):
         with self.object_store.lock_read():

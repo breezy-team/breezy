@@ -1017,7 +1017,7 @@ def parent_directories(filename: str):
     return parents
 
 
-_extension_load_failures = []
+_extension_load_failures: list[str] = []
 
 
 def failed_to_load_extension(exception):

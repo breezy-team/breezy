@@ -1479,7 +1479,7 @@ class TreeConfig(IniBasedConfig):
             self._config.remove_option(option_name, section_name)
 
 
-_authentication_config_permission_errors = set()
+_authentication_config_permission_errors: set[str] = set()
 
 
 class AuthenticationConfig:
