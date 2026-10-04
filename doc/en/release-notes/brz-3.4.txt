@@ -49,6 +49,9 @@ Bug Fixes
    take keyword arguments only. Enumerating forges raised ``TypeError``
    before this. (Zainab Mehmut)
 
+ * Hooks installed lazily for ``breezy.forge.MergeProposalBuilder.hooks``
+   now reach it. (Jelmer Vernooĳ)
+
 Documentation
 *************
 

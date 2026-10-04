@@ -104,7 +104,7 @@ class ProposeMergeHooks(hooks.Hooks):
 
     def __init__(self):
         """Initialize the propose merge hooks."""
-        hooks.Hooks.__init__(self, __name__, "Proposer.hooks")
+        hooks.Hooks.__init__(self, __name__, "MergeProposalBuilder.hooks")
         self.add_hook(
             "get_prerequisite",
             "Return the prerequisite branch for proposing as merge.",
