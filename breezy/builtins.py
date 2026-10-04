@@ -9239,5 +9239,7 @@ def _register_lazy_builtins():
         ("cmd_sign_my_commits", [], "breezy.commit_signature_commands"),
         ("cmd_verify_signatures", [], "breezy.commit_signature_commands"),
         ("cmd_test_script", [], "breezy.cmd_test_script"),
+        ("cmd_bash_completion", [], "breezy.bash_completion"),
+        ("cmd_zsh_completion", [], "breezy.zsh_completion"),
     ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)

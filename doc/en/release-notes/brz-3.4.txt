@@ -21,6 +21,13 @@ External Compatibility Breaks
    ``dromedary`` package for its transport implementations (local,
    sftp, http, memory, ssh, etc.) and URL utilities.
 
+ * The bundled ``bash_completion`` and ``zsh_completion`` plugins have moved
+   into the core as ``breezy.bash_completion`` and
+   ``breezy.zsh_completion``. The ``brz bash-completion`` and
+   ``brz zsh-completion`` commands are unchanged, but code importing
+   ``breezy.plugins.bash_completion`` or ``breezy.plugins.zsh_completion``
+   must be updated. (Jelmer Vernooĳ)
+
 New Features
 ************
 
@@ -59,6 +66,9 @@ Documentation
 *************
 
 .. Improved or updated documentation.
+
+ * The user guide has a section on shell completion, replacing the README of
+   the former ``bash_completion`` plugin. (Jelmer Vernooĳ)
 
 API Changes
 ***********

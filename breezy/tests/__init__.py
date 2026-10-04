@@ -4145,6 +4145,7 @@ def _test_suite_testmod_names():
         "breezy.tests.test_annotate",
         "breezy.tests.test_atomicfile",
         "breezy.tests.test_bad_files",
+        "breezy.tests.test_bash_completion",
         "breezy.tests.test_bisect",
         "breezy.tests.test_branch",
         "breezy.tests.test_branchbuilder",
@@ -4281,6 +4282,7 @@ def _test_suite_testmod_names():
         "breezy.tests.test_workspace",
         "breezy.tests.test_workingtree",
         "breezy.tests.test_wsgi",
+        "breezy.tests.test_zsh_completion",
     ]
 
 

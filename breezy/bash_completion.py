@@ -29,9 +29,9 @@ import sys
 
 import breezy
 
-from ... import cmdline, commands, config, help_topics
-from ... import option as _mod_option
-from ... import plugin as _mod_plugin
+from . import cmdline, commands, config, help_topics
+from . import option as _mod_option
+from . import plugin as _mod_plugin
 
 
 class BashCodeGen:
@@ -651,26 +651,26 @@ class cmd_bash_completion(commands.Command):
             short_name="f",
             type=str,
             argname="name",
-            help="Name of the generated function (default: _brz)",
+            help="Name of the generated function. (default: _brz)",
         ),
         _mod_option.Option(
             "function-only",
             short_name="o",
             type=None,
-            help="Generate only the shell function, don't enable it",
+            help="Generate only the shell function, don't enable it.",
         ),
         _mod_option.Option(
             "debug",
             type=None,
             hidden=True,
-            help="Enable shell code useful for debugging",
+            help="Enable shell code useful for debugging.",
         ),
         _mod_option.ListOption(
             "plugin",
             type=str,
             argname="name",
             # param_name="selected_plugins", # doesn't work, bug #387117
-            help="Enable completions for the selected plugin"
+            help="Enable completions for the selected plugin."
             + " (default: all plugins)",
         ),
     ]

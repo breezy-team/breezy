@@ -29,7 +29,7 @@ import sys
 
 import breezy
 
-from ... import cmdline, commands, config, help_topics, option, plugin
+from . import cmdline, commands, config, help_topics, option, plugin
 
 
 class ZshCodeGen:
@@ -470,20 +470,20 @@ class cmd_zsh_completion(commands.Command):
             short_name="f",
             type=str,
             argname="name",
-            help="Name of the generated function (default: _brz)",
+            help="Name of the generated function. (default: _brz)",
         ),
         option.Option(
             "debug",
             type=None,
             hidden=True,
-            help="Enable shell code useful for debugging",
+            help="Enable shell code useful for debugging.",
         ),
         option.ListOption(
             "plugin",
             type=str,
             argname="name",
             # param_name="selected_plugins", # doesn't work, bug #387117
-            help="Enable completions for the selected plugin"
+            help="Enable completions for the selected plugin."
             + " (default: all plugins)",
         ),
     ]
