@@ -49,6 +49,9 @@ Bug Fixes
    take keyword arguments only. Enumerating forges raised ``TypeError``
    before this. (Zainab Mehmut)
 
+ * The quilt plugin's hook that (un)applies patches before a merge now runs;
+   it was installed on a hook point that does not exist. (Jelmer Vernooĳ)
+
  * Hooks installed lazily for ``breezy.forge.MergeProposalBuilder.hooks``
    now reach it. (Jelmer Vernooĳ)
 

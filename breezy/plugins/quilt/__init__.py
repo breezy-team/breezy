@@ -189,7 +189,7 @@ from ...hooks import install_lazy_named_hook
 install_lazy_named_hook(
     "breezy.merge",
     "Merger.hooks",
-    "pre_merge_quilt",
+    "pre_merge",
     pre_merge_quilt,
     "Quilt patch (un)applying",
 )
