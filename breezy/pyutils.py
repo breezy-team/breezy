@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,21 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Classes to provide name-to-object registry-like support."""
+"""General Python convenience functions."""
 
-from typing import (
-    TypeVar,
-)
+from ._cmd_rs.pyutils import calc_parent_name, get_named_object
 
-from ._cmd_rs.registry import Registry, _LazyObjectGetter, _ObjectGetter
-
-__all__ = ["FormatRegistry", "Registry", "_LazyObjectGetter", "_ObjectGetter"]
-
-Format = TypeVar("Format")
-Info = TypeVar("Info")
-
-
-# FormatRegistry mirrors registrations into an optional second registry and
-# calls a registered factory on get, so callers see the format rather than the
-# callable.
-from ._cmd_rs.registry import FormatRegistry
+__all__ = ["calc_parent_name", "get_named_object"]

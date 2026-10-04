@@ -18,7 +18,7 @@
 
 from io import StringIO
 
-from catalogus import pyutils
+from breezy import pyutils
 
 from .. import branch, errors, tests
 from .. import hooks as _mod_hooks

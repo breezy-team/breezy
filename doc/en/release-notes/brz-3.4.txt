@@ -28,6 +28,11 @@ External Compatibility Breaks
    ``breezy.plugins.bash_completion`` or ``breezy.plugins.zsh_completion``
    must be updated. (Jelmer Vernooĳ)
 
+ * Breezy no longer depends on the external ``catalogus`` package; its
+   registry is now built in. ``breezy.registry`` keeps its interface, and
+   ``breezy.pyutils`` replaces the ``catalogus.pyutils`` lookups.
+   (Jelmer Vernooĳ)
+
 New Features
 ************
 

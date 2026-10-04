@@ -24,11 +24,10 @@ without modifying core code.
 
 __docformat__ = "google"
 
-from catalogus.pyutils import calc_parent_name, get_named_object
-from catalogus.registry import _LazyObjectGetter, _ObjectGetter
-
 from . import errors, registry
 from .lazy_import import lazy_import
+from .pyutils import calc_parent_name, get_named_object
+from .registry import _LazyObjectGetter, _ObjectGetter
 
 lazy_import(
     globals(),

@@ -19,7 +19,7 @@
 For interface contract tests, see tests/per_control_dir.
 """
 
-from .. import controldir, errors, tests, ui
+from .. import controldir, errors, registry, tests, ui
 from .scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
@@ -38,6 +38,47 @@ class SampleComponentFormat(controldir.ControlComponentFormat):
 
 class SampleExtraComponentFormat(controldir.ControlComponentFormat):
     """Extra format, no format string."""
+
+
+class TestFormatRegistry(tests.TestCase):
+    """The format registry's factory get and its mirroring to a second registry."""
+
+    def test_get_calls_factory(self):
+        reg = registry.FormatRegistry()
+        reg.register("made", lambda: "BUILT")
+        self.assertEqual("BUILT", reg.get("made"))
+
+    def test_get_returns_plain_object_unchanged(self):
+        reg = registry.FormatRegistry()
+        reg.register("plain", "OBJ")
+        self.assertEqual("OBJ", reg.get("plain"))
+
+    def test_register_mirrors_to_other_registry(self):
+        other = registry.Registry()
+        reg = registry.FormatRegistry(other)
+        reg.register("plain", "OBJ", help="some help")
+        self.assertEqual(["plain"], list(other.keys()))
+        self.assertEqual("some help", other.get_help("plain"))
+
+    def test_register_lazy_mirrors_to_other_registry(self):
+        other = registry.Registry()
+        reg = registry.FormatRegistry(other)
+        reg.register_lazy("lazy", "breezy.branch", "Branch")
+        self.assertEqual(["lazy"], list(other.keys()))
+
+    def test_remove_mirrors_to_other_registry(self):
+        other = registry.Registry()
+        reg = registry.FormatRegistry(other)
+        reg.register("plain", "OBJ")
+        reg.remove("plain")
+        self.assertEqual([], list(reg.keys()))
+        self.assertEqual([], list(other.keys()))
+
+    def test_without_other_registry(self):
+        reg = registry.FormatRegistry()
+        reg.register("plain", "OBJ")
+        reg.remove("plain")
+        self.assertEqual([], list(reg.keys()))
 
 
 class TestMetaComponentFormatRegistry(tests.TestCase):

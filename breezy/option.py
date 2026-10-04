@@ -30,9 +30,8 @@ import optparse
 import re
 from collections.abc import Callable
 
-from catalogus import registry as _mod_registry
-
 from . import errors, revisionspec
+from . import registry as _mod_registry
 
 
 class BadOptionValue(errors.BzrError):

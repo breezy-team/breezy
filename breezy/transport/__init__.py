@@ -47,7 +47,6 @@ __all__ = [
 # Re-export from dromedary for backward compatibility
 from collections.abc import Callable
 
-from catalogus import registry
 from dromedary import (
     AppendBasedFileStream,
     ConnectedTransport,
@@ -68,6 +67,8 @@ from dromedary import (
 )
 
 from breezy import hooks as _breezy_hooks
+
+from .. import registry
 
 
 class TransportHooks(_breezy_hooks.Hooks):

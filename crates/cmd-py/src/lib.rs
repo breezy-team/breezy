@@ -515,7 +515,12 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
 
 mod email_message;
 mod help;
+mod registry;
 mod utextwrap;
+
+use registry::{
+    calc_parent_name, get_named_object, registry_super, LazyObjectGetter, ObjectGetter, Registry,
+};
 
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
@@ -840,6 +845,119 @@ fn internal_diff(
     Ok(())
 }
 
+/// A [`Registry`] specialised for formats.
+///
+/// Registrations may be mirrored into a second registry, so one call can
+/// populate both. ``get`` calls a registered factory, returning the format
+/// itself rather than the callable.
+#[pyclass(name = "FormatRegistry", module = "breezy._cmd_rs.registry", extends = Registry, subclass)]
+struct FormatRegistry {
+    other_registry: Option<Py<PyAny>>,
+}
+
+impl FormatRegistry {
+    /// Mirror a call into the other registry, if there is one.
+    fn mirror(
+        slf: &Bound<'_, Self>,
+        method: &str,
+        args: &Bound<'_, PyTuple>,
+        kwargs: &Bound<'_, pyo3::types::PyDict>,
+    ) -> PyResult<()> {
+        let py = slf.py();
+        let other = slf
+            .borrow()
+            .other_registry
+            .as_ref()
+            .map(|o| o.clone_ref(py));
+        if let Some(other) = other {
+            other.bind(py).call_method(method, args, Some(kwargs))?;
+        }
+        Ok(())
+    }
+}
+
+#[pymethods]
+impl FormatRegistry {
+    #[new]
+    #[pyo3(signature = (other_registry=None))]
+    fn new(py: Python<'_>, other_registry: Option<Py<PyAny>>) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(Registry::new(py, &PyTuple::empty(py), None)).add_subclass(
+            FormatRegistry {
+                other_registry: other_registry.filter(|o| !o.is_none(py)),
+            },
+        )
+    }
+
+    #[pyo3(signature = (other_registry=None))]
+    fn __init__(slf: &Bound<'_, Self>, other_registry: Option<Py<PyAny>>) -> PyResult<()> {
+        let py = slf.py();
+        registry_super(slf.as_any(), "__init__", &PyTuple::empty(py), None)?;
+        slf.borrow_mut().other_registry = other_registry.filter(|o| !o.is_none(py));
+        Ok(())
+    }
+
+    /// Register a format, mirroring the registration if a second registry was
+    /// given.
+    #[pyo3(signature = (key, obj, help=None, info=None, override_existing=false))]
+    fn register(
+        slf: &Bound<'_, Self>,
+        py: Python<'_>,
+        key: Py<PyAny>,
+        obj: Py<PyAny>,
+        help: Option<Py<PyAny>>,
+        info: Option<Py<PyAny>>,
+        override_existing: bool,
+    ) -> PyResult<()> {
+        let kwargs = pyo3::types::PyDict::new(py);
+        kwargs.set_item("help", &help)?;
+        kwargs.set_item("info", &info)?;
+        kwargs.set_item("override_existing", override_existing)?;
+        let args = PyTuple::new(py, [&key, &obj])?;
+        registry_super(slf.as_any(), "register", &args, Some(&kwargs))?;
+        Self::mirror(slf, "register", &args, &kwargs)
+    }
+
+    /// Register a format to be imported on first access, mirroring it too.
+    #[pyo3(signature = (key, module_name, member_name, help=None, info=None, override_existing=false))]
+    #[allow(clippy::too_many_arguments)]
+    fn register_lazy(
+        slf: &Bound<'_, Self>,
+        py: Python<'_>,
+        key: Py<PyAny>,
+        module_name: Py<PyAny>,
+        member_name: Py<PyAny>,
+        help: Option<Py<PyAny>>,
+        info: Option<Py<PyAny>>,
+        override_existing: bool,
+    ) -> PyResult<()> {
+        let kwargs = pyo3::types::PyDict::new(py);
+        kwargs.set_item("help", &help)?;
+        kwargs.set_item("info", &info)?;
+        kwargs.set_item("override_existing", override_existing)?;
+        let args = PyTuple::new(py, [&key, &module_name, &member_name])?;
+        registry_super(slf.as_any(), "register_lazy", &args, Some(&kwargs))?;
+        Self::mirror(slf, "register_lazy", &args, &kwargs)
+    }
+
+    /// Remove a format, removing it from the other registry too.
+    fn remove(slf: &Bound<'_, Self>, py: Python<'_>, key: Py<PyAny>) -> PyResult<()> {
+        let args = PyTuple::new(py, [&key])?;
+        registry_super(slf.as_any(), "remove", &args, None)?;
+        Self::mirror(slf, "remove", &args, &pyo3::types::PyDict::new(py))
+    }
+
+    /// Get a format, calling it if the registered object is a factory.
+    fn get(slf: &Bound<'_, Self>, format_string: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        let py = slf.py();
+        let args = PyTuple::new(py, [format_string])?;
+        let r = registry_super(slf.as_any(), "get", &args, None)?;
+        if r.is_callable() {
+            return Ok(r.call0()?.unbind());
+        }
+        Ok(r.unbind())
+    }
+}
+
 #[pymodule]
 fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     // Route Rust `log` records to Python's `logging` module so that fixtures
@@ -928,6 +1046,18 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     m.add_class::<TreeBuilder>()?;
 
+    let registrym = PyModule::new(py, "registry")?;
+    registrym.add_class::<Registry>()?;
+    registrym.add_class::<FormatRegistry>()?;
+    registrym.add_class::<ObjectGetter>()?;
+    registrym.add_class::<LazyObjectGetter>()?;
+    m.add_submodule(&registrym)?;
+
+    let pyutilsm = PyModule::new(py, "pyutils")?;
+    pyutilsm.add_function(wrap_pyfunction!(get_named_object, &pyutilsm)?)?;
+    pyutilsm.add_function(wrap_pyfunction!(calc_parent_name, &pyutilsm)?)?;
+    m.add_submodule(&pyutilsm)?;
+
     let diffm = PyModule::new(py, "diff")?;
     diffm.add_function(wrap_pyfunction!(unified_diff_bytes, &diffm)?)?;
     diffm.add_function(wrap_pyfunction!(internal_diff, &diffm)?)?;
@@ -954,6 +1084,8 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.diff", module_name), &diffm)?;
     modules.set_item(format!("{}.utextwrap", module_name), &utextwrapm)?;
     modules.set_item(format!("{}.email_message", module_name), &email_messagem)?;
+    modules.set_item(format!("{}.registry", module_name), &registrym)?;
+    modules.set_item(format!("{}.pyutils", module_name), &pyutilsm)?;
 
     Ok(())
 }

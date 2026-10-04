@@ -55,10 +55,10 @@ from unittest import SkipTest as TestSkipped
 
 import testtools
 from bzrformats import chk_map
-from catalogus import pyutils
 from testtools import content
 
 import breezy
+from breezy import pyutils
 
 from .. import (
     branchbuilder,
@@ -4232,6 +4232,7 @@ def _test_suite_testmod_names():
         "breezy.tests.test_progress",
         "breezy.tests.test_reconcile",
         "breezy.tests.test_reconfigure",
+        "breezy.tests.test_registry",
         "breezy.tests.test_rename_map",
         "breezy.tests.test_revert",
         "breezy.tests.test_revision",
