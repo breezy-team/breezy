@@ -44,6 +44,11 @@ Bug Fixes
 .. Fixes for situations where brz would previously crash or give incorrect
    or undesirable results.
 
+ * launchpad: Fix authorization engine creation against newer
+   launchpadlib, which made ``Launchpad.authorization_engine_factory``
+   take keyword arguments only. Enumerating forges raised ``TypeError``
+   before this. (Zainab Mehmut)
+
 Documentation
 *************
 
