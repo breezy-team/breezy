@@ -81,6 +81,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    breezy.
 
+ * ``breezy.hooks._lazy_hooks`` has been replaced by
+   ``breezy.hooks.lazy_hook_keys()``, and ``HookPoint`` takes a ``lazy_key``
+   rather than a ``callbacks`` list. (Jelmer Vernooĳ)
+
 Internals
 *********
 

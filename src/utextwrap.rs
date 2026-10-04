@@ -436,6 +436,32 @@ fn hyphen_breaks(chars: &[char], hpos: usize) -> bool {
     false
 }
 
+/// Counts every character as one column, as Python's `textwrap` does.
+struct OneColumn;
+
+impl EastAsianWidth for OneColumn {
+    fn width_category(&self, _c: char) -> EaWidth {
+        EaWidth::Narrow
+    }
+}
+
+/// Wrap `text` to `width` columns as Python's ``textwrap.wrap`` does, counting
+/// every character as one column.
+///
+/// # Panics
+///
+/// If `width` is zero.
+pub fn wrap_like_python(text: &str, width: usize, break_long_words: bool) -> Vec<String> {
+    let options = Options {
+        width: width as isize,
+        break_long_words,
+        ..Default::default()
+    };
+    TextWrapper::new(options, &OneColumn)
+        .wrap(text)
+        .expect("a positive width is valid")
+}
+
 /// Errors raised while wrapping, mirroring the `ValueError`s Python raises.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WrapError {

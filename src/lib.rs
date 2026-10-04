@@ -39,6 +39,8 @@ pub mod controldir;
 pub mod forge;
 /// Help system and documentation utilities.
 pub mod help;
+/// Hook infrastructure.
+pub mod hooks;
 /// Location parsing and conversion utilities.
 pub mod location;
 /// Lock directory management.
@@ -76,6 +78,10 @@ pub mod pytree;
 #[cfg(feature = "pyo3")]
 /// Python bindings for Branch.
 pub mod pybranch;
+
+#[cfg(feature = "pyo3")]
+/// Python bindings for hooks.
+pub mod pyhooks;
 
 #[cfg(feature = "pyo3")]
 /// Python bindings for Forge.

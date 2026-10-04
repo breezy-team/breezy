@@ -845,6 +845,554 @@ fn internal_diff(
     Ok(())
 }
 
+// A single hook point that clients register callbacks against.
+//
+// Its callbacks are a CallbackList; a hook point of a hooks object whose
+// location is known takes over the callbacks installed lazily for it (see
+// install_lazy_named_hook), so those installed later still reach it.
+// Iterating yields the callables; the doc block is assembled by
+// breezy::hooks::hookpoint_docs.
+//
+// NB: no `///` doc-comment here on purpose - a pyclass doc-comment becomes the
+// class `__doc__`, which would shadow the per-instance `__doc__` getter below
+// (HookPoint.__doc__ must return the hook's own doc string).
+#[pyclass(name = "HookPoint", module = "breezy._cmd_rs.hooks", dict, subclass)]
+struct PyHookPoint {
+    #[pyo3(get)]
+    name: String,
+    #[pyo3(get)]
+    introduced: Option<Py<PyAny>>,
+    #[pyo3(get)]
+    deprecated: Option<Py<PyAny>>,
+    doc: String,
+    callbacks: breezy::pyhooks::PyCallbackList,
+    /// The lazily installed hook whose callbacks this hook point took over.
+    #[pyo3(get)]
+    lazy_key: Option<breezy::hooks::LazyHookKey>,
+}
+
+/// Format a version tuple via ``breezy._format_version_tuple``; `None` stays
+/// `None`.
+fn format_hook_version(py: Python<'_>, version: &Option<Py<PyAny>>) -> PyResult<Option<String>> {
+    match version {
+        Some(v) if !v.is_none(py) => Ok(Some(
+            py.import("breezy")?
+                .getattr("_format_version_tuple")?
+                .call1((v.bind(py),))?
+                .extract()?,
+        )),
+        _ => Ok(None),
+    }
+}
+
+#[pymethods]
+impl PyHookPoint {
+    #[new]
+    #[pyo3(signature = (name, doc, introduced, deprecated=None, lazy_key=None))]
+    fn new(
+        name: String,
+        doc: String,
+        introduced: Option<Py<PyAny>>,
+        deprecated: Option<Py<PyAny>>,
+        lazy_key: Option<breezy::hooks::LazyHookKey>,
+    ) -> Self {
+        let callbacks = match &lazy_key {
+            Some(key) => breezy::pyhooks::lazy_hook_list(key),
+            None => breezy::pyhooks::PyCallbackList::new(),
+        };
+        PyHookPoint {
+            name,
+            introduced,
+            deprecated,
+            doc,
+            callbacks,
+            lazy_key,
+        }
+    }
+
+    /// Generate the documentation block for this hook point.
+    fn docs(&self, py: Python<'_>) -> PyResult<String> {
+        Ok(breezy::hooks::hookpoint_docs(
+            &self.name,
+            format_hook_version(py, &self.introduced)?.as_deref(),
+            format_hook_version(py, &self.deprecated)?.as_deref(),
+            &self.doc,
+        ))
+    }
+
+    /// Register `callback` to fire when this hook point triggers. The label
+    /// (shown in the UI) may be `None`.
+    fn hook(&self, callback: Py<PyAny>, callback_label: Option<String>) {
+        self.callbacks
+            .push(breezy::hooks::Callback::Object(callback), callback_label);
+    }
+
+    /// Lazily register a callback, imported on first use when the hook fires.
+    fn hook_lazy(
+        &self,
+        callback_module: String,
+        callback_member: String,
+        callback_label: Option<String>,
+    ) {
+        self.callbacks.push(
+            breezy::hooks::Callback::Lazy {
+                module: callback_module,
+                member: callback_member,
+            },
+            callback_label,
+        );
+    }
+
+    /// Remove the callbacks registered under `label`.
+    fn uninstall(&self, label: Option<String>) -> PyResult<()> {
+        self.callbacks
+            .uninstall(label.as_deref())
+            .map_err(|e| pyo3::exceptions::PyKeyError::new_err(e.to_string()))
+    }
+
+    fn __iter__(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let objs = breezy::pyhooks::callables(py, &self.callbacks)?
+            .into_iter()
+            .map(|(obj, _)| obj)
+            .collect::<Vec<_>>();
+        Ok(objs.into_pyobject(py)?.call_method0("__iter__")?.unbind())
+    }
+
+    fn __len__(&self) -> usize {
+        self.callbacks.len()
+    }
+
+    fn __repr__(&self, py: Python<'_>) -> PyResult<String> {
+        let callables = breezy::pyhooks::callables(py, &self.callbacks)?;
+        let mut strings: Vec<String> = vec![
+            "<HookPoint(".to_string(),
+            self.name.clone(),
+            "), callbacks=[".to_string(),
+        ];
+        for (obj, label) in &callables {
+            strings.push(obj.bind(py).repr()?.extract()?);
+            strings.push("(".to_string());
+            strings.push(label.clone().unwrap_or_else(|| "None".to_string()));
+            strings.push("),".to_string());
+        }
+        if callables.len() == 1 {
+            let last = strings.len() - 1;
+            strings[last] = ")".to_string();
+        }
+        strings.push("]>".to_string());
+        Ok(strings.concat())
+    }
+
+    fn __richcmp__(
+        &self,
+        py: Python<'_>,
+        other: &Bound<'_, PyAny>,
+        op: CompareOp,
+    ) -> PyResult<bool> {
+        let other: PyRef<'_, PyHookPoint> = match other.extract() {
+            Ok(o) => o,
+            Err(_) => return Ok(matches!(op, CompareOp::Ne)),
+        };
+        // Callbacks are only equal when they are the same list, or both empty.
+        let same_callbacks = self.callbacks.same_list(&other.callbacks)
+            || (self.callbacks.is_empty() && other.callbacks.is_empty());
+        let eq = self.name == other.name
+            && self.doc == other.doc
+            && version_eq(py, &self.introduced, &other.introduced)?
+            && version_eq(py, &self.deprecated, &other.deprecated)?
+            && same_callbacks;
+        match op {
+            CompareOp::Eq => Ok(eq),
+            CompareOp::Ne => Ok(!eq),
+            _ => Ok(false),
+        }
+    }
+}
+
+/// Install `a_callable` into hook `hook_name` of the hooks object `hookpoints_name`
+/// in `hookpoints_module`, labelled `name`, without importing that module.
+#[pyfunction]
+fn install_lazy_named_hook(
+    hookpoints_module: String,
+    hookpoints_name: String,
+    hook_name: String,
+    a_callable: Py<PyAny>,
+    name: Option<String>,
+) {
+    breezy::pyhooks::lazy_hook_list(&(hookpoints_module, hookpoints_name, hook_name))
+        .push(breezy::hooks::Callback::Object(a_callable), name);
+}
+
+/// The ``(module, member, hook name)`` keys of the lazily installed hooks.
+#[pyfunction]
+fn lazy_hook_keys() -> Vec<breezy::hooks::LazyHookKey> {
+    breezy::pyhooks::lazy_hook_keys()
+}
+
+/// A set of lazily installed hooks, put aside by [`swap_lazy_hooks`].
+#[pyclass(name = "LazyHooks", module = "breezy._cmd_rs.hooks")]
+struct PyLazyHooks(Option<breezy::hooks::LazyHooks<Py<PyAny>>>);
+
+#[pymethods]
+impl PyLazyHooks {
+    /// The ``(module, member, hook name)`` keys of these hooks.
+    fn keys(&self) -> PyResult<Vec<breezy::hooks::LazyHookKey>> {
+        self.0
+            .as_ref()
+            .map(|hooks| hooks.keys().cloned().collect())
+            .ok_or_else(|| {
+                pyo3::exceptions::PyValueError::new_err("these lazy hooks were already restored")
+            })
+    }
+}
+
+/// Replace the lazily installed hooks with `hooks` (none if not given),
+/// returning the ones replaced. The test framework uses this to isolate tests.
+#[pyfunction]
+#[pyo3(signature = (hooks=None))]
+fn swap_lazy_hooks(hooks: Option<&Bound<'_, PyLazyHooks>>) -> PyResult<PyLazyHooks> {
+    let replacement = match hooks {
+        Some(hooks) => hooks.borrow_mut().0.take().ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("these lazy hooks were already restored")
+        })?,
+        None => breezy::hooks::LazyHooks::new(),
+    };
+    Ok(PyLazyHooks(Some(breezy::pyhooks::replace_lazy_hooks(
+        replacement,
+    ))))
+}
+
+fn version_eq(py: Python<'_>, a: &Option<Py<PyAny>>, b: &Option<Py<PyAny>>) -> PyResult<bool> {
+    match (a, b) {
+        (None, None) => Ok(true),
+        (Some(a), Some(b)) => a.bind(py).eq(b.bind(py)),
+        _ => Ok(false),
+    }
+}
+
+import_exception!(breezy.errors, DuplicateKey);
+import_exception!(breezy.errors, UnsupportedOperation);
+import_exception!(breezy.hooks, UnknownHook);
+
+/// A dictionary mapping hook name to a list of callables (or HookPoints).
+///
+/// It is a mapping, backed by a ``dict``, that the per-subsystem hook classes
+/// subclass and that plugins index. Values are stored as given: both plain
+/// lists (old-style hooks) and HookPoints (new-style).
+#[pyclass(
+    name = "Hooks",
+    module = "breezy._cmd_rs.hooks",
+    mapping,
+    subclass,
+    dict
+)]
+struct Hooks {
+    inner: Py<pyo3::types::PyDict>,
+    callable_names: Py<pyo3::types::PyDict>,
+    lazy_callable_names: Py<pyo3::types::PyDict>,
+    module: Option<String>,
+    member_name: Option<String>,
+}
+
+impl Hooks {
+    fn class_name(slf: &Bound<'_, Self>) -> PyResult<String> {
+        slf.get_type().getattr("__name__")?.extract()
+    }
+
+    /// Look up a hook (raising the framework's ``UnknownHook`` if absent).
+    fn hook_named<'py>(slf: &Bound<'py, Self>, hook_name: &str) -> PyResult<Bound<'py, PyAny>> {
+        let me = slf.borrow();
+        match me.inner.bind(slf.py()).get_item(hook_name)? {
+            Some(h) => Ok(h),
+            None => Err(UnknownHook::new_err((
+                Self::class_name(slf)?,
+                hook_name.to_string(),
+            ))),
+        }
+    }
+}
+
+#[pymethods]
+impl Hooks {
+    #[new]
+    #[pyo3(signature = (module=None, member_name=None))]
+    fn new(py: Python<'_>, module: Option<String>, member_name: Option<String>) -> Self {
+        Hooks {
+            inner: pyo3::types::PyDict::new(py).unbind(),
+            callable_names: pyo3::types::PyDict::new(py).unbind(),
+            lazy_callable_names: pyo3::types::PyDict::new(py).unbind(),
+            module,
+            member_name,
+        }
+    }
+
+    // Subclasses call ``super().__init__(module, member_name)``; that reaches
+    // here (a pyclass otherwise has no __init__, so the args would hit
+    // object.__init__ and error). Record the module/member for lazy hooks.
+    #[pyo3(signature = (module=None, member_name=None))]
+    fn __init__(&mut self, module: Option<String>, member_name: Option<String>) {
+        self.module = module;
+        self.member_name = member_name;
+    }
+
+    #[getter]
+    fn _module(&self) -> Option<String> {
+        self.module.clone()
+    }
+    #[getter]
+    fn _member_name(&self) -> Option<String> {
+        self.member_name.clone()
+    }
+    #[getter]
+    fn _callable_names(&self, py: Python<'_>) -> Py<pyo3::types::PyDict> {
+        self.callable_names.clone_ref(py)
+    }
+    #[getter]
+    fn _lazy_callable_names(&self, py: Python<'_>) -> Py<pyo3::types::PyDict> {
+        self.lazy_callable_names.clone_ref(py)
+    }
+
+    // Mapping protocol delegated to the backing dict for exact semantics.
+    fn __getitem__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        match self.inner.bind(py).get_item(key)? {
+            Some(v) => Ok(v.unbind()),
+            None => Err(pyo3::exceptions::PyKeyError::new_err(key.clone().unbind())),
+        }
+    }
+    fn __setitem__(
+        &self,
+        py: Python<'_>,
+        key: &Bound<'_, PyAny>,
+        value: &Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        self.inner.bind(py).set_item(key, value)
+    }
+    fn __delitem__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<()> {
+        self.inner.bind(py).del_item(key)
+    }
+    fn __contains__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<bool> {
+        self.inner.bind(py).contains(key)
+    }
+    fn __len__(&self, py: Python<'_>) -> usize {
+        self.inner.bind(py).len()
+    }
+    fn __iter__(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        Ok(self.inner.bind(py).call_method0("__iter__")?.unbind())
+    }
+    fn __eq__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<bool> {
+        self.inner.bind(py).as_any().eq(other)
+    }
+    #[pyo3(signature = (*args))]
+    fn keys(&self, py: Python<'_>, args: &Bound<'_, PyTuple>) -> PyResult<Py<PyAny>> {
+        Ok(self
+            .inner
+            .bind(py)
+            .call_method("keys", args, None)?
+            .unbind())
+    }
+    #[pyo3(signature = (*args))]
+    fn values(&self, py: Python<'_>, args: &Bound<'_, PyTuple>) -> PyResult<Py<PyAny>> {
+        Ok(self
+            .inner
+            .bind(py)
+            .call_method("values", args, None)?
+            .unbind())
+    }
+    #[pyo3(signature = (*args))]
+    fn items(&self, py: Python<'_>, args: &Bound<'_, PyTuple>) -> PyResult<Py<PyAny>> {
+        Ok(self
+            .inner
+            .bind(py)
+            .call_method("items", args, None)?
+            .unbind())
+    }
+    #[pyo3(signature = (*args))]
+    fn get(&self, py: Python<'_>, args: &Bound<'_, PyTuple>) -> PyResult<Py<PyAny>> {
+        Ok(self.inner.bind(py).call_method("get", args, None)?.unbind())
+    }
+
+    /// Add a hook point to this dictionary.
+    #[pyo3(signature = (name, doc, introduced, deprecated=None))]
+    fn add_hook(
+        slf: &Bound<'_, Self>,
+        py: Python<'_>,
+        name: String,
+        doc: Py<PyAny>,
+        introduced: Py<PyAny>,
+        deprecated: Option<Py<PyAny>>,
+    ) -> PyResult<()> {
+        let me = slf.borrow();
+        if me.inner.bind(py).contains(&name)? {
+            return Err(DuplicateKey::new_err(name));
+        }
+        // A hook point of hooks at a known location takes over the callbacks
+        // installed lazily for it.
+        let lazy_key = match (&me.module, &me.member_name) {
+            (Some(module), Some(member)) => Some((module.clone(), member.clone(), name.clone())),
+            _ => None,
+        };
+        let hookpoint = py.import("breezy.hooks")?.getattr("HookPoint")?.call1((
+            name.clone(),
+            doc,
+            introduced,
+            deprecated,
+            lazy_key,
+        ))?;
+        me.inner.bind(py).set_item(name, hookpoint)?;
+        Ok(())
+    }
+
+    /// The documentation of this hooks object: its class name and the
+    /// documentation of each hook point, in name order.
+    fn docs(slf: &Bound<'_, Self>) -> PyResult<String> {
+        let py = slf.py();
+        let inner = slf.borrow().inner.clone_ref(py);
+        let names = py
+            .import("builtins")?
+            .call_method1("sorted", (inner.bind(py).keys(),))?;
+        let docs = names
+            .try_iter()?
+            .map(|name| {
+                let name = name?;
+                inner
+                    .bind(py)
+                    .as_any()
+                    .get_item(&name)?
+                    .call_method0("docs")?
+                    .extract()
+            })
+            .collect::<PyResult<Vec<String>>>()?;
+        Ok(breezy::hooks::hooks_docs(&Self::class_name(slf)?, docs))
+    }
+
+    /// Display name for a registered callable.
+    fn get_hook_name(&self, py: Python<'_>, a_callable: &Bound<'_, PyAny>) -> PyResult<String> {
+        if let Some(name) = self.callable_names.bind(py).get_item(a_callable)? {
+            if !name.is_none() {
+                return name.extract();
+            }
+        }
+        if !a_callable.is_none() {
+            let key = (
+                a_callable.getattr("__module__")?,
+                a_callable.getattr("__name__")?,
+            );
+            if let Some(name) = self.lazy_callable_names.bind(py).get_item(key)? {
+                if !name.is_none() {
+                    return name.extract();
+                }
+            }
+        }
+        Ok("No hook name".to_string())
+    }
+
+    /// Install `a_callable` into hook `hook_name`, labelled `name`.
+    #[pyo3(signature = (hook_name, a_callable, name))]
+    fn install_named_hook(
+        slf: &Bound<'_, Self>,
+        hook_name: &str,
+        a_callable: Py<PyAny>,
+        name: Py<PyAny>,
+    ) -> PyResult<()> {
+        let py = slf.py();
+        let hook = Self::hook_named(slf, hook_name)?;
+        // List hooks (old-style) just append; HookPoints use .hook().
+        match hook.call_method1("append", (a_callable.clone_ref(py),)) {
+            Ok(_) => {}
+            Err(e) if e.is_instance_of::<pyo3::exceptions::PyAttributeError>(py) => {
+                hook.call_method1("hook", (a_callable.clone_ref(py), name.clone_ref(py)))?;
+            }
+            Err(e) => return Err(e),
+        }
+        if !name.bind(py).is_none() {
+            slf.borrow()
+                .name_hook(py, a_callable.bind(py), name.bind(py))?;
+        }
+        Ok(())
+    }
+
+    /// Install a lazily-imported callable into a hook.
+    #[pyo3(signature = (hook_name, callable_module, callable_member, name))]
+    fn install_named_hook_lazy(
+        slf: &Bound<'_, Self>,
+        hook_name: &str,
+        callable_module: String,
+        callable_member: String,
+        name: Py<PyAny>,
+    ) -> PyResult<()> {
+        let py = slf.py();
+        let hook = Self::hook_named(slf, hook_name)?;
+        let hook_lazy = match hook.getattr("hook_lazy") {
+            Ok(hook_lazy) => hook_lazy,
+            Err(e) if e.is_instance_of::<pyo3::exceptions::PyAttributeError>(py) => {
+                return Err(UnsupportedOperation::new_err((
+                    slf.getattr("install_named_hook_lazy")?.unbind(),
+                    slf.clone().unbind(),
+                )));
+            }
+            Err(e) => return Err(e),
+        };
+        hook_lazy.call1((
+            callable_module.clone(),
+            callable_member.clone(),
+            name.clone_ref(py),
+        ))?;
+        if !name.bind(py).is_none() {
+            slf.borrow().name_hook_lazy(
+                py,
+                callable_module,
+                callable_member,
+                name.bind(py).str()?.extract()?,
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Uninstall callables labelled `label` from `hook_name`.
+    fn uninstall_named_hook(
+        slf: &Bound<'_, Self>,
+        hook_name: &str,
+        label: &Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        let hook = Self::hook_named(slf, hook_name)?;
+        let uninstall = match hook.getattr("uninstall") {
+            Ok(uninstall) => uninstall,
+            Err(e) if e.is_instance_of::<pyo3::exceptions::PyAttributeError>(slf.py()) => {
+                return Err(UnsupportedOperation::new_err((
+                    slf.getattr("uninstall_named_hook")?.unbind(),
+                    slf.clone().unbind(),
+                )));
+            }
+            Err(e) => return Err(e),
+        };
+        uninstall.call1((label,))?;
+        Ok(())
+    }
+
+    /// Associate `name` with `a_callable`.
+    fn name_hook(
+        &self,
+        py: Python<'_>,
+        a_callable: &Bound<'_, PyAny>,
+        name: &Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        self.callable_names.bind(py).set_item(a_callable, name)
+    }
+
+    /// Associate a name with a lazily-loaded callable.
+    fn name_hook_lazy(
+        &self,
+        py: Python<'_>,
+        callable_module: String,
+        callable_member: String,
+        callable_name: String,
+    ) -> PyResult<()> {
+        self.lazy_callable_names
+            .bind(py)
+            .set_item((callable_module, callable_member), callable_name)
+    }
+}
+
 /// A [`Registry`] specialised for formats.
 ///
 /// Registrations may be mirrored into a second registry, so one call can
@@ -958,6 +1506,73 @@ impl FormatRegistry {
     }
 }
 
+/// Register the builtin hook points into `registry`.
+#[pyfunction]
+fn register_known_hooks(registry: &Bound<'_, PyAny>) -> PyResult<()> {
+    for def in breezy::hooks::builtin_known_hooks() {
+        registry.call_method1("register_lazy_hook", (def.module, def.member, def.factory))?;
+    }
+    Ok(())
+}
+
+/// Registry of all known hook points in breezy.
+///
+/// Keys are ``(module_name, member_name)`` tuples naming a hook point; each
+/// maps lazily to the factory that builds that point's empty ``Hooks``.
+#[pyclass(name = "KnownHooksRegistry", module = "breezy._cmd_rs.hooks", extends = Registry, subclass)]
+struct KnownHooksRegistry;
+
+#[pymethods]
+impl KnownHooksRegistry {
+    #[new]
+    fn new(py: Python<'_>) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(Registry::new(py, &PyTuple::empty(py), None))
+            .add_subclass(KnownHooksRegistry)
+    }
+
+    /// Register a hook point lazily, to avoid circular imports.
+    fn register_lazy_hook(
+        slf: &Bound<'_, Self>,
+        hook_module_name: String,
+        hook_member_name: String,
+        hook_factory_member_name: String,
+    ) -> PyResult<()> {
+        let key = (hook_module_name.clone(), hook_member_name);
+        slf.as_any().call_method1(
+            "register_lazy",
+            (key, hook_module_name, hook_factory_member_name),
+        )?;
+        Ok(())
+    }
+
+    /// Yield ``(hook_key, (parent_object, attr))`` for every registered hook.
+    ///
+    /// Used to reset and restore every hook to a known state, as the test
+    /// harness does in ``TestCase._clear_hooks``.
+    fn iter_parent_objects(slf: &Bound<'_, Self>, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let out = pyo3::types::PyList::empty(py);
+        for key in slf.as_any().call_method0("keys")?.try_iter()? {
+            let key = key?;
+            let pair = Self::key_to_parent_and_attribute(slf, &key)?;
+            out.append((key, pair))?;
+        }
+        Ok(out.into_any().unbind())
+    }
+
+    /// Resolve a known-hooks key to the ``(parent_object, attr)`` pair holding
+    /// that hook.
+    fn key_to_parent_and_attribute(
+        slf: &Bound<'_, Self>,
+        key: &Bound<'_, PyAny>,
+    ) -> PyResult<(Py<PyAny>, String)> {
+        let py = slf.py();
+        let (module, member): (String, Option<String>) = key.extract()?;
+        let (parent_mod, parent_member, attr) = calc_parent_name(&module, member.as_deref())?;
+        let parent = get_named_object(py, &parent_mod, parent_member.as_deref())?;
+        Ok((parent, attr))
+    }
+}
+
 #[pymodule]
 fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     // Route Rust `log` records to Python's `logging` module so that fixtures
@@ -1046,6 +1661,17 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     m.add_class::<TreeBuilder>()?;
 
+    let hooksm = PyModule::new(py, "hooks")?;
+    hooksm.add_class::<PyHookPoint>()?;
+    hooksm.add_class::<Hooks>()?;
+    hooksm.add_class::<KnownHooksRegistry>()?;
+    hooksm.add_function(wrap_pyfunction!(register_known_hooks, &hooksm)?)?;
+    hooksm.add_function(wrap_pyfunction!(install_lazy_named_hook, &hooksm)?)?;
+    hooksm.add_function(wrap_pyfunction!(lazy_hook_keys, &hooksm)?)?;
+    hooksm.add_function(wrap_pyfunction!(swap_lazy_hooks, &hooksm)?)?;
+    hooksm.add_class::<PyLazyHooks>()?;
+    m.add_submodule(&hooksm)?;
+
     let registrym = PyModule::new(py, "registry")?;
     registrym.add_class::<Registry>()?;
     registrym.add_class::<FormatRegistry>()?;
@@ -1084,6 +1710,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.diff", module_name), &diffm)?;
     modules.set_item(format!("{}.utextwrap", module_name), &utextwrapm)?;
     modules.set_item(format!("{}.email_message", module_name), &email_messagem)?;
+    modules.set_item(format!("{}.hooks", module_name), &hooksm)?;
     modules.set_item(format!("{}.registry", module_name), &registrym)?;
     modules.set_item(format!("{}.pyutils", module_name), &pyutilsm)?;
 
