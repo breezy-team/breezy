@@ -1868,7 +1868,6 @@ class TestCase(testtools.TestCase):
             setattr(klass, name, hooks)
         self._preserved_hooks.clear()
         breezy.hooks._lazy_hooks = self._preserved_lazy_hooks
-        self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
         """Declare that this test fails for a known reason.

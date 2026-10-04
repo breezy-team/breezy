@@ -79,6 +79,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to
    spurious test failures and changes to the way things should be tested.
 
+ * The test framework no longer drops the lazily installed hooks after the
+   first test, which kept hook points created later from receiving them.
+   (Jelmer Vernooĳ)
+
 
 ..
    vim: tw=74 ft=rst ff=unix

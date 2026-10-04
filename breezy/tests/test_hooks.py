@@ -16,6 +16,8 @@
 
 """Tests for the core Hooks logic."""
 
+from io import StringIO
+
 from catalogus import pyutils
 
 from .. import branch, errors, tests
@@ -188,14 +190,36 @@ class TestHooks(tests.TestCase):
 
     def test_valid_lazy_hooks(self):
         # Make sure that all the registered lazy hooks are referring to existing
-        # hook points which allow lazy registration.
-        for key, callbacks in _mod_hooks._lazy_hooks.items():
+        # hook points which allow lazy registration. The test framework has put
+        # the lazily installed hooks aside for the duration of the test.
+        self.assertNotEqual({}, self._preserved_lazy_hooks)
+        for key in self._preserved_lazy_hooks:
             (module_name, member_name, hook_name) = key
-            obj = pyutils.get_named_object(module_name, member_name)
+            try:
+                obj = pyutils.get_named_object(module_name, member_name)
+            except ModuleNotFoundError as e:
+                # Hooks for optional plugins that are not installed.
+                if not module_name.startswith(e.name):
+                    raise
+                continue
             self.assertEqual(obj._module, module_name)
             self.assertEqual(obj._member_name, member_name)
             self.assertIn(hook_name, obj)
-            self.assertIs(callbacks, obj[hook_name]._callbacks)
+
+    def test_lazy_hooks_survive_tests(self):
+        # The test framework restores the lazily installed hooks after a test.
+        install_lazy_named_hook(
+            "breezy.tests.test_hooks", "TestHooks.hooks", "set_rh", print, "demo"
+        )
+        key = ("breezy.tests.test_hooks", "TestHooks.hooks", "set_rh")
+
+        class Inner(tests.TestCase):
+            def test_nothing(self):
+                pass
+
+        result = tests.ExtendedTestResult(StringIO(), 0, 1)
+        Inner("test_nothing").run(result)
+        self.assertIn(key, _mod_hooks._lazy_hooks)
 
 
 class TestHook(tests.TestCase):
