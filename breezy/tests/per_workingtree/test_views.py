@@ -109,6 +109,14 @@ class TestTreeViews(TestCaseWithWorkingTree):
         self.assertEqual(view_name, current)
         self.assertEqual(view_dict, views)
 
+    def test_empty_view_stays_empty(self):
+        wt = self.make_branch_and_tree("wt")
+        wt.views.set_view("empty", [])
+        # An empty view must not widen to a view of the tree root on reload,
+        # which is what storing it as a single empty path used to do.
+        wt = WorkingTree.open("wt")
+        self.assertEqual([], wt.views.lookup_view("empty"))
+
     def test_no_such_view(self):
         wt = self.make_branch_and_tree("wt")
         try:
