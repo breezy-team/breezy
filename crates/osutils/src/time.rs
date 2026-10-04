@@ -2,19 +2,11 @@ use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, TimeZone, Utc};
 
 const DEFAULT_DATE_FORMAT: &str = "%a %Y-%m-%d %H:%M:%S";
 
+/// The offset in seconds of local time from UTC at timestamp `t` (now if `None`).
 pub fn local_time_offset(t: Option<i64>) -> i64 {
     let timestamp = t.unwrap_or_else(|| Utc::now().timestamp());
-    let local_time: DateTime<Local> = Utc
-        .timestamp_opt(timestamp, 0)
-        .unwrap()
-        .with_timezone(&Local);
-    let utc_time: DateTime<Utc> = Utc.timestamp_opt(timestamp, 0).unwrap();
-
-    let local_naive_datetime = local_time.naive_utc();
-    let utc_naive_datetime = utc_time.naive_utc();
-
-    let offset = local_naive_datetime - utc_naive_datetime;
-    offset.num_seconds()
+    let utc_time = Utc.timestamp_opt(timestamp, 0).unwrap();
+    i64::from(utc_time.with_timezone(&Local).offset().local_minus_utc())
 }
 
 pub fn format_local_date(
