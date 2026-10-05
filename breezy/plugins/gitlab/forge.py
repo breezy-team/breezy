@@ -484,9 +484,9 @@ class GitLab(Forge):
         response = self._api_request("GET", path)
         if response.status == 404:
             if not _redirect_checked:
-                project_name = self._find_correct_project_name(project_name)
-                if project_name is not None:
-                    return self._get_project(project_name, _redirect_checked=True)
+                redirected = self._find_correct_project_name(project_name)
+                if redirected is not None:
+                    return self._get_project(redirected, _redirect_checked=True)
             raise NoSuchProject(project_name)
         if response.status == 200:
             return json.loads(response.data)
