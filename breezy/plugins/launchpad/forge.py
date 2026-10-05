@@ -18,7 +18,6 @@
 """Support for Launchpad."""
 
 import re
-import shutil
 import tempfile
 
 from ... import branch as _mod_branch
@@ -32,6 +31,7 @@ from ...forge import (
     MergeProposalExists,
     TitleUnsupported,
     UnsupportedForge,
+    MERGE_METHOD_MERGE,
 )
 from ...git.urls import git_url_to_bzr_url
 from ...lazy_import import lazy_import
@@ -217,21 +217,27 @@ class LaunchpadMergeProposal(MergeProposal):
     def get_merged_at(self):
         return self._mp.date_merged
 
-    def merge(self, commit_message=None, auto=False):
+    def merge(self, commit_message=None, auto=False, method=MERGE_METHOD_MERGE,
+              remove_source_branch=False):
         if auto:
             raise AutoMergeUnsupported(self)
+        if method != MERGE_METHOD_MERGE:
+            raise NotImplementedError("merge method %s unsupported" % method)
         target_branch = _mod_branch.Branch.open(self.get_target_branch_url())
         source_branch = _mod_branch.Branch.open(self.get_source_branch_url())
         # TODO(jelmer): Ideally this would use a memorytree, but merge doesn't
         # support that yet.
         # tree = target_branch.create_memorytree()
-        tmpdir = tempfile.mkdtemp()
-        try:
-            tree = target_branch.create_checkout(to_location=tmpdir, lightweight=True)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tree = target_branch.create_checkout(
+                to_location=tmpdir, lightweight=True)
             tree.merge_from_branch(source_branch)
             tree.commit(commit_message or self._mp.commit_message)
-        finally:
-            shutil.rmtree(tmpdir)
+        if remove_source_branch:
+            if self._mp.source_branch:
+                self._mp.source_branch.lp_delete()
+            else:
+                source_branch.controldir.destroy_branch(name=source_branch.name)
 
     def post_comment(self, body):
         self._mp.createComment(content=body)
