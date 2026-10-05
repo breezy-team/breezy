@@ -50,6 +50,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance
    or memory usage, or better results.
 
+ * gitea: The forge now implements ``iter_my_forks`` and ``delete_project``,
+   so the forks of the logged in user can be listed and removed.
+   (Zainab Mehmut)
+
 Bug Fixes
 *********
 
