@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import calendar
 import datetime
 import time
 
@@ -540,6 +541,13 @@ class TestRevisionSpec_date(TestRevisionSpec):
 
     def test_as_revision_id(self):
         self.assertAsRevisionId(self.revid2, "date:today")
+
+    def test_tip(self):
+        self.tree = self.make_branch_and_tree("tip_tree")
+        self.tree.commit("One", timestamp=calendar.timegm((2020, 1, 1, 12, 0, 0)))
+        tip = self.tree.commit("Two", timestamp=calendar.timegm((2020, 1, 5, 12, 0, 0)))
+        self.assertInHistoryIs(2, tip, "date:2020-01-03")
+        self.assertInvalid("date:2020-01-07")
 
 
 class TestRevisionSpec_date_no_revno(TestRevisionSpec_date):
