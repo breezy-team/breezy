@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import calendar
 import datetime
 import time
 
@@ -21,7 +22,7 @@ from vcsgraph.errors import NoCommonAncestor
 
 from breezy import errors
 from breezy import revision as _mod_revision
-from breezy.tests import TestCaseWithTransport
+from breezy.tests import TestCaseWithTransport, TestNotApplicable
 
 from ..revisionspec import (
     InvalidRevisionSpec,
@@ -539,6 +540,33 @@ class TestRevisionSpec_date(TestRevisionSpec):
 
     def test_as_revision_id(self):
         self.assertAsRevisionId(self.revid2, "date:today")
+
+    def test_tip(self):
+        self.tree = self.make_branch_and_tree("tip_tree")
+        self.tree.commit("One", timestamp=calendar.timegm((2020, 1, 1, 12, 0, 0)))
+        tip = self.tree.commit("Two", timestamp=calendar.timegm((2020, 1, 5, 12, 0, 0)))
+        self.assertInHistoryIs(2, tip, "date:2020-01-03")
+        self.assertInvalid("date:2020-01-07")
+
+    def test_local_time(self):
+        if not hasattr(time, "tzset"):
+            raise TestNotApplicable("changing the time zone needs time.tzset")
+        # Registered first, so it runs once TZ has been restored.
+        self.addCleanup(time.tzset)
+        # POSIX TZ rules have the sign inverted: this is five hours west of UTC.
+        self.overrideEnv("TZ", "XYZ+5")
+        time.tzset()
+        self.tree = self.make_branch_and_tree("tz_tree")
+        self.tree.commit("Noon", timestamp=calendar.timegm((2020, 1, 1, 12, 0, 0)))
+        # 21:00 on the 1st in local time
+        evening = self.tree.commit(
+            "Evening", timestamp=calendar.timegm((2020, 1, 2, 2, 0, 0))
+        )
+        next_day = self.tree.commit(
+            "Next day", timestamp=calendar.timegm((2020, 1, 2, 12, 0, 0))
+        )
+        self.assertInHistoryIs(3, next_day, "date:2020-01-02")
+        self.assertInHistoryIs(2, evening, "date:2020-01-01,20:00")
 
 
 class TestRevisionSpec_date_no_revno(TestRevisionSpec_date):

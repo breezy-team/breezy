@@ -717,7 +717,7 @@ class _RevListToTimestamps:
     def __getitem__(self, index):
         """Get the date of the index'd item."""
         r = self.branch.repository.get_revision(self.branch.get_rev_id(index))
-        return r.datetime()
+        return _revision_datetime(r)
 
 
 _date_regex = lazy_regex.lazy_compile(
@@ -725,6 +725,17 @@ _date_regex = lazy_regex.lazy_compile(
     r"(,|T)?\s*"
     r"(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?"
 )
+
+
+def _revision_datetime(rev):
+    """Return the time of a revision as a naive datetime in local time.
+
+    Date specs are in local time, but depending on the format
+    Revision.datetime() is either in local time or in UTC.
+    """
+    import datetime
+
+    return datetime.datetime.fromtimestamp(rev.timestamp)
 
 
 def _parse_datespec(spec):
@@ -796,19 +807,19 @@ class RevisionSpec_date(RevisionSpec):
                 branch.last_revision(), (_mod_revision.NULL_REVISION,)
             ):
                 r = branch.repository.get_revision(revid)
-                if r.datetime() < dt:
+                if _revision_datetime(r) < dt:
                     if last_match is None:
                         raise InvalidRevisionSpec(self.user_spec, branch)
                     return RevisionInfo(branch, None, last_match)
                 last_match = revid
             return RevisionInfo(branch, None, last_match)
 
-    def _bisect_backwards(self, branch, dt, hi):
+    def _bisect_backwards(self, branch, dt, revno):
         import bisect
 
         with branch.lock_read():
-            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1, hi)
-        if rev == branch.revno():
+            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1, revno + 1)
+        if rev > revno:
             raise InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, rev)
 
