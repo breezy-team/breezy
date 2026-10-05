@@ -719,6 +719,26 @@ class Gitea(Forge):
                 continue
             yield GiteaMergeProposal(self, pr)
 
+    def iter_my_forks(self, owner=None):
+        """Iterate over the repositories of a user that are forks.
+
+        Args:
+            owner: The owner username. If None, uses the current user.
+
+        Yields:
+            Full repository names (owner/repo) of repositories that are forks.
+        """
+        if owner is None:
+            owner = self.get_current_user()
+            path = "user/repos"
+        else:
+            path = f"users/{owner}/repos"
+        for repo in self._list_paged(path):
+            # user/repos also lists repositories of others the user can access.
+            if not repo["fork"] or repo["owner"]["login"].lower() != owner.lower():
+                continue
+            yield repo["full_name"]
+
     def get_proposal_by_url(self, url):
         """Return the pull request identified by a Gitea pull request URL."""
         try:
@@ -732,6 +752,24 @@ class Gitea(Forge):
         if self.base_hostname != host:
             raise UnsupportedForge(url)
         return GiteaMergeProposal(self, self._get_pull(full_name, index))
+
+    def delete_project(self, project):
+        """Delete a repository.
+
+        Args:
+            project: The repository name, as ``owner/repo``.
+
+        Raises:
+            NoSuchProject: If the repository does not exist.
+        """
+        path = f"repos/{project}"
+        response = self._api_request("DELETE", path)
+        if response.status == 404:
+            raise NoSuchProject(project)
+        if response.status == 403:
+            raise transport_errors.PermissionDenied(response.text)
+        if response.status != 204:
+            _unexpected_status(path, response)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
