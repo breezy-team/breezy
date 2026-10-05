@@ -1164,19 +1164,19 @@ class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFor
         This is mainly useful to allow custom repository formats, such as older
         Bazaar formats and foreign formats, to be tested.
         """
-        from catalogus.registry import _ObjectGetter
+        from .registry import _ObjectGetter
 
         self._extra_formats.append(_ObjectGetter(format))
 
     def remove_extra(self, format):
         """Remove an extra format."""
-        from catalogus.registry import _ObjectGetter
+        from .registry import _ObjectGetter
 
         self._extra_formats.remove(_ObjectGetter(format))
 
     def register_extra_lazy(self, module_name, member_name):
         """Register a format lazily."""
-        from catalogus.registry import _LazyObjectGetter
+        from .registry import _LazyObjectGetter
 
         self._extra_formats.append(_LazyObjectGetter(module_name, member_name))
 

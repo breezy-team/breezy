@@ -332,12 +332,17 @@ Basic commands:
   brz help topics    list all help topics
 "#;
 
+/// Render the basic help topic, with the Breezy version in its banner.
+fn basic_help(_topic: &str) -> String {
+    BASIC_HELP.replace("{breezy.__version__}", &crate::version::version_string())
+}
+
 inventory::submit! {
     HelpTopic::new(
         Section::List,
         "basic",
         "Basic commands",
-        HelpContents::Text(BASIC_HELP))
+        HelpContents::Callback(basic_help))
 }
 
 const STORAGE_FORMATS: &str = r#"Storage Formats
@@ -1058,6 +1063,428 @@ pub fn iter_dynamic_topics() -> impl Iterator<Item = std::sync::Arc<DynamicHelpT
         .into_iter()
 }
 
+/// Registered dynamic topics, keyed by name.
+///
+/// A `BTreeMap` rather than a `HashMap` so iteration is by name: a `HashMap`'s
+/// order is randomised per process, which made ``brz help topics`` list its
+/// topics differently on every invocation.
 static DYNAMIC_TOPICS: once_cell::sync::Lazy<
-    RwLock<std::collections::HashMap<String, std::sync::Arc<DynamicHelpTopic>>>,
-> = once_cell::sync::Lazy::new(|| RwLock::new(std::collections::HashMap::new()));
+    RwLock<std::collections::BTreeMap<String, std::sync::Arc<DynamicHelpTopic>>>,
+> = once_cell::sync::Lazy::new(|| RwLock::new(std::collections::BTreeMap::new()));
+
+/// Renders a found topic's help text, given the terms that shadow it.
+///
+/// Rendering can fail: a Python-backed topic renders by calling into Python,
+/// where the command's ``help()`` (or a plugin's docstring access) can raise.
+pub type RenderTopic = Box<dyn Fn(&[String]) -> Result<String, HelpError>>;
+
+/// A help topic found by a [`HelpIndex`]: enough to render it and to name it
+/// when it is shadowed by an earlier index.
+pub struct FoundTopic {
+    /// The prefix of the index that found it (e.g. ``"commands/"``).
+    pub prefix: String,
+    /// The topic's own name, as ``get_help_topic`` reports it.
+    pub topic: String,
+    /// The rendered help text, given the terms that shadow it.
+    pub text: RenderTopic,
+}
+
+impl FoundTopic {
+    /// The term naming this topic when it is shadowed by an earlier match.
+    pub fn shadowed_term(&self) -> String {
+        format!("{}{}", self.prefix, self.topic)
+    }
+}
+
+/// One source of help topics searched by [`search`].
+///
+/// The topic and config-option indexes are pure (they read the Rust registries);
+/// the command and plugin indexes need Python objects, so they are implemented
+/// over PyO3. Either way the search order and the shadowing rules live here.
+pub trait HelpIndex {
+    /// The prefix distinguishing this index's topics, e.g. ``"commands/"``.
+    fn prefix(&self) -> &str;
+
+    /// The topics in this index matching `topic`, in order.
+    fn get_topics(&self, topic: Option<&str>) -> Result<Vec<FoundTopic>, HelpError>;
+}
+
+/// An error raised while looking up help.
+#[derive(Debug)]
+pub enum HelpError {
+    /// No index had the requested topic.
+    NoHelpTopic(String),
+    /// Two indexes in the search path share a prefix.
+    DuplicateHelpPrefix(String),
+    /// Rendering a topic failed; the message is the underlying error.
+    ///
+    /// Used where the failure is not a Python exception.
+    Render(String),
+    /// A Python exception raised while rendering a Python-backed topic.
+    ///
+    /// Carried rather than rendered, so it reaches Python with its type and
+    /// traceback intact. Only the PyO3 indexes produce this.
+    #[cfg(feature = "pyo3")]
+    Python(pyo3::PyErr),
+}
+
+impl HelpError {
+    /// The user-facing message, matching the Python errors' ``_fmt``.
+    pub fn message(&self) -> String {
+        match self {
+            HelpError::NoHelpTopic(topic) => format!(
+                "No help could be found for '{topic}'. \
+                 Please use 'brz help topics' to obtain a list of topics."
+            ),
+            HelpError::DuplicateHelpPrefix(prefix) => {
+                format!("The prefix {prefix} is in the help search path twice.")
+            }
+            HelpError::Render(message) => message.clone(),
+            #[cfg(feature = "pyo3")]
+            HelpError::Python(e) => e.to_string(),
+        }
+    }
+}
+
+impl std::fmt::Display for HelpError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message())
+    }
+}
+
+impl std::error::Error for HelpError {}
+
+/// Search `indexes` in order for `topic`.
+///
+/// Every index is consulted, so a topic can match in more than one; the first
+/// match is the one shown and the rest shadow it. The prefixes must be unique,
+/// or the collection cannot tell its indexes apart.
+pub fn search(
+    indexes: &[&dyn HelpIndex],
+    topic: Option<&str>,
+) -> Result<Vec<FoundTopic>, HelpError> {
+    let mut prefixes = std::collections::HashSet::new();
+    for index in indexes {
+        if !prefixes.insert(index.prefix()) {
+            return Err(HelpError::DuplicateHelpPrefix(index.prefix().to_string()));
+        }
+    }
+    let mut result = Vec::new();
+    for index in indexes {
+        result.extend(index.get_topics(topic)?);
+    }
+    if result.is_empty() {
+        return Err(HelpError::NoHelpTopic(
+            topic.unwrap_or_default().to_string(),
+        ));
+    }
+    Ok(result)
+}
+
+/// Render the help for `topic`.
+///
+/// The first match is rendered, cross-referenced with the terms that shadow it.
+/// When `alias` expands, its expansion is reported as well - and an unknown
+/// topic that is an alias is not an error.
+pub fn help_text(
+    indexes: &[&dyn HelpIndex],
+    topic: Option<&str>,
+    alias: Option<&[String]>,
+) -> Result<String, HelpError> {
+    let mut out = String::new();
+    match search(indexes, topic) {
+        Ok(found) => {
+            let shadowed: Vec<String> = found[1..].iter().map(|f| f.shadowed_term()).collect();
+            out.push_str(&(found[0].text)(&shadowed)?);
+        }
+        // An alias that names no topic still reports its expansion.
+        Err(HelpError::NoHelpTopic(_)) if alias.is_some() => {}
+        Err(e) => return Err(e),
+    }
+    if let Some(alias) = alias {
+        out.push_str(&format!(
+            "'brz {}' is an alias for 'brz {}'.\n",
+            topic.unwrap_or_default(),
+            alias.join(" ")
+        ));
+    }
+    Ok(out)
+}
+
+/// One command's entry in the ``brz help commands`` listing.
+pub struct CommandSummary {
+    /// The command's name.
+    pub name: String,
+    /// The first line of its help, or empty when it has none.
+    pub first_line: String,
+    /// The plugin providing it, if it comes from one.
+    pub plugin: Option<String>,
+}
+
+/// Build the unwrapped lines of the ``brz help commands`` listing.
+///
+/// Each line is the name padded to the longest name, the first help line and
+/// the providing plugin in brackets. The caller wraps each line to the terminal
+/// width with the indent this returns alongside them, which is why the wrapping
+/// itself is not done here: breezy wraps with East-Asian-aware code that the
+/// Rust wrappers do not reproduce character for character.
+pub fn command_listing_lines(commands: &[CommandSummary]) -> (Vec<String>, usize) {
+    let max_name = commands.iter().map(|c| c.name.len()).max().unwrap_or(0);
+    let lines = commands
+        .iter()
+        .map(|cmd| {
+            let plugin = match &cmd.plugin {
+                Some(name) => format!(" [{name}]"),
+                None => String::new(),
+            };
+            format!(
+                "{:<max_name$} {}{}",
+                cmd.name,
+                cmd.first_line,
+                plugin,
+                max_name = max_name
+            )
+        })
+        .collect();
+    // The continuation lines align under the help column.
+    (lines, max_name + 1)
+}
+
+/// The index serving the registered help topics. A missing topic name means
+/// ``basic``.
+pub struct TopicIndex;
+
+impl HelpIndex for TopicIndex {
+    fn prefix(&self) -> &str {
+        ""
+    }
+
+    fn get_topics(&self, topic: Option<&str>) -> Result<Vec<FoundTopic>, HelpError> {
+        let name = topic.unwrap_or("basic");
+        if let Some(found) = get_static_topic(name) {
+            return Ok(vec![FoundTopic {
+                prefix: String::new(),
+                topic: found.get_name(),
+                text: Box::new(move |shadowed| {
+                    let refs: Vec<&str> = shadowed.iter().map(String::as_str).collect();
+                    Ok(found.get_help_text(Some(&refs), true))
+                }),
+            }]);
+        }
+        if let Some(found) = get_dynamic_topic(name) {
+            let name = found.name.clone();
+            return Ok(vec![FoundTopic {
+                prefix: String::new(),
+                topic: name,
+                text: Box::new(move |shadowed| {
+                    let refs: Vec<&str> = shadowed.iter().map(String::as_str).collect();
+                    Ok(found.get_help_text(Some(&refs), true))
+                }),
+            }]);
+        }
+        Ok(vec![])
+    }
+}
+
+#[cfg(test)]
+mod search_tests {
+    use super::*;
+
+    struct Fake {
+        prefix: String,
+        topics: Vec<String>,
+    }
+
+    impl HelpIndex for Fake {
+        fn prefix(&self) -> &str {
+            &self.prefix
+        }
+
+        fn get_topics(&self, topic: Option<&str>) -> Result<Vec<FoundTopic>, HelpError> {
+            let Some(topic) = topic else {
+                return Ok(vec![]);
+            };
+            if !self.topics.iter().any(|t| t == topic) {
+                return Ok(vec![]);
+            }
+            let prefix = self.prefix.clone();
+            let name = topic.to_string();
+            let label = format!("{prefix}{name}");
+            Ok(vec![FoundTopic {
+                prefix,
+                topic: name,
+                text: Box::new(move |shadowed| {
+                    Ok(if shadowed.is_empty() {
+                        format!("[{label}]")
+                    } else {
+                        format!("[{label} shadows {}]", shadowed.join(","))
+                    })
+                }),
+            }])
+        }
+    }
+
+    fn fake(prefix: &str, topics: &[&str]) -> Fake {
+        Fake {
+            prefix: prefix.to_string(),
+            topics: topics.iter().map(|t| t.to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn command_listing_layout() {
+        let cmds = vec![
+            CommandSummary {
+                name: "add".to_string(),
+                first_line: "Add files.".to_string(),
+                plugin: None,
+            },
+            CommandSummary {
+                name: "git-import".to_string(),
+                first_line: "Import.".to_string(),
+                plugin: Some("git".to_string()),
+            },
+            CommandSummary {
+                name: "st".to_string(),
+                first_line: String::new(),
+                plugin: None,
+            },
+        ];
+        let (lines, indent) = command_listing_lines(&cmds);
+        // Names pad to the longest ("git-import"), help starts one past it.
+        assert_eq!("add        Add files.", lines[0]);
+        assert_eq!("git-import Import. [git]", lines[1]);
+        assert_eq!("st         ", lines[2]);
+        assert_eq!(11, indent);
+    }
+
+    #[test]
+    fn search_returns_matches_in_index_order() {
+        let a = fake("", &["shared"]);
+        let b = fake("commands/", &["shared"]);
+        let found = search(&[&a, &b], Some("shared")).unwrap();
+        assert_eq!(2, found.len());
+        assert_eq!("shared", found[0].shadowed_term());
+        assert_eq!("commands/shared", found[1].shadowed_term());
+    }
+
+    #[test]
+    fn search_without_match_is_no_help_topic() {
+        let a = fake("", &["other"]);
+        assert!(matches!(
+            search(&[&a], Some("missing")).err().unwrap(),
+            HelpError::NoHelpTopic(t) if t == "missing"
+        ));
+    }
+
+    #[test]
+    fn duplicate_prefixes_are_rejected() {
+        let a = fake("same/", &["x"]);
+        let b = fake("same/", &["x"]);
+        assert!(matches!(
+            search(&[&a, &b], Some("x")).err().unwrap(),
+            HelpError::DuplicateHelpPrefix(p) if p == "same/"
+        ));
+    }
+
+    #[test]
+    fn help_text_reports_shadowing_terms() {
+        let a = fake("", &["shared"]);
+        let b = fake("commands/", &["shared"]);
+        assert_eq!(
+            "[shared shadows commands/shared]",
+            help_text(&[&a, &b], Some("shared"), None).unwrap()
+        );
+    }
+
+    #[test]
+    fn help_text_appends_alias_expansion() {
+        let a = fake("", &["ci"]);
+        let alias = vec!["commit".to_string(), "--strict".to_string()];
+        assert_eq!(
+            "[ci]'brz ci' is an alias for 'brz commit --strict'.\n",
+            help_text(&[&a], Some("ci"), Some(&alias)).unwrap()
+        );
+    }
+
+    #[test]
+    fn help_text_for_unknown_alias_is_not_an_error() {
+        let a = fake("", &["other"]);
+        let alias = vec!["commit".to_string()];
+        assert_eq!(
+            "'brz ci' is an alias for 'brz commit'.\n",
+            help_text(&[&a], Some("ci"), Some(&alias)).unwrap()
+        );
+    }
+
+    struct Failing;
+
+    impl HelpIndex for Failing {
+        fn prefix(&self) -> &str {
+            "failing/"
+        }
+
+        fn get_topics(&self, _topic: Option<&str>) -> Result<Vec<FoundTopic>, HelpError> {
+            Err(HelpError::Render("boom".to_string()))
+        }
+    }
+
+    #[test]
+    fn help_text_for_alias_reports_lookup_errors() {
+        let alias = vec!["commit".to_string()];
+        assert!(matches!(
+            help_text(&[&Failing], Some("ci"), Some(&alias)),
+            Err(HelpError::Render(m)) if m == "boom"
+        ));
+    }
+
+    #[test]
+    fn no_help_topic_message_matches_python() {
+        assert_eq!(
+            "No help could be found for 'nope'. \
+             Please use 'brz help topics' to obtain a list of topics.",
+            HelpError::NoHelpTopic("nope".to_string()).message()
+        );
+    }
+}
+
+#[cfg(test)]
+mod order_tests {
+    use super::*;
+
+    #[test]
+    fn dynamic_topics_iterate_in_name_order() {
+        // Registered out of order; iteration must still be by name, so that
+        // `brz help topics` lists the same way on every invocation. Enough
+        // names that a hash order would be vanishingly unlikely to come out
+        // sorted by chance.
+        for name in [
+            "zeta-topic",
+            "alpha-topic",
+            "mu-topic",
+            "delta-topic",
+            "omega-topic",
+            "beta-topic",
+            "kappa-topic",
+            "sigma-topic",
+            "gamma-topic",
+            "theta-topic",
+            "lambda-topic",
+            "epsilon-topic",
+        ] {
+            register_topic(DynamicHelpTopic {
+                name: name.to_string(),
+                contents: HelpContents::Text(""),
+                summary: String::new(),
+                section: Section::Hidden,
+            });
+        }
+        let names: Vec<String> = iter_dynamic_topics()
+            .map(|t| t.name.clone())
+            .filter(|n| n.ends_with("-topic"))
+            .collect();
+        let mut sorted = names.clone();
+        sorted.sort();
+        assert_eq!(sorted, names);
+    }
+}

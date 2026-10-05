@@ -25,11 +25,10 @@ __all__ = [
 
 from typing import TYPE_CHECKING
 
-from catalogus import pyutils
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 
-from .. import config, controldir, errors, registry
+from .. import config, controldir, errors, pyutils, registry
 from ..branch import format_registry as branch_format_registry
 from ..repository import format_registry as repository_format_registry
 from ..workingtree import format_registry as workingtree_format_registry

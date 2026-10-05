@@ -22,7 +22,6 @@ tag, etc.). It includes RevisionSpec classes for different revision specificatio
 types and utilities for resolving them to actual revision identifiers.
 """
 
-from catalogus.registry import _LazyObjectGetter, _ObjectGetter
 from vcsgraph.errors import NoCommonAncestor
 
 from breezy import revision, workingtree
@@ -30,6 +29,7 @@ from breezy import revision, workingtree
 from . import errors, lazy_regex, registry, trace
 from . import revision as _mod_revision
 from .i18n import gettext
+from .registry import _LazyObjectGetter, _ObjectGetter
 
 
 class InvalidRevisionSpec(errors.BzrError):

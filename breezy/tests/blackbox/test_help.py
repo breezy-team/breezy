@@ -17,6 +17,7 @@
 
 """Black-box tests for brz help."""
 
+import breezy
 from breezy import config, i18n, tests
 
 
@@ -160,6 +161,10 @@ class TestHelp(tests.TestCaseWithTransport):
         for line in help.split("\n"):
             if "--long" in line:
                 self.assertContainsRe(line, r"Show help on all commands\.")
+
+    def test_help_shows_version(self):
+        out = self.run_bzr("help")[0]
+        self.assertStartsWith(out, f"Breezy {breezy.__version__} -- a free distributed")
 
     def test_help_with_aliases(self):
         original = self.run_bzr("help cat")[0]

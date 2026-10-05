@@ -30,6 +30,7 @@ across multiple indices and formatting help text for display.
 
 from . import commands as _mod_commands
 from . import errors, help_topics, osutils, plugin, ui, utextwrap
+from ._cmd_rs import help as _help_rs
 
 
 class NoHelpTopic(errors.BzrError):
@@ -57,23 +58,7 @@ def help(topic=None, outfile=None):
     """Write the help for the specific topic to outfile."""
     if outfile is None:
         outfile = ui.ui_factory.make_output_stream()
-
-    indices = HelpIndices()
-
-    alias = _mod_commands.get_alias(topic)
-    try:
-        topics = indices.search(topic)
-        shadowed_terms = []
-        for index, topic_obj in topics[1:]:
-            shadowed_terms.append(f"{index.prefix}{topic_obj.get_help_topic()}")
-        source = topics[0][1]
-        outfile.write(source.get_help_text(shadowed_terms))
-    except NoHelpTopic:
-        if alias is None:
-            raise
-
-    if alias is not None:
-        outfile.write(f"'brz {topic}' is an alias for 'brz {' '.join(alias)}'.\n")
+    outfile.write(_help_rs.help_text(topic))
 
 
 def help_commands(outfile=None):
@@ -85,31 +70,27 @@ def help_commands(outfile=None):
 
 def _help_commands_to_text(topic):
     """Generate the help text for the list of commands."""
-    out = []
-    hidden = topic == "hidden-commands"
-    names = list(_mod_commands.all_command_names())
-    commands = ((n, _mod_commands.get_cmd_object(n)) for n in names)
-    shown_commands = [(n, o) for n, o in commands if o.hidden == hidden]
-    max_name = max(len(n) for n, o in shown_commands)
-    indent = " " * (max_name + 1)
+    # Wrapping is done here with utextwrap, which accounts for East Asian
+    # character widths.
+    lines, indent_width = _help_rs.command_listing(topic == "hidden-commands")
+    indent = " " * indent_width
     width = osutils.terminal_width()
     if width is None:
         width = osutils.default_terminal_width
     # we need one extra space for terminals that wrap on last char
     width = width - 1
 
-    for cmd_name, cmd_object in sorted(shown_commands):
-        plugin_name = cmd_object.plugin_name()
-        plugin_name = "" if plugin_name is None else f" [{plugin_name}]"
-
-        cmd_help = cmd_object.help()
-        firstline = cmd_help.split("\n", 1)[0] if cmd_help else ""
-        helpstring = "%-*s %s%s" % (max_name, cmd_name, firstline, plugin_name)
-        lines = utextwrap.wrap(
-            helpstring, subsequent_indent=indent, width=width, break_long_words=False
+    out = []
+    for helpstring in lines:
+        out.extend(
+            line + "\n"
+            for line in utextwrap.wrap(
+                helpstring,
+                subsequent_indent=indent,
+                width=width,
+                break_long_words=False,
+            )
         )
-        for line in lines:
-            out.append(line + "\n")
     return "".join(out)
 
 

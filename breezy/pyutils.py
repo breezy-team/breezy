@@ -1,4 +1,4 @@
-# Copyright (C) 2010 by Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,13 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the bash_completion plugin."""
+"""General Python convenience functions."""
 
+from ._cmd_rs.pyutils import calc_parent_name, get_named_object
 
-def load_tests(loader, basic_tests, pattern):
-    testmod_names = [
-        "test_bashcomp",
-    ]
-    for tmn in testmod_names:
-        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
-    return basic_tests
+__all__ = ["calc_parent_name", "get_named_object"]

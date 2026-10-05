@@ -21,6 +21,18 @@ External Compatibility Breaks
    ``dromedary`` package for its transport implementations (local,
    sftp, http, memory, ssh, etc.) and URL utilities.
 
+ * The bundled ``bash_completion`` and ``zsh_completion`` plugins have moved
+   into the core as ``breezy.bash_completion`` and
+   ``breezy.zsh_completion``. The ``brz bash-completion`` and
+   ``brz zsh-completion`` commands are unchanged, but code importing
+   ``breezy.plugins.bash_completion`` or ``breezy.plugins.zsh_completion``
+   must be updated. (Jelmer Vernooĳ)
+
+ * Breezy no longer depends on the external ``catalogus`` package; its
+   registry is now built in. ``breezy.registry`` keeps its interface, and
+   ``breezy.pyutils`` replaces the ``catalogus.pyutils`` lookups.
+   (Jelmer Vernooĳ)
+
 New Features
 ************
 
@@ -49,10 +61,22 @@ Bug Fixes
    take keyword arguments only. Enumerating forges raised ``TypeError``
    before this. (Zainab Mehmut)
 
+ * ``brz help topics`` now lists its topics in a stable order; previously the
+   order varied between invocations. (Jelmer Vernooĳ)
+
+ * The quilt plugin's hook that (un)applies patches before a merge now runs;
+   it was installed on a hook point that does not exist. (Jelmer Vernooĳ)
+
+ * Hooks installed lazily for ``breezy.forge.MergeProposalBuilder.hooks``
+   now reach it. (Jelmer Vernooĳ)
+
 Documentation
 *************
 
 .. Improved or updated documentation.
+
+ * The user guide has a section on shell completion, replacing the README of
+   the former ``bash_completion`` plugin. (Jelmer Vernooĳ)
 
 API Changes
 ***********
@@ -60,11 +84,43 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    breezy.
 
+ * ``breezy.commands.builtin_command_registry`` and ``plugin_cmds`` are no
+   longer ``breezy.registry.Registry`` instances. They support ``register``,
+   ``register_lazy``, ``get``, ``get_info``, ``remove``, ``keys``, ``in`` and
+   iteration. (Jelmer Vernooĳ)
+
+ * ``breezy.option.get_optparser`` returns a parser implemented in Rust
+   rather than an ``optparse.OptionParser``. It provides ``parse_args``,
+   ``values`` and ``format_option_help``. ``Option.add_option`` and the
+   ``_optparse_*callback`` methods are only used to generate the shell
+   completion functions, so overriding them no longer changes how command
+   lines are parsed. ``breezy.option.GettextIndentedHelpFormatter`` has been
+   removed. (Jelmer Vernooĳ)
+
+ * The verbosity level set by ``-v`` and ``-q`` is read and set with
+   ``breezy.option.verbosity_level()`` and ``set_verbosity_level()``,
+   replacing the ``breezy.option._verbosity_level`` variable.
+   (Jelmer Vernooĳ)
+
+ * ``breezy.hooks._lazy_hooks`` has been replaced by
+   ``breezy.hooks.lazy_hook_keys()``, and ``HookPoint`` takes a ``lazy_key``
+   rather than a ``callbacks`` list. (Jelmer Vernooĳ)
+
+ * The ``Command``, ``Option``, ``RegistryOption``, ``Hooks``, ``HookPoint``
+   and ``Registry`` base classes are implemented in Rust. They can still be
+   subclassed. (Jelmer Vernooĳ)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin
    developers, but interesting for brz developers.
+
+ * The command-line layer is now largely implemented in Rust: option parsing
+   (replacing ``optparse``), command lookup and dispatch, the help search, the
+   hook and registry machinery, and the ``Command`` base class itself.
+   Commands can be implemented in Rust; plugins can still register and wrap
+   commands, options and hooks from Python. (Jelmer Vernooĳ)
 
 Testing
 *******
@@ -72,6 +128,10 @@ Testing
 .. Fixes and changes that are only relevant to brz's test framework and
    suite.  This can include new facilities for writing tests, fixes to
    spurious test failures and changes to the way things should be tested.
+
+ * The test framework no longer drops the lazily installed hooks after the
+   first test, which kept hook points created later from receiving them.
+   (Jelmer Vernooĳ)
 
 
 ..

@@ -192,8 +192,11 @@ def enable_default_logging():
         return None
     memento = push_log_file(brz_log_file, short=False)
     # after hooking output into brz_log, we also need to attach a stderr
-    # handler, writing only at level info and with encoding
+    # handler, writing only at level info and with encoding. DEBUG-level
+    # records can also arrive through the "brz" logger (e.g. from Rust via
+    # log::debug!); like mutter() output they belong only in brz.log.
     stderr_handler = logging.StreamHandler(stream=sys.stderr)
+    stderr_handler.setLevel(logging.INFO)
     logging.getLogger("brz").addHandler(stderr_handler)
     return memento
 
@@ -221,27 +224,79 @@ class _MutterRelayHandler(logging.Handler):
             self.handleError(record)
 
 
-def push_log_file(to_file, short=True):
+class _RootCaptureHandler(logging.Handler):
+    """Write every log record reaching the root logger to a byte stream."""
+
+    def __init__(self, to_file, short):
+        super().__init__(level=logging.DEBUG)
+        self._file = to_file
+        if short:
+            self.setFormatter(logging.Formatter("%(levelname)8s  %(message)s"))
+        else:
+            self.setFormatter(
+                logging.Formatter(
+                    "[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S",
+                )
+            )
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+        except Exception:
+            import traceback
+
+            tb = traceback.format_exc()
+            try:
+                args_repr = repr(record.args)
+            except Exception:
+                args_repr = "<unrepresentable>"
+            msg = (
+                f"Logging record unformattable: {record.msg!r} % {args_repr}\n{tb}"
+            ).rstrip("\n")
+        try:
+            self._file.write((msg + "\n").encode("utf-8", "replace"))
+        except Exception:
+            self.handleError(record)
+
+
+def push_log_file(to_file, short=True, capture_root=False):
     """Intercept log and trace messages and send them to a file.
 
     :param to_file: A file-like object to which messages will be sent.
+    :param capture_root: Also send records from any other logger to the file,
+        replacing the handlers of the root logger until the file is popped.
+        The test framework uses this to capture everything a test logs.
 
     :returns: A memento that should be passed to _pop_log_file to restore the
         previously active logging.
     """
     global _trace_handler
-    # make a new handler
     old_trace_handler = _trace_handler
+    # mutter() writes through _trace_handler directly.
     _trace_handler = new_handler = _cmd_rs.BreezyTraceHandler(to_file, short=short)
-    # save and remove any existing log handlers on brz and dromedary loggers
+    root_logger = logging.getLogger()
+    old_root_handlers = root_logger.handlers[:]
+    old_root_level = root_logger.level
+    root_capture = None
+    if capture_root:
+        # Also keeps a library's logging.warning() from calling basicConfig(),
+        # which would install a stderr handler on root for good.
+        del root_logger.handlers[:]
+        root_capture = _RootCaptureHandler(to_file, short=short)
+        root_logger.addHandler(root_capture)
+        root_logger.setLevel(logging.DEBUG)
+    # Suppress any pre-existing handlers on the brz/dromedary loggers (e.g.
+    # the stderr handler installed by enable_default_logging) so that output
+    # goes only to the new file.
     brz_logger = logging.getLogger("brz")
     dromedary_logger = logging.getLogger("dromedary")
     old_handlers = brz_logger.handlers[:]
     old_dromedary_handlers = dromedary_logger.handlers[:]
     del brz_logger.handlers[:]
     del dromedary_logger.handlers[:]
-    # set that as the default logger
-    brz_logger.addHandler(new_handler)
+    if root_capture is None:
+        brz_logger.addHandler(new_handler)
     brz_logger.setLevel(logging.DEBUG)
     # Relay dromedary's logger output through breezy.trace.mutter so that the
     # trace stream sees it AND tests that monkey-patch mutter still observe
@@ -256,6 +311,9 @@ def push_log_file(to_file, short=True):
         old_trace_handler,
         old_dromedary_handlers,
         dromedary_relay,
+        old_root_handlers,
+        old_root_level,
+        root_capture,
     )
 
 
@@ -274,16 +332,24 @@ def pop_log_file(entry):
         old_trace_handler,
         old_dromedary_handlers,
         dromedary_relay,
+        old_root_handlers,
+        old_root_level,
+        root_capture,
     ) = entry
     global _trace_handler
     _trace_handler = old_trace_handler
+    root_logger = logging.getLogger()
     brz_logger = logging.getLogger("brz")
     dromedary_logger = logging.getLogger("dromedary")
-    brz_logger.removeHandler(new_handler)
     dromedary_logger.removeHandler(dromedary_relay)
     # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
+    if root_capture is not None:
+        root_logger.removeHandler(root_capture)
+        root_capture.close()
+        root_logger.handlers = old_root_handlers
+        root_logger.setLevel(old_root_level)
     brz_logger.handlers = old_handlers
     dromedary_logger.handlers = old_dromedary_handlers
 

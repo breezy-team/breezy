@@ -27,10 +27,9 @@ rather than in tests/per_interrepository/*.py.
 
 import contextlib
 
-from catalogus import pyutils
 from dromedary.errors import FileExists
 
-from breezy import transport
+from breezy import pyutils, transport
 from breezy.tests import TestSkipped, default_transport, multiply_tests
 
 from ...bzr.vf_repository import InterDifferingSerializer

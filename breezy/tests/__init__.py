@@ -55,10 +55,10 @@ from unittest import SkipTest as TestSkipped
 
 import testtools
 from bzrformats import chk_map
-from catalogus import pyutils
 from testtools import content
 
 import breezy
+from breezy import pyutils
 
 from .. import (
     branchbuilder,
@@ -1133,8 +1133,7 @@ class TestCase(testtools.TestCase):
         for _key, (parent, name) in known_hooks.iter_parent_objects():
             current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
-        self._preserved_lazy_hooks = _mod_hooks._lazy_hooks
-        _mod_hooks._lazy_hooks = {}
+        self._preserved_lazy_hooks = _mod_hooks.swap_lazy_hooks()
         self.addCleanup(self._restoreHooks)
         for key, (parent, name) in known_hooks.iter_parent_objects():
             factory = known_hooks.get(key)
@@ -1766,7 +1765,9 @@ class TestCase(testtools.TestCase):
             ),
         )
         self._log_file = pseudo_log_file
-        self._log_memento = trace.push_log_file(self._log_file, short=True)
+        self._log_memento = trace.push_log_file(
+            self._log_file, short=True, capture_root=True
+        )
         self.addCleanup(self._finishLogFile)
 
     @contextlib.contextmanager
@@ -1867,8 +1868,7 @@ class TestCase(testtools.TestCase):
         for klass, (name, hooks) in self._preserved_hooks.items():
             setattr(klass, name, hooks)
         self._preserved_hooks.clear()
-        breezy.hooks._lazy_hooks = self._preserved_lazy_hooks
-        self._preserved_lazy_hooks.clear()
+        _mod_hooks.swap_lazy_hooks(self._preserved_lazy_hooks)
 
     def knownFailure(self, reason):
         """Declare that this test fails for a known reason.
@@ -4146,6 +4146,7 @@ def _test_suite_testmod_names():
         "breezy.tests.test_annotate",
         "breezy.tests.test_atomicfile",
         "breezy.tests.test_bad_files",
+        "breezy.tests.test_bash_completion",
         "breezy.tests.test_bisect",
         "breezy.tests.test_branch",
         "breezy.tests.test_branchbuilder",
@@ -4232,6 +4233,7 @@ def _test_suite_testmod_names():
         "breezy.tests.test_progress",
         "breezy.tests.test_reconcile",
         "breezy.tests.test_reconfigure",
+        "breezy.tests.test_registry",
         "breezy.tests.test_rename_map",
         "breezy.tests.test_revert",
         "breezy.tests.test_revision",
@@ -4282,6 +4284,7 @@ def _test_suite_testmod_names():
         "breezy.tests.test_workspace",
         "breezy.tests.test_workingtree",
         "breezy.tests.test_wsgi",
+        "breezy.tests.test_zsh_completion",
     ]
 
 

@@ -127,7 +127,8 @@ fn main() {
 
             let args: Vec<String> = std::env::args().collect();
 
-            if args.contains(&String::from("--profile-imports")) {
+            let profiling = args.contains(&String::from("--profile-imports"));
+            if profiling {
                 let profile_imports = PyModule::import(py, "profile_imports")?;
                 profile_imports.getattr("install")?.call0()?;
             }
@@ -135,8 +136,14 @@ fn main() {
             let sys = PyModule::import(py, "sys")?;
             sys.setattr("argv", PyList::new(py, args)?)?;
 
-            let main = PyModule::import(py, "breezy.__main__")?;
-            main.getattr("main")?.call0()
+            // The orchestration (debugger hook, initialize(), command dispatch
+            // and the abrupt atexit/weakref/os._exit shutdown) is the same as
+            // for `python3 -m breezy`. It is reached through the extension
+            // module rather than linked in, so that there is one copy of the
+            // library and its state. run_main never returns normally.
+            PyModule::import(py, "breezy._cmd_rs")?
+                .getattr("run_main")?
+                .call1((profiling,))
         })();
 
         std::process::exit(match result {

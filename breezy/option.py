@@ -27,12 +27,10 @@ of options, as well as utilities for parsing and processing command arguments.
 __docformat__ = "google"
 
 import optparse
-import re
 from collections.abc import Callable
 
-from catalogus import registry as _mod_registry
-
 from . import errors, revisionspec
+from . import registry as _mod_registry
 
 
 class BadOptionValue(errors.BzrError):
@@ -104,12 +102,13 @@ def _parse_revision_str(revstr):
     [<RevisionSpec_branch branch:..\\..\\branch2>, <RevisionSpec_dwim 23>]
     """
     # TODO: Maybe move this into revisionspec.py
-    revs = []
-    # split on .. that is not followed by a / or \
-    sep = re.compile(r"\.\.(?![\\/])")
-    for x in sep.split(revstr):
-        revs.append(revisionspec.RevisionSpec.from_string(x or None))
-    return revs
+    # A ".." followed by / or \ is part of a path, not a range separator.
+    from ._cmd_rs.optparse import split_revision_range
+
+    return [
+        revisionspec.RevisionSpec.from_string(x or None)
+        for x in split_revision_range(revstr)
+    ]
 
 
 def _parse_change_str(revstr):
@@ -163,7 +162,12 @@ def get_merge_type(typestring):
         raise errors.CommandError(msg) from e
 
 
-class Option:
+# The optparse add_option/_optparse_*callback methods register the option with
+# the optparse parsers used by breezy.bash_completion and breezy.zsh_completion.
+from ._cmd_rs.optparse import Option as _RustOption
+
+
+class Option(_RustOption):
     """Description of a command line option.
 
     Attributes:
@@ -178,78 +182,6 @@ class Option:
     # if a command explicitly references them by name in the list
     # of supported options.
     OPTIONS: dict[str, "Option"] = {}
-
-    def __init__(
-        self,
-        name,
-        help="",
-        type=None,
-        argname=None,
-        short_name=None,
-        param_name=None,
-        custom_callback=None,
-        hidden=False,
-    ):
-        """Make a new command option.
-
-        Args:
-          name: regular name of the command, used in the double-dash
-            form and also as the parameter to the command's run()
-            method (unless param_name is specified).
-          help: help message displayed in command help
-          type: function called to parse the option argument, or
-            None (default) if this option doesn't take an argument.
-          argname: name of option argument, if any
-          short_name: short option code for use with a single -, e.g.
-            short_name="v" to enable parsing of -v.
-          param_name: name of the parameter which will be passed to
-            the command's run() method.
-          custom_callback: a callback routine to be called after normal
-            processing. The signature of the callback routine is
-            (option, name, new_value, parser).
-          hidden: If True, the option should be hidden in help and
-            documentation.
-        """
-        self.name = name
-        self.help = help
-        self.type = type
-        self._short_name = short_name
-        if type is None:
-            if argname:
-                raise ValueError("argname not valid for booleans")
-        elif argname is None:
-            argname = "ARG"
-        self.argname = argname
-        if param_name is None:
-            self._param_name = self.name.replace("-", "_")
-        else:
-            self._param_name = param_name
-        self.custom_callback = custom_callback
-        self.hidden = hidden
-
-    def short_name(self):
-        """Return the short name for this option, or None."""
-        if self._short_name:
-            return self._short_name
-
-    def set_short_name(self, short_name):
-        """Set the short name for this option.
-
-        Args:
-            short_name: Single character short name.
-        """
-        self._short_name = short_name
-
-    def get_negation_name(self):
-        """Return the negation name for this option.
-
-        Returns:
-            String with 'no-' prefix added or removed as appropriate.
-        """
-        if self.name.startswith("no-"):
-            return self.name[3:]
-        else:
-            return "no-" + self.name
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser."""
@@ -301,27 +233,6 @@ class Option:
         if self.custom_callback is not None:
             self.custom_callback(option, self.name, v, parser)
 
-    def iter_switches(self):
-        """Iterate through the list of switches provided by the option.
-
-        :return: an iterator of (name, short_name, argname, help)
-        """
-        argname = self.argname
-        if argname is not None:
-            argname = argname.upper()
-        yield self.name, self.short_name(), argname, self.help
-
-    def is_hidden(self, name):
-        """Return True if this option should be hidden in help.
-
-        Args:
-            name: Option name (unused in base implementation).
-
-        Returns:
-            Boolean indicating if the option is hidden.
-        """
-        return self.hidden
-
 
 class ListOption(Option):
     """Option used to provide a list of values.
@@ -360,108 +271,19 @@ class ListOption(Option):
             self.custom_callback(option, self._param_name, values, parser)
 
 
-class RegistryOption(Option):
+# The subclass adds the optparse add_option method used by
+# breezy.bash_completion and breezy.zsh_completion, and inherits Option's
+# callbacks.
+from ._cmd_rs.optparse import RegistryOption as _RustRegistryOption
+
+
+class RegistryOption(_RustRegistryOption, Option):
     """Option based on a registry.
 
     The values for the options correspond to entries in the registry.  Input
     must be a registry key.  After validation, it is converted into an object
     using Registry.get or a caller-provided converter.
     """
-
-    def validate_value(self, value):
-        """Validate a value name."""
-        if value not in self.registry:
-            raise BadOptionValue(self.name, value)
-
-    def convert(self, value):
-        """Convert a value name into an output type."""
-        self.validate_value(value)
-        if self.converter is None:
-            return self.registry.get(value)
-        else:
-            return self.converter(value)
-
-    def __init__(
-        self,
-        name,
-        help,
-        registry=None,
-        converter=None,
-        value_switches=False,
-        title=None,
-        enum_switch=True,
-        lazy_registry=None,
-        short_name=None,
-        short_value_switches=None,
-    ):
-        """Constructor.
-
-        Args:
-          name: The option name.
-          help: Help for the option.
-          registry: A Registry containing the values
-          converter: Callable to invoke with the value name to produce
-            the value.  If not supplied, self.registry.get is used.
-          value_switches: If true, each possible value is assigned its
-            own switch.  For example, instead of '--format knit',
-            '--knit' can be used interchangeably.
-          enum_switch: If true, a switch is provided with the option name,
-            which takes a value.
-          lazy_registry: A tuple of (module name, attribute name) for a
-            registry to be lazily loaded.
-          short_name: The short name for the enum switch, if any
-          short_value_switches: A dict mapping values to short names
-        """
-        Option.__init__(self, name, help, type=self.convert, short_name=short_name)
-        self._registry = registry
-        if registry is None:
-            if lazy_registry is None:
-                raise AssertionError("One of registry or lazy_registry must be given.")
-            self._lazy_registry = _mod_registry._LazyObjectGetter(*lazy_registry)
-        if registry is not None and lazy_registry is not None:
-            raise AssertionError("registry and lazy_registry are mutually exclusive")
-        self.name = name
-        self.converter = converter
-        self.value_switches = value_switches
-        self.enum_switch = enum_switch
-        self.short_value_switches = short_value_switches
-        self.title = title
-        if self.title is None:
-            self.title = name
-
-    @property
-    def registry(self):
-        """Return the registry for this option, loading it if necessary."""
-        if self._registry is None:
-            self._registry = self._lazy_registry.get_obj()
-        return self._registry
-
-    @staticmethod
-    def from_kwargs(
-        name_, help=None, title=None, value_switches=False, enum_switch=True, **kwargs
-    ):
-        """Convenience method to generate string-map registry options.
-
-        name, help, value_switches and enum_switch are passed to the
-        RegistryOption constructor.  Any other keyword arguments are treated
-        as values for the option, and their value is treated as the help.
-        """
-        reg = _mod_registry.Registry()
-        for name, switch_help in sorted(kwargs.items()):
-            name = name.replace("_", "-")
-            reg.register(name, name, help=switch_help)
-            if not value_switches:
-                help = help + '  "' + name + '": ' + switch_help
-                if not help.endswith("."):
-                    help = help + "."
-        return RegistryOption(
-            name_,
-            help,
-            reg,
-            title=title,
-            value_switches=value_switches,
-            enum_switch=enum_switch,
-        )
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser."""
@@ -505,92 +327,49 @@ class RegistryOption(Option):
 
         return cb
 
-    def iter_switches(self):
-        """Iterate through the list of switches provided by the option.
 
-        :return: an iterator of (name, short_name, argname, help)
-        """
-        yield from Option.iter_switches(self)
-        if self.value_switches:
-            for key in sorted(self.registry.keys()):
-                yield key, None, None, self.registry.get_help(key)
+class OptionParser:
+    """Carrier for the sentinel marking an unset value option.
 
-    def is_alias(self, name):
-        """Check whether a particular name is an alias.
-
-        Args:
-            name: The name to check.
-
-        Returns:
-            Boolean indicating if the name is an alias.
-        """
-        if name == self.name:
-            return False
-        return name in self.registry.aliases()
-
-    def is_hidden(self, name):
-        """Return True if the named option should be hidden.
-
-        Args:
-            name: The option name to check.
-
-        Returns:
-            Boolean indicating if the option is hidden.
-        """
-        if name == self.name:
-            return Option.is_hidden(self, name)
-        return getattr(self.registry.get_info(name), "hidden", False)
-
-
-class OptionParser(optparse.OptionParser):
-    """OptionParser that raises exceptions instead of exiting.
-
-    This is used to integrate with breezy's error handling system rather
-    than having optparse call sys.exit() on errors.
+    Command-line parsing is done by :func:`get_optparser`. The
+    ``DEFAULT_VALUE`` sentinel is used by :meth:`Option.add_option` (for
+    breezy.bash_completion and breezy.zsh_completion) and by
+    ``commands.parse_args``.
     """
 
     DEFAULT_VALUE = object()
 
-    def __init__(self):
-        """Initialize OptionParser."""
-        optparse.OptionParser.__init__(self)
-        self.formatter = GettextIndentedHelpFormatter()
 
-    def error(self, message):
-        """Handle option parsing errors.
+class OptionValues:
+    """Holds parsed option values.
 
-        Args:
-            message: Error message to report.
-
-        Raises:
-            CommandError: Always, instead of calling sys.exit().
-        """
-        raise errors.CommandError(message)
-
-
-class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
-    """Adds gettext() call to format_option()."""
+    A drop-in for ``optparse.Values``: attributes hold the parsed values and
+    equality compares against another ``OptionValues`` or a plain dict (matching
+    the behaviour the option tests rely on).
+    """
 
     def __init__(self):
-        """Initialize GettextIndentedHelpFormatter."""
-        optparse.IndentedHelpFormatter.__init__(self)
+        """Initialize with no values set."""
 
-    def format_option(self, option):
-        """Code taken from Python's optparse.py."""
-        if option.help:
-            from .i18n import gettext
+    def __eq__(self, other):
+        """Compare values by their attribute dict, like optparse.Values."""
+        if isinstance(other, OptionValues):
+            return self.__dict__ == other.__dict__
+        elif isinstance(other, dict):
+            return self.__dict__ == other
+        else:
+            return NotImplemented
 
-            option.help = gettext(option.help)
-        return optparse.IndentedHelpFormatter.format_option(self, option)
+    def __repr__(self):
+        """Return a debug representation of the held values."""
+        return f"OptionValues({self.__dict__!r})"
 
 
 def get_optparser(options):
-    """Generate an optparse parser for breezy-style options."""
-    parser = OptionParser()
-    parser.remove_option("--help")
-    for option in options:
-        option.add_option(parser, option.short_name())
-    return parser
+    """Generate a parser for breezy-style options."""
+    from ._cmd_rs.optparse import Parser
+
+    return Parser(options)
 
 
 def custom_help(name, help):
@@ -625,15 +404,13 @@ def _global_registry_option(name, help, registry=None, **kwargs):
     Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
 
 
-# This is the verbosity level detected during command line parsing.
-# Note that the final value is dependent on the order in which the
-# various flags (verbose, quiet, no-verbose, no-quiet) are given.
-# The final value will be one of the following:
-#
-# * -ve for quiet
-# * 0 for normal
-# * +ve for verbose
-_verbosity_level = 0
+# The verbosity level detected during command-line parsing. Its final value
+# depends on the order of the verbose/quiet/no-verbose/no-quiet flags and is
+# one of: -ve for quiet, 0 for normal, +ve for verbose.
+from ._cmd_rs.optparse import (  # noqa: F401
+    set_verbosity_level,
+    verbosity_level,
+)
 
 
 def _verbosity_level_callback(option, opt_str, value, parser):
@@ -645,20 +422,9 @@ def _verbosity_level_callback(option, opt_str, value, parser):
         value: The argument value (if any).
         parser: The OptionParser being used.
     """
-    global _verbosity_level
-    if not value:
-        # Either --no-verbose or --no-quiet was specified
-        _verbosity_level = 0
-    elif opt_str == "verbose":
-        if _verbosity_level > 0:
-            _verbosity_level += 1
-        else:
-            _verbosity_level = 1
-    else:
-        if _verbosity_level < 0:
-            _verbosity_level -= 1
-        else:
-            _verbosity_level = -1
+    from ._cmd_rs.optparse import apply_verbosity
+
+    apply_verbosity(opt_str == "verbose", bool(value))
 
 
 # Declare the standard options
@@ -677,58 +443,12 @@ _standard_option(
     custom_callback=_verbosity_level_callback,
 )
 
-# Declare commonly used options
-_global_option(
-    "change",
-    type=_parse_change_str,
-    short_name="c",
-    param_name="revision",
-    help='Select changes introduced by the specified revision. See also "help revisionspec".',
-)
-_global_option(
-    "directory",
-    short_name="d",
-    type=str,
-    help="Branch to operate on, instead of working directory.",
-)
-_global_option("file", type=str, short_name="F")
-_global_registry_option(
-    "log-format",
-    "Use specified log format.",
-    lazy_registry=("breezy.log", "log_formatter_registry"),
-    value_switches=True,
-    title="Log format",
-    short_value_switches={"short": "S"},
-)
-_global_registry_option(
-    "merge-type",
-    "Select a particular merge algorithm.",
-    lazy_registry=("breezy.merge", "merge_type_registry"),
-    value_switches=True,
-    title="Merge algorithm",
-)
-_global_option("message", type=str, short_name="m", help="Message string.")
-_global_option(
-    "null",
-    short_name="0",
-    help="Use an ASCII NUL (\\0) separator rather than a newline.",
-)
-_global_option(
-    "overwrite",
-    help="Ignore differences between branches and overwrite unconditionally.",
-)
-_global_option("remember", help="Remember the specified location as a default.")
-_global_option("reprocess", help="Reprocess to reduce spurious conflicts.")
-_global_option(
-    "revision",
-    type=_parse_revision_str,
-    short_name="r",
-    help='See "help revisionspec" for details.',
-)
-_global_option("show-ids", help="Show internal object ids.")
-_global_option(
-    "timezone", type=str, help="Display timezone as local, original, or utc."
-)
+# The commonly used options are shared with the native commands.
+from ._cmd_rs.optparse import shared_options as _shared_options
+
+for _option in _shared_options():
+    Option.OPTIONS[_option.name] = _option
+del _option
 
 diff_writer_registry = _mod_registry.Registry[str, Callable, None]()
 diff_writer_registry.register("plain", lambda x: x, "Plaintext diff output.")

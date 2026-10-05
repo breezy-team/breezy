@@ -29,6 +29,7 @@ Getting started
 .. include:: getting_help.txt
 .. include:: configuring_breezy.txt
 .. include:: using_aliases.txt
+.. include:: shell_completion.txt
 .. include:: plugins.txt
 .. include:: zen.txt
 

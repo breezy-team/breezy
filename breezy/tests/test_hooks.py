@@ -16,7 +16,10 @@
 
 """Tests for the core Hooks logic."""
 
-from catalogus import pyutils
+import pickle
+from io import StringIO
+
+from breezy import pyutils
 
 from .. import branch, errors, tests
 from .. import hooks as _mod_hooks
@@ -142,8 +145,8 @@ class TestHooks(tests.TestCase):
     hooks = Hooks("breezy.tests.test_hooks", "TestHooks.hooks")
 
     def test_install_lazy_named_hook(self):
-        # When the hook points are not yet registered the hook is
-        # added to the _lazy_hooks dictionary in breezy.hooks.
+        # A hook installed lazily for a hook point reaches it, also when the
+        # hook point was created first.
         self.hooks.add_hook("set_rh", "doc", (0, 15))
 
         def set_rh():
@@ -152,13 +155,15 @@ class TestHooks(tests.TestCase):
         install_lazy_named_hook(
             "breezy.tests.test_hooks", "TestHooks.hooks", "set_rh", set_rh, "demo"
         )
-        set_rh_lazy_hooks = _mod_hooks._lazy_hooks[
-            ("breezy.tests.test_hooks", "TestHooks.hooks", "set_rh")
-        ]
-        self.assertEqual(1, len(set_rh_lazy_hooks))
-        self.assertEqual(set_rh, set_rh_lazy_hooks[0][0].get_obj())
-        self.assertEqual("demo", set_rh_lazy_hooks[0][1])
+        self.assertIn(
+            ("breezy.tests.test_hooks", "TestHooks.hooks", "set_rh"),
+            _mod_hooks.lazy_hook_keys(),
+        )
         self.assertEqual(list(TestHooks.hooks["set_rh"]), [set_rh])
+        self.assertEqual(
+            f"<HookPoint(set_rh), callbacks=[{set_rh!r}(demo)]>",
+            repr(TestHooks.hooks["set_rh"]),
+        )
 
     @classmethod
     def set_rh(cls):
@@ -188,14 +193,95 @@ class TestHooks(tests.TestCase):
 
     def test_valid_lazy_hooks(self):
         # Make sure that all the registered lazy hooks are referring to existing
-        # hook points which allow lazy registration.
-        for key, callbacks in _mod_hooks._lazy_hooks.items():
+        # hook points which allow lazy registration. The test framework has put
+        # the lazily installed hooks aside for the duration of the test.
+        keys = self._preserved_lazy_hooks.keys()
+        self.assertNotEqual([], keys)
+        for key in keys:
             (module_name, member_name, hook_name) = key
-            obj = pyutils.get_named_object(module_name, member_name)
+            try:
+                obj = pyutils.get_named_object(module_name, member_name)
+            except ModuleNotFoundError as e:
+                # Hooks for optional plugins that are not installed.
+                if not module_name.startswith(e.name):
+                    raise
+                continue
             self.assertEqual(obj._module, module_name)
             self.assertEqual(obj._member_name, member_name)
             self.assertIn(hook_name, obj)
-            self.assertIs(callbacks, obj[hook_name]._callbacks)
+            self.assertEqual(key, obj[hook_name].lazy_key)
+
+    def test_lazy_hooks_survive_tests(self):
+        # The test framework restores the lazily installed hooks after a test.
+        install_lazy_named_hook(
+            "breezy.tests.test_hooks", "TestHooks.hooks", "set_rh", print, "demo"
+        )
+        key = ("breezy.tests.test_hooks", "TestHooks.hooks", "set_rh")
+
+        class Inner(tests.TestCase):
+            def test_nothing(self):
+                pass
+
+        result = tests.ExtendedTestResult(StringIO(), 0, 1)
+        Inner("test_nothing").run(result)
+        self.assertIn(key, _mod_hooks.lazy_hook_keys())
+
+
+class TestHooksDocs(tests.TestCase):
+    def test_old_style_hook_point(self):
+        # A list hook point has no docs.
+        hooks = Hooks("breezy.tests.hooks", "some_hooks")
+        hooks["old"] = []
+        self.assertRaises(AttributeError, hooks.docs)
+
+    def test_hook_point_docs_used(self):
+        class DocumentedHookPoint(HookPoint):
+            def docs(self):
+                return "custom docs"
+
+        hooks = Hooks("breezy.tests.hooks", "some_hooks")
+        hooks["custom"] = DocumentedHookPoint("custom", "doc", (1, 0), None)
+        self.assertEqual("Hooks\n-----\n\ncustom docs", hooks.docs())
+
+    def test_bad_version(self):
+        hook = HookPoint("bad", "doc", (1,), None)
+        self.assertRaises(TypeError, hook.docs)
+
+
+class TestHookErrors(tests.TestCase):
+    """Errors other than the missing methods of old-style hooks propagate."""
+
+    def test_append_error(self):
+        class BrokenHook:
+            def append(self, callback):
+                raise ValueError("broken")
+
+        hooks = Hooks("breezy.tests.hooks", "some_hooks")
+        hooks["broken"] = BrokenHook()
+        self.assertRaises(ValueError, hooks.install_named_hook, "broken", print, "x")
+
+    def test_uninstall_lookup_error(self):
+        class BrokenHook:
+            @property
+            def uninstall(self):
+                raise ValueError("broken")
+
+        hooks = Hooks("breezy.tests.hooks", "some_hooks")
+        hooks["broken"] = BrokenHook()
+        self.assertRaises(ValueError, hooks.uninstall_named_hook, "broken", "x")
+
+    def test_uninstall_old_style(self):
+        hooks = Hooks("breezy.tests.hooks", "some_hooks")
+        hooks["old"] = []
+        self.assertRaises(
+            errors.UnsupportedOperation, hooks.uninstall_named_hook, "old", "x"
+        )
+
+
+class TestPickleHooksClasses(tests.TestCase):
+    def test_classes(self):
+        for cls in [Hooks, _mod_hooks.KnownHooksRegistry]:
+            self.assertIs(cls, pickle.loads(pickle.dumps(cls)))  # noqa: S301
 
 
 class TestHook(tests.TestCase):

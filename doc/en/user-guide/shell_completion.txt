@@ -1,0 +1,36 @@
+Shell completion
+================
+
+Breezy can complete command names, options and their values in bash and
+zsh when you press the completion key (usually tab).
+
+Bash
+----
+
+To enable completion for the current shell, run::
+
+  eval "`brz bash-completion`"
+
+This generates a completion function that knows about all commands and
+options, including those of the plugins you have installed. Running it
+from your ``~/.bashrc`` slows down the start of every shell, so you may
+prefer to generate the function only when it is first needed: source the
+file ``contrib/bash/brz`` from the Breezy source distribution in your
+``~/.bashrc``, or add it to your ``~/.bash_completion``. A system-wide
+installation may already provide this script in
+``/usr/share/bash-completion/``.
+
+Zsh
+---
+
+To enable completion for the current shell, run::
+
+  eval "`brz zsh-completion`"
+
+Keeping completion up to date
+-----------------------------
+
+The completion function is generated once, and completing does not run
+``brz``, which keeps it fast. After upgrading Breezy or changing the set of
+installed plugins, generate the function again to pick up new commands and
+options.

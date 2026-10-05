@@ -24,14 +24,15 @@ and option data and generates the appropriate bash script code.
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import optparse
 import re
 import sys
 
 import breezy
 
-from ... import cmdline, commands, config, help_topics
-from ... import option as _mod_option
-from ... import plugin as _mod_plugin
+from . import cmdline, commands, config, help_topics
+from . import option as _mod_option
+from . import plugin as _mod_plugin
 
 
 class BashCodeGen:
@@ -544,7 +545,10 @@ class DataCollector:
             list: A list of OptionData objects for the option and its variants.
         """
         optswitches = {}
-        parser = _mod_option.get_optparser([opt])
+        # opt.add_option drives an optparse-style parser to enumerate the
+        # option's switches; use a throwaway optparse parser here (breezy's own
+        # command parsing does not use optparse).
+        parser = optparse.OptionParser()
         parser = self.wrap_parser(optswitches, parser)
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
@@ -651,26 +655,26 @@ class cmd_bash_completion(commands.Command):
             short_name="f",
             type=str,
             argname="name",
-            help="Name of the generated function (default: _brz)",
+            help="Name of the generated function. (default: _brz)",
         ),
         _mod_option.Option(
             "function-only",
             short_name="o",
             type=None,
-            help="Generate only the shell function, don't enable it",
+            help="Generate only the shell function, don't enable it.",
         ),
         _mod_option.Option(
             "debug",
             type=None,
             hidden=True,
-            help="Enable shell code useful for debugging",
+            help="Enable shell code useful for debugging.",
         ),
         _mod_option.ListOption(
             "plugin",
             type=str,
             argname="name",
             # param_name="selected_plugins", # doesn't work, bug #387117
-            help="Enable completions for the selected plugin"
+            help="Enable completions for the selected plugin."
             + " (default: all plugins)",
         ),
     ]

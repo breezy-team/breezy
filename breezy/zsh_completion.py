@@ -25,11 +25,12 @@ zsh completion function that can be sourced or evaluated to enable tab completio
 for Breezy commands in zsh shells.
 """
 
+import optparse
 import sys
 
 import breezy
 
-from ... import cmdline, commands, config, help_topics, option, plugin
+from . import cmdline, commands, config, help_topics, option, plugin
 
 
 class ZshCodeGen:
@@ -369,7 +370,10 @@ class DataCollector:
                 and any related switches.
         """
         optswitches = {}
-        parser = option.get_optparser([opt])
+        # opt.add_option drives an optparse-style parser to enumerate the
+        # option's switches; use a throwaway optparse parser here (breezy's own
+        # command parsing does not use optparse).
+        parser = optparse.OptionParser()
         parser = self.wrap_parser(optswitches, parser)
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
@@ -470,20 +474,20 @@ class cmd_zsh_completion(commands.Command):
             short_name="f",
             type=str,
             argname="name",
-            help="Name of the generated function (default: _brz)",
+            help="Name of the generated function. (default: _brz)",
         ),
         option.Option(
             "debug",
             type=None,
             hidden=True,
-            help="Enable shell code useful for debugging",
+            help="Enable shell code useful for debugging.",
         ),
         option.ListOption(
             "plugin",
             type=str,
             argname="name",
             # param_name="selected_plugins", # doesn't work, bug #387117
-            help="Enable completions for the selected plugin"
+            help="Enable completions for the selected plugin."
             + " (default: all plugins)",
         ),
     ]
