@@ -6296,32 +6296,6 @@ class cmd_revert(Command):  # noqa: D101
         tree.revert(file_list, rev_tree, not no_backup, None, report_changes=True)
 
 
-class cmd_help(Command):  # noqa: D101
-    __doc__ = """Show help on a command or other topic.
-    """
-
-    _see_also = ["topics"]
-    takes_options = [
-        Option("long", "Show help on all commands."),
-    ]
-    takes_args = ["topic?"]
-    aliases = ["?", "--help", "-?", "-h"]
-
-    @display_command
-    def run(self, topic=None, long=False):
-        """Execute the help command.
-
-        Args:
-            topic: Help topic to show.
-            long: Show help on all commands.
-        """
-        import breezy.help
-
-        if topic is None and long:
-            topic = "commands"
-        breezy.help.help(topic)
-
-
 class cmd_missing(Command):  # noqa: D101
     __doc__ = """Show unmerged/unpulled revisions between two branches.
 
