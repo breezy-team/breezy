@@ -266,6 +266,13 @@ mod tests {
     }
 
     #[test]
+    fn inventory_collects_declared_commands() {
+        let reg = command_registry();
+        assert!(reg.get("rocks").is_some());
+        assert!(reg.get("local-time-offset").is_some());
+    }
+
+    #[test]
     fn register_and_get() {
         let mut reg = Registry::new();
         reg.register(Box::new(Echo));
@@ -342,5 +349,13 @@ mod tests {
             vec!["add", "merge", "push"],
             table.names().collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn native_registration() {
+        let entry = command_registry().get("rocks").unwrap();
+        let reg: Registration<()> = Registration::native(entry);
+        assert_eq!("rocks", reg.name);
+        assert!(matches!(reg.provider, Provider::Native(_)));
     }
 }

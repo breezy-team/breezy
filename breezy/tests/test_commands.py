@@ -318,6 +318,12 @@ class TestCommandRegistry(tests.TestCase):
             "breezy.tests.fake_command",
         )
 
+    def test_native_command_is_builtin(self):
+        commands._register_builtin_commands()
+        self.assertIs(
+            builtins.cmd_rocks, commands.builtin_command_registry.get("rocks")
+        )
+
 
 class TestExtendCommandHook(tests.TestCase):
     def test_fires_on_get_cmd_object(self):
@@ -760,6 +766,65 @@ class TestRustCommandBase(tests.TestCase):
             """Bare."""
 
         self.assertRaises(NotImplementedError, cmd_bare().run)
+
+
+class TestNativeCommands(tests.TestCase):
+    """Commands implemented in Rust are ordinary Command subclasses."""
+
+    def setUp(self):
+        super().setUp()
+        commands.install_bzr_command_hooks()
+
+    def test_class_attributes(self):
+        from .._cmd_rs.commands import NativeCommand
+
+        cls = builtins.cmd_version
+        self.assertTrue(issubclass(cls, NativeCommand))
+        self.assertTrue(issubclass(cls, commands.Command))
+        self.assertEqual("breezy.builtins", cls.__module__)
+        self.assertEqual("Show version of brz.", cls.__doc__)
+        self.assertEqual("replace", cls.encoding_type)
+        self.assertEqual(["short"], [o.name for o in cls.takes_options])
+        self.assertFalse(cls.hidden)
+        self.assertTrue(builtins.cmd_rocks.hidden)
+
+    def test_registered_as_builtin(self):
+        self.assertIsInstance(commands.get_cmd_object("rocks"), builtins.cmd_rocks)
+
+    def test_option_reaches_run(self):
+        out = self.run_bzr(["version", "--short"])[0]
+        self.assertEqual(f"{breezy.version_string}\n", out)
+
+    def test_unexpected_keyword(self):
+        cmd = builtins.cmd_rocks()
+        e = self.assertRaises(TypeError, cmd.run, bogus=True)
+        self.assertEqual(
+            "command 'rocks' got an unexpected keyword argument 'bogus'", str(e)
+        )
+
+    def test_wrong_value_type(self):
+        cmd = builtins.cmd_version()
+        e = self.assertRaises(TypeError, cmd.run, short="yes")
+        self.assertEqual(
+            "command 'version' got an invalid value for 'short': Str(\"yes\")",
+            str(e),
+        )
+
+    def test_plugin_decorates_native_command(self):
+        calls = []
+
+        class cmd_rocks(builtins.cmd_rocks):
+            takes_options = [option.Option("loudly", help="Rock loudly.")]
+
+            def run(self, loudly=False):
+                calls.append(loudly)
+                return super().run()
+
+        commands.register_command(cmd_rocks, decorate=True)
+        self.addCleanup(commands.plugin_cmds.remove, "rocks")
+        out = self.run_bzr(["rocks", "--loudly"])[0]
+        self.assertEqual("It sure does!\n", out)
+        self.assertEqual([True], calls)
 
 
 class TestMatchArgform(tests.TestCase):

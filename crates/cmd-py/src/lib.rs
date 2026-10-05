@@ -517,6 +517,7 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
 mod commands;
 mod email_message;
 mod help;
+mod native;
 mod optparse;
 mod registry;
 mod utextwrap;
@@ -1706,6 +1707,11 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     commandsm.add_function(wrap_pyfunction!(get_bzr_command, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(list_bzr_commands, &commandsm)?)?;
     commandsm.add_function(wrap_pyfunction!(get_plugin_command, &commandsm)?)?;
+    commandsm.add_class::<native::NativeCommand>()?;
+    commandsm.add_function(wrap_pyfunction!(
+        native::native_command_classes,
+        &commandsm
+    )?)?;
     commandsm.add_class::<CommandInfo>()?;
     commandsm.add_class::<CommandRegistry>()?;
     commandsm.add_function(wrap_pyfunction!(

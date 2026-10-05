@@ -575,6 +575,72 @@ pub fn scan_master_options(
     Ok((opts, remaining))
 }
 
+/// The ``rocks`` command: a statement of optimism.
+#[derive(Debug, Default)]
+pub struct CmdRocks;
+
+impl CmdRocks {
+    /// The message the command prints, before translation.
+    pub fn message() -> &'static str {
+        "It sure does!\n"
+    }
+}
+
+impl Command for CmdRocks {
+    fn spec(&self) -> CommandSpec {
+        CommandSpec {
+            help: Some("Statement of optimism.".to_string()),
+            hidden: true,
+            display: true,
+            ..CommandSpec::new("rocks")
+        }
+    }
+
+    fn run(
+        &self,
+        ctx: &mut dyn CommandContext,
+        _opts: &crate::option::ParsedOptions,
+        _args: &MatchedArgs,
+    ) -> Result<i32, CommandError> {
+        write!(ctx.out(), "{}", crate::i18n::gettext(CmdRocks::message()))?;
+        Ok(0)
+    }
+}
+
+crate::declare_command!(CmdRocks);
+
+/// The hidden ``local-time-offset`` command: prints the offset in seconds from
+/// GMT to local time.
+#[derive(Debug, Default)]
+pub struct CmdLocalTimeOffset;
+
+impl Command for CmdLocalTimeOffset {
+    fn spec(&self) -> CommandSpec {
+        CommandSpec {
+            help: Some("Show the offset in seconds from GMT to local time.".to_string()),
+            hidden: true,
+            display: true,
+            ..CommandSpec::new("local-time-offset")
+        }
+    }
+
+    fn run(
+        &self,
+        ctx: &mut dyn CommandContext,
+        _opts: &crate::option::ParsedOptions,
+        _args: &MatchedArgs,
+    ) -> Result<i32, CommandError> {
+        writeln!(
+            ctx.out(),
+            "{}",
+            breezy_osutils::time::local_time_offset(None)
+        )?;
+        Ok(0)
+    }
+}
+
+crate::declare_command!(CmdLocalTimeOffset);
+
 /// Which profiler `run_bzr` should run a command under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Profiler {
@@ -1883,6 +1949,62 @@ mod tests {
         // Coverage alone produces no warning.
         let (_p, w) = select_profiler(&opts_with(false, false, true));
         assert!(w.is_empty());
+    }
+
+    /// A [`CommandContext`] collecting output, notes and warnings.
+    #[derive(Default)]
+    struct RecordingContext {
+        out: Vec<u8>,
+        notes: Vec<String>,
+        warnings: Vec<String>,
+    }
+
+    impl CommandContext for RecordingContext {
+        fn out(&mut self) -> &mut dyn std::io::Write {
+            &mut self.out
+        }
+        fn note(&mut self, message: &str) -> Result<(), CommandError> {
+            self.notes.push(message.to_string());
+            Ok(())
+        }
+        fn warning(&mut self, message: &str) -> Result<(), CommandError> {
+            self.warnings.push(message.to_string());
+            Ok(())
+        }
+        fn invoked_as(&self) -> &str {
+            "rocks"
+        }
+        fn verbosity(&self) -> i32 {
+            0
+        }
+    }
+
+    #[test]
+    fn rocks_spec() {
+        let spec = CmdRocks.spec();
+        assert_eq!("rocks", spec.name);
+        assert_eq!(Vec::<String>::new(), spec.aliases);
+        assert_eq!(Vec::<String>::new(), spec.takes_args);
+        assert!(spec.hidden);
+        assert!(spec.display);
+        assert_eq!(EncodingType::Strict, spec.encoding_type);
+        assert_eq!(Some("Statement of optimism."), spec.help.as_deref());
+    }
+
+    #[test]
+    fn rocks_run() {
+        let mut ctx = RecordingContext::default();
+        let code = CmdRocks
+            .run(
+                &mut ctx,
+                &crate::option::ParsedOptions::default(),
+                &MatchedArgs::default(),
+            )
+            .unwrap();
+        assert_eq!(0, code);
+        assert_eq!(b"It sure does!\n".to_vec(), ctx.out);
+        assert!(ctx.notes.is_empty());
+        assert!(ctx.warnings.is_empty());
     }
 
     #[test]

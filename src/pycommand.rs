@@ -3,10 +3,92 @@
 //! Python commands are subclasses of the Python ``Command`` class rather than
 //! implementations of the Rust [`Command`] trait; [`spec_from_python`] reads one
 //! into a [`CommandSpec`] for the help system, and [`run_argv_aliases`] drives
-//! one.
+//! one. The native commands here need the live Python breezy for what they
+//! report.
 
-use crate::command::CommandSpec;
+use crate::command::{Command, CommandContext, CommandError, CommandSpec, EncodingType};
 use pyo3::prelude::*;
+
+/// The ``version`` command.
+///
+/// The full report (interpreter, paths, config, copyright) comes from the
+/// Python ``breezy.version.show_version``, as it describes the running Python
+/// breezy; ``--short`` prints ``breezy.version_string``.
+#[derive(Debug, Default)]
+pub struct CmdVersion;
+
+impl Command for CmdVersion {
+    fn spec(&self) -> CommandSpec {
+        CommandSpec {
+            help: Some("Show version of brz.".to_string()),
+            display: true,
+            encoding_type: EncodingType::Replace,
+            options: vec![crate::option::OptionDef::flag(
+                "short",
+                "Print just the version number.",
+            )
+            .into()],
+            ..CommandSpec::new("version")
+        }
+    }
+
+    fn run(
+        &self,
+        ctx: &mut dyn CommandContext,
+        opts: &crate::option::ParsedOptions,
+        _args: &crate::command::MatchedArgs,
+    ) -> Result<i32, CommandError> {
+        let text = Python::attach(|py| version_text(py, opts.flag("short")))?;
+        write!(ctx.out(), "{text}")?;
+        Ok(0)
+    }
+}
+
+crate::declare_command!(CmdVersion);
+
+/// Read the version report from the live Python breezy: ``version_string`` for
+/// `short`, otherwise ``breezy.version.show_version`` rendered into a string.
+fn version_text(py: Python<'_>, short: bool) -> PyResult<String> {
+    let breezy = py.import("breezy")?;
+    if short {
+        let version: String = breezy.getattr("version_string")?.extract()?;
+        return Ok(format!("{version}\n"));
+    }
+    let buf = py.import("io")?.call_method0("StringIO")?;
+    let kwargs = pyo3::types::PyDict::new(py);
+    kwargs.set_item("to_file", &buf)?;
+    py.import("breezy.version")?
+        .getattr("show_version")?
+        .call((), Some(&kwargs))?;
+    buf.call_method0("getvalue")?.extract()
+}
+
+/// The hidden ``assert-fail`` command, which exists to exercise the
+/// internal-error bug report: it fails with an ``AssertionError``, reported as
+/// a bug with exit code 4.
+#[derive(Debug, Default)]
+pub struct CmdAssertFail;
+
+impl Command for CmdAssertFail {
+    fn spec(&self) -> CommandSpec {
+        CommandSpec {
+            help: Some("Test reporting of assertion failures".to_string()),
+            hidden: true,
+            ..CommandSpec::new("assert-fail")
+        }
+    }
+
+    fn run(
+        &self,
+        _ctx: &mut dyn CommandContext,
+        _opts: &crate::option::ParsedOptions,
+        _args: &crate::command::MatchedArgs,
+    ) -> Result<i32, CommandError> {
+        Err(CommandError::internal_as("AssertionError", "always fails"))
+    }
+}
+
+crate::declare_command!(CmdAssertFail);
 
 /// Read the description of the Python command object `cmd`.
 ///

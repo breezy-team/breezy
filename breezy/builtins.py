@@ -58,6 +58,7 @@ from breezy.i18n import gettext, ngettext
 
 import contextlib
 
+from ._cmd_rs import commands as _commands_rs
 from .commands import Command, builtin_command_registry, display_command
 from .option import ListOption, Option, RegistryOption, _parse_revision_str, custom_help
 from .revisionspec import RevisionInfo, RevisionSpec
@@ -4361,16 +4362,6 @@ class cmd_cat(Command):  # noqa: D101
         self.cleanup_now()
 
 
-class cmd_local_time_offset(Command):  # noqa: D101
-    __doc__ = """Show the offset in seconds from GMT to local time."""
-    hidden = True
-
-    @display_command
-    def run(self):
-        """Execute the local-time-offset command."""
-        self.outf.write(f"{osutils.local_time_offset()}\n")
-
-
 def _amend_status_template(tree, amended_revision, specific_files, show_diff):
     """Build a commit message template for ``commit --amend``.
 
@@ -5569,40 +5560,6 @@ class cmd_selftest(Command):  # noqa: D101
             os.fdatasync = lambda filedes: None
 
 
-class cmd_version(Command):  # noqa: D101
-    __doc__ = """Show version of brz."""
-
-    encoding_type = "replace"
-    takes_options = [
-        Option("short", help="Print just the version number."),
-    ]
-
-    @display_command
-    def run(self, short=False):
-        """Execute the version command.
-
-        Args:
-            short: Print just the version number.
-        """
-        from .version import show_version
-
-        if short:
-            self.outf.write(breezy.version_string + "\n")
-        else:
-            show_version(to_file=self.outf)
-
-
-class cmd_rocks(Command):  # noqa: D101
-    __doc__ = """Statement of optimism."""
-
-    hidden = True
-
-    @display_command
-    def run(self):
-        """Execute the rocks command."""
-        self.outf.write(gettext("It sure does!\n"))
-
-
 class cmd_find_merge_base(Command):  # noqa: D101
     __doc__ = """Find and print a base revision for merging two branches."""
     # TODO: Options to specify revisions on either side, as if
@@ -6337,17 +6294,6 @@ class cmd_revert(Command):  # noqa: D101
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
         rev_tree = _get_one_revision_tree("revert", revision, tree=tree)
         tree.revert(file_list, rev_tree, not no_backup, None, report_changes=True)
-
-
-class cmd_assert_fail(Command):  # noqa: D101
-    __doc__ = """Test reporting of assertion failures"""
-    # intended just for use in testing
-
-    hidden = True
-
-    def run(self):
-        """Execute the assert-fail command."""
-        raise AssertionError("always fails")
 
 
 class cmd_help(Command):  # noqa: D101
@@ -9211,6 +9157,13 @@ class cmd_resolve_location(Command):  # noqa: D101
         url = location_to_url(location)
         display_url = urlutils.unescape_for_display(url, self.outf.encoding)
         self.outf.write(f"{display_url}\n")
+
+
+# Bind the native command classes as module attributes, like the classes
+# defined above.
+globals().update(
+    (cls.__name__, cls) for cls in _commands_rs.native_command_classes(__name__)
+)
 
 
 def _register_lazy_builtins():
