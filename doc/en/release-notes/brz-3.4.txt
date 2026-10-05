@@ -70,6 +70,10 @@ Bug Fixes
  * Hooks installed lazily for ``breezy.forge.MergeProposalBuilder.hooks``
    now reach it. (Jelmer Vernooĳ)
 
+ * gitlab: Report the name of the project that was asked for when it does
+   not exist. ``NoSuchProject`` carried ``None`` instead.
+   (Zainab Mehmut)
+
 Documentation
 *************
 
