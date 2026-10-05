@@ -14,12 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 import errno
+import gc
 import inspect
+import os
+import pickle
 import sys
+import weakref
+from io import StringIO
 
-from .. import builtins, commands, config, errors, option, tests
+import breezy
+
+from .. import builtins, commands, config, errors, option, osutils, tests, trace, ui
+from .. import help as _mod_help
 from ..commands import display_command
+from ..externalcommand import ExternalCommand
 from . import TestSkipped
 
 
@@ -237,6 +247,78 @@ class TestRegisterLazy(tests.TestCase):
         self.assertIsFakeCommand(fake_instance)
 
 
+class TestCommandRegistry(tests.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.registry = commands.CommandRegistry()
+        self.warnings = []
+        self.overrideAttr(
+            trace, "warning", lambda msg, *args: self.warnings.append(msg % args)
+        )
+
+    def make_command(self, name, aliases=()):
+        return type(f"cmd_{name}", (commands.Command,), {"aliases": list(aliases)})
+
+    def test_get_by_name_and_alias(self):
+        cmd_foo_bar = self.make_command("foo_bar", ["fb"])
+        self.assertIs(None, self.registry.register(cmd_foo_bar))
+        self.assertIs(cmd_foo_bar, self.registry.get("foo-bar"))
+        self.assertIs(cmd_foo_bar, self.registry.get("fb"))
+        self.assertRaises(KeyError, self.registry.get, "nope")
+        self.assertEqual(["foo-bar"], self.registry.keys())
+        self.assertEqual(["fb"], self.registry.get_info("foo-bar").aliases)
+        self.assertIs(None, self.registry.get_info("nope"))
+
+    def test_duplicate_keeps_first(self):
+        first = self.make_command("foo")
+        second = self.make_command("foo", ["f"])
+        self.registry.register(first)
+        self.assertIs(first, self.registry.register(second))
+        self.assertIs(first, self.registry.get("foo"))
+        self.assertRaises(KeyError, self.registry.get, "f")
+        self.assertEqual(
+            [
+                "Two plugins defined the same command: 'cmd_foo'",
+                f"Not loading the one in {sys.modules[__name__]!r}",
+                f"Previously this command was registered from {sys.modules[__name__]!r}",
+            ],
+            self.warnings,
+        )
+
+    def test_decorate_replaces(self):
+        first = self.make_command("foo")
+        second = self.make_command("foo")
+        self.registry.register(first)
+        self.assertIs(first, self.registry.register(second, decorate=True))
+        self.assertIs(second, self.registry.get("foo"))
+        self.assertEqual([], self.warnings)
+
+    def test_previous_from_overridden_registry(self):
+        builtin = commands.CommandRegistry()
+        first = self.make_command("foo")
+        builtin.register(first)
+        self.registry.overridden_registry = builtin
+        second = self.make_command("foo")
+        self.assertIs(first, self.registry.register(second, decorate=True))
+
+    def test_remove(self):
+        self.registry.register(self.make_command("foo", ["f"]))
+        self.registry.remove("foo")
+        self.assertRaises(KeyError, self.registry.get, "foo")
+        self.assertRaises(KeyError, self.registry.get, "f")
+        self.assertRaises(KeyError, self.registry.remove, "foo")
+
+    def test_register_lazy_duplicate(self):
+        self.registry.register_lazy("cmd_fake", [], "breezy.tests.fake_command")
+        self.assertRaises(
+            KeyError,
+            self.registry.register_lazy,
+            "cmd_fake",
+            [],
+            "breezy.tests.fake_command",
+        )
+
+
 class TestExtendCommandHook(tests.TestCase):
     def test_fires_on_get_cmd_object(self):
         # The extend_command(cmd) hook fires when commands are delivered to the
@@ -401,6 +483,18 @@ class TestListCommandHook(tests.TestCase):
         self.assertEqual(["called"], hook_calls)
         self.assertSubset(["foo", "bar"], cmds)
 
+    def test_hook_returning_none(self):
+        commands.install_bzr_command_hooks()
+
+        def list_nothing(cmd_names):
+            return None
+
+        commands.Command.hooks.install_named_hook(
+            "list_commands", list_nothing, "list nothing"
+        )
+        e = self.assertRaises(AssertionError, commands.all_command_names)
+        self.assertEqual("hook list nothing returned None", str(e))
+
 
 class TestPreAndPostCommandHooks(tests.TestCase):
     class TestError(Exception):
@@ -487,3 +581,635 @@ class GuessCommandTests(tests.TestCase):
 
     def test_none(self):
         self.assertIs(None, commands.guess_command("nothingisevenclose"))
+
+
+class TestHelpTextForAllCommands(tests.TestCase):
+    """Every command can describe itself.
+
+    Building the help text reads each Python command into the Rust command
+    description, so this exercises that against the whole command set.
+    """
+
+    def test_all_commands(self):
+        commands._register_builtin_commands()
+        commands.install_bzr_command_hooks()
+        for name in sorted(commands.all_command_names()):
+            cmd = commands.get_cmd_object(name)
+            text = cmd.get_help_text(plain=False)
+            self.assertStartsWith(text, ":Purpose: ")
+
+
+class TestCommandWithoutBaseInit(tests.TestCase):
+    def test_help_text(self):
+        # A command need not call Command.__init__ to describe itself.
+        class cmd_demo(commands.Command):
+            """Demo."""
+
+            def __init__(self):
+                pass
+
+        self.assertStartsWith(cmd_demo().get_help_text(), "Purpose: Demo.")
+
+
+class TestExternalCommandHelp(tests.TestCaseInTempDir):
+    def test_help_text(self):
+        from ..externalcommand import ExternalCommand
+
+        self.build_tree_contents([("mytool", b"#!/bin/sh\necho 'Do things.'\n")])
+        os.chmod("mytool", 0o755)  # noqa: S103
+        cmd = ExternalCommand(os.path.abspath("mytool"))
+        self.assertEqual(
+            f":Purpose: external command from {os.path.abspath('mytool')}\n"
+            ":Usage:   brz mytool\n"
+            "\n"
+            ":Options:\n"
+            "  -h, --help     Show help message.\n"
+            "  -q, --quiet    Only display errors and warnings.\n"
+            "  --usage        Show usage message and options.\n"
+            "  -v, --verbose  Display more information.\n"
+            "\n"
+            ":Description:\n"
+            "  Do things.\n"
+            "\n",
+            cmd.get_help_text(plain=False),
+        )
+
+
+class TestCommandCollected(tests.TestCase):
+    def test_command_is_collected(self):
+        class cmd_demo(commands.Command):
+            """Demo."""
+
+            def run(self):
+                pass
+
+        cmd = cmd_demo()
+        ref = weakref.ref(cmd)
+        del cmd
+        gc.collect()
+        self.assertIs(None, ref())
+
+
+class TestPickleClasses(tests.TestCase):
+    def test_classes(self):
+        for cls in [commands.Command, commands.CommandRegistry, commands.CommandInfo]:
+            self.assertIs(cls, pickle.loads(pickle.dumps(cls)))  # noqa: S301
+
+
+class TestRustCommandBase(tests.TestCase):
+    """The Command base class, subclassed from Python.
+
+    Covers naming, help, the ExitStack/hook lifecycle, isinstance and
+    class-attribute override.
+    """
+
+    def setUp(self):
+        super().setUp()
+        commands.install_bzr_command_hooks()
+        self.RustCommand = commands.Command
+
+    def test_name_and_attributes(self):
+        class cmd_demo(self.RustCommand):
+            """Demo."""
+
+            aliases = ["dm"]
+            takes_args = ["path?"]
+
+            def run(self, path=None):
+                return 0
+
+        c = cmd_demo()
+        self.assertEqual("demo", c.name())
+        self.assertEqual(["dm"], c.aliases)
+        self.assertEqual(["path?"], c.takes_args)
+        self.assertEqual("demo", c.get_help_topic())
+        self.assertEqual("brz demo [PATH]", c._usage())
+        self.assertIs(None, c.plugin_name())
+        self.assertIsInstance(c, self.RustCommand)
+
+    def test_help_is_none_without_docstring(self):
+        class cmd_nodoc(self.RustCommand):
+            def run(self):
+                return 0
+
+        self.assertIs(None, cmd_nodoc().help())
+
+    def test_help_returns_docstring(self):
+        class cmd_doc(self.RustCommand):
+            """My summary."""
+
+            def run(self):
+                return 0
+
+        self.assertEqual("My summary.", cmd_doc().help())
+
+    def test_run_lifecycle_fires_hooks_and_cleanups(self):
+        events = []
+
+        class cmd_demo(self.RustCommand):
+            """Demo."""
+
+            def run(self):
+                self.add_cleanup(lambda: events.append("cleanup"))
+                events.append("run")
+                return 0
+
+        commands.Command.hooks.install_named_hook(
+            "pre_command", lambda cmd: events.append("pre"), None
+        )
+        commands.Command.hooks.install_named_hook(
+            "post_command", lambda cmd: events.append("post"), None
+        )
+        self.assertEqual(0, cmd_demo().run())
+        self.assertEqual(["pre", "run", "cleanup", "post"], events)
+
+    def test_run_error_still_fires_post(self):
+        events = []
+
+        class cmd_boom(self.RustCommand):
+            """Boom."""
+
+            def run(self):
+                events.append("run")
+                raise ValueError("boom")
+
+        commands.Command.hooks.install_named_hook(
+            "pre_command", lambda cmd: events.append("pre"), None
+        )
+        commands.Command.hooks.install_named_hook(
+            "post_command", lambda cmd: events.append("post"), None
+        )
+        self.assertRaises(ValueError, cmd_boom().run)
+        self.assertEqual(["pre", "run", "post"], events)
+
+    def test_class_attribute_override_of_run(self):
+        class cmd_demo(self.RustCommand):
+            """Demo."""
+
+            def run(self):
+                return 1
+
+        def run2(self):
+            return 7
+
+        cmd_demo.run = run2
+        self.assertEqual(7, cmd_demo().run())
+
+    def test_default_run_raises_not_implemented(self):
+        class cmd_bare(self.RustCommand):
+            """Bare."""
+
+        self.assertRaises(NotImplementedError, cmd_bare().run)
+
+
+class TestMatchArgform(tests.TestCase):
+    """Matching of command-line arguments against ``takes_args``."""
+
+    def test_plain_required(self):
+        self.assertEqual(
+            {"a": "x", "b": "y"},
+            commands._match_argform("cmd", ["a", "b"], ["x", "y"]),
+        )
+
+    def test_optional_present_and_absent(self):
+        self.assertEqual({"a": "x"}, commands._match_argform("cmd", ["a?"], ["x"]))
+        self.assertEqual({}, commands._match_argform("cmd", ["a?"], []))
+
+    def test_star_empty_is_none(self):
+        self.assertEqual(
+            {"file_list": None}, commands._match_argform("cmd", ["file*"], [])
+        )
+
+    def test_star_collects_remaining(self):
+        self.assertEqual(
+            {"file_list": ["a", "b"]},
+            commands._match_argform("cmd", ["file*"], ["a", "b"]),
+        )
+
+    def test_plus_collects_remaining(self):
+        self.assertEqual(
+            {"file_list": ["a"]},
+            commands._match_argform("cmd", ["file+"], ["a"]),
+        )
+
+    def test_all_but_one(self):
+        self.assertEqual(
+            {"names_list": ["a", "b"], "tail": "c"},
+            commands._match_argform("cmd", ["names$", "tail"], ["a", "b", "c"]),
+        )
+
+    def test_missing_required(self):
+        e = self.assertRaises(
+            errors.CommandError, commands._match_argform, "cmd", ["loc"], []
+        )
+        self.assertEqual("command 'cmd' requires argument LOC", str(e))
+
+    def test_plus_needs_one(self):
+        e = self.assertRaises(
+            errors.CommandError, commands._match_argform, "cmd", ["file+"], []
+        )
+        self.assertEqual("command 'cmd' needs one or more FILE", str(e))
+
+    def test_extra_argument(self):
+        e = self.assertRaises(
+            errors.CommandError, commands._match_argform, "cmd", ["a"], ["x", "y"]
+        )
+        self.assertEqual("extra argument to command cmd: y", str(e))
+
+
+class TestUsage(tests.TestCase):
+    """The usage line built from ``takes_args``."""
+
+    def _usage(self, takes_args):
+        class cmd_sample(commands.Command):
+            __doc__ = """Sample."""
+
+        cmd = cmd_sample()
+        cmd.takes_args = takes_args
+        return cmd._usage()
+
+    def test_no_args(self):
+        self.assertEqual("brz sample", self._usage([]))
+
+    def test_each_specifier(self):
+        self.assertEqual("brz sample LOC", self._usage(["loc"]))
+        self.assertEqual("brz sample [LOC]", self._usage(["loc?"]))
+        self.assertEqual("brz sample [FILE...]", self._usage(["file*"]))
+        self.assertEqual("brz sample FILE...", self._usage(["file+"]))
+        self.assertEqual("brz sample NAMES...", self._usage(["names$"]))
+
+    def test_multiple_args(self):
+        self.assertEqual(
+            "brz sample FROM [TO] [FILE...]",
+            self._usage(["from", "to?", "file*"]),
+        )
+
+
+class TestGetHelpParts(tests.TestCase):
+    """Splitting a command docstring into summary and sections."""
+
+    def test_summary_only(self):
+        summary, sections, order = commands.Command._get_help_parts("One line.")
+        self.assertEqual("One line.", summary)
+        self.assertEqual({}, sections)
+        self.assertEqual([], order)
+
+    def test_default_section(self):
+        summary, sections, order = commands.Command._get_help_parts(
+            "Summary.\n\nMore detail.\nSecond line."
+        )
+        self.assertEqual("Summary.", summary)
+        self.assertEqual({None: "More detail.\nSecond line."}, sections)
+        self.assertEqual([None], order)
+
+    def test_named_sections_in_order(self):
+        text = "Summary.\n\nBody.\n\n:Examples:\n  thing\n\n:See also: status"
+        summary, sections, order = commands.Command._get_help_parts(text)
+        self.assertEqual("Summary.", summary)
+        # ":See also: status" is not a heading, so it stays in the default
+        # section.
+        self.assertEqual(
+            {None: "Body.\n\n:See also: status", "Examples": "  thing\n"},
+            sections,
+        )
+        self.assertEqual([None, "Examples"], order)
+
+    def test_repeated_label_merges(self):
+        text = "Summary.\n\n:Note:\n  first\n\n:Note:\n  second"
+        _summary, sections, order = commands.Command._get_help_parts(text)
+        self.assertEqual({"Note": "  first\n\n  second"}, sections)
+        self.assertEqual(["Note"], order)
+
+
+class TestPluginProvider(tests.TestCase):
+    """The plugin-provider probe behind the get_missing_command hook."""
+
+    def _register(self, key, provider):
+        commands.command_providers_registry.register(key, provider)
+        self.addCleanup(commands.command_providers_registry.remove, key)
+
+    def _declining_provider(self):
+        class Declines(commands.Provider):
+            def plugin_for_command(self, cmd_name):
+                raise commands.NoPluginAvailable(cmd_name)
+
+        return Declines()
+
+    def _supplying_provider(self):
+        class Supplies(commands.Provider):
+            def plugin_for_command(self, cmd_name):
+                return {"name": "bzr-thing", "url": "http://example.com/thing"}
+
+        return Supplies()
+
+    def test_probe_without_providers(self):
+        self.assertRaises(
+            commands.NoPluginAvailable, commands.probe_for_provider, "thing"
+        )
+
+    def test_probe_skips_declining_provider(self):
+        self._register("declines", self._declining_provider())
+        supplier = self._supplying_provider()
+        self._register("supplies", supplier)
+        metadata, provider = commands.probe_for_provider("thing")
+        self.assertEqual(
+            {"name": "bzr-thing", "url": "http://example.com/thing"}, metadata
+        )
+        self.assertIs(supplier, provider)
+
+    def test_try_plugin_provider_reports_plugin(self):
+        self._register("supplies", self._supplying_provider())
+        e = self.assertRaises(
+            commands.CommandAvailableInPlugin, commands._try_plugin_provider, "thing"
+        )
+        self.assertEqual("thing", e.cmd_name)
+        self.assertEqual(
+            '"thing" is not a standard brz command. \n'
+            "However, the following official plugin provides this command: bzr-thing\n"
+            "You can install it by going to: http://example.com/thing",
+            str(e),
+        )
+
+    def test_try_plugin_provider_silent_when_unavailable(self):
+        self._register("declines", self._declining_provider())
+        self.assertIs(None, commands._try_plugin_provider("thing"))
+
+
+class TestExternalCommandLookup(tests.TestCaseInTempDir):
+    """The BZRPATH search behind the external-command get_command hook."""
+
+    def _make_command(self, name):
+        self.build_tree_contents([(name, b"#!/bin/sh\n")])
+        return osutils.abspath(name)
+
+    def test_found_on_bzrpath(self):
+        path = self._make_command("my-ext-cmd")
+        self.overrideEnv("BZRPATH", self.test_dir)
+        cmd = ExternalCommand.find_command("my-ext-cmd")
+        self.assertEqual(path, cmd.path)
+        self.assertEqual("my-ext-cmd", cmd.name())
+
+    def test_empty_entries_skipped(self):
+        path = self._make_command("my-ext-cmd")
+        self.overrideEnv("BZRPATH", os.pathsep + self.test_dir)
+        self.assertEqual(path, ExternalCommand.find_command("my-ext-cmd").path)
+
+    def test_not_found(self):
+        self.overrideEnv("BZRPATH", self.test_dir)
+        self.assertIs(None, ExternalCommand.find_command("no-such-ext-cmd"))
+
+    def test_unset_bzrpath(self):
+        self.overrideEnv("BZRPATH", None)
+        self.assertIs(None, ExternalCommand.find_command("my-ext-cmd"))
+
+    def test_hook_keeps_command_found_so_far(self):
+        self.overrideEnv("BZRPATH", self.test_dir)
+        self.assertEqual(
+            "already", commands._get_external_command("already", "my-ext-cmd")
+        )
+
+    def test_hook_returns_none_when_missing(self):
+        self.overrideEnv("BZRPATH", self.test_dir)
+        self.assertIs(None, commands._get_external_command(None, "no-such-ext-cmd"))
+
+
+class TestCommandAccessorErrors(tests.TestCase):
+    """Exceptions from a command's own accessors reach the caller.
+
+    The Rust command trait answers these by calling into Python, so a raising
+    accessor has to propagate rather than abort or be swallowed.
+    """
+
+    def setUp(self):
+        super().setUp()
+        commands.install_bzr_command_hooks()
+
+    def _register(self, cmd_class):
+        commands.register_command(cmd_class)
+        self.addCleanup(commands.plugin_cmds.remove, cmd_class.__name__[4:])
+
+    def test_help_error_propagates(self):
+        class cmd_raisinghelp(commands.Command):
+            __doc__ = "probe"
+
+            def help(self):
+                raise RuntimeError("boom from help")
+
+        self._register(cmd_raisinghelp)
+        e = self.assertRaises(
+            RuntimeError, _mod_help.help, "raisinghelp", outfile=StringIO()
+        )
+        self.assertEqual("boom from help", str(e))
+
+    def test_plugin_name_error_propagates(self):
+        class cmd_raisingplugin(commands.Command):
+            __doc__ = "probe"
+
+            def plugin_name(self):
+                raise ValueError("boom from plugin_name")
+
+        self._register(cmd_raisingplugin)
+        self.assertRaises(
+            ValueError, _mod_help.help, "raisingplugin", outfile=StringIO()
+        )
+
+    def test_missing_topic_is_still_not_found(self):
+        self.assertRaises(
+            _mod_help.NoHelpTopic,
+            _mod_help.help,
+            "nosuchhelptopicatall",
+            outfile=StringIO(),
+        )
+
+
+class TestExternalCommandRun(tests.TestCaseInTempDir):
+    """Running an external command and capturing its help."""
+
+    def _script(self, name, body):
+        self.build_tree_contents([(name, body.encode())])
+        os.chmod(name, 0o755)  # noqa: S103
+        return ExternalCommand(osutils.abspath(name))
+
+    def test_exit_code_returned(self):
+        cmd = self._script("ok-cmd", "#!/bin/sh\nexit 0\n")
+        self.assertEqual(0, cmd.run_argv_aliases([]))
+
+    def test_nonzero_exit_code_returned(self):
+        cmd = self._script("fail-cmd", "#!/bin/sh\nexit 7\n")
+        self.assertEqual(7, cmd.run_argv_aliases([]))
+
+    def test_signal_reported_as_negative(self):
+        cmd = self._script("sig-cmd", "#!/bin/sh\nkill -TERM $$\n")
+        self.assertEqual(-15, cmd.run_argv_aliases([]))
+
+    def test_arguments_passed_through(self):
+        cmd = self._script("echo-cmd", '#!/bin/sh\ntest "$1" = one || exit 9\n')
+        self.assertEqual(0, cmd.run_argv_aliases(["one"]))
+
+    def test_help_captures_output_despite_exit_code(self):
+        cmd = self._script("help-cmd", "#!/bin/sh\necho 'Usage: x'\nexit 1\n")
+        self.assertEqual(f"external command from {cmd.path}\n\nUsage: x\n", cmd.help())
+
+
+class TestCommandCleanup(tests.TestCase):
+    """The cleanup run after a command body.
+
+    Both steps, logging the transport activity and resetting the verbosity,
+    run whether the body returned or raised, and neither may discard the
+    command's own error.
+    """
+
+    def setUp(self):
+        super().setUp()
+        commands.install_bzr_command_hooks()
+
+    def _command(self, run):
+        return type("cmd_cleanup_probe", (commands.Command,), {"run": run})()
+
+    def _break_cleanup(self):
+        def boom(**kwargs):
+            raise RuntimeError("cleanup blew up")
+
+        self.overrideAttr(ui.ui_factory, "log_transport_activity", boom)
+
+    def test_verbosity_reset_after_success(self):
+        self._command(lambda cmd: 0).run_argv_aliases([])
+        self.assertEqual(0, trace.get_verbosity_level())
+
+    def test_verbosity_reset_after_failure(self):
+        def run(cmd, verbose=False):
+            raise ValueError("boom")
+
+        cmd = self._command(run)
+        cmd.takes_options = ["verbose"]
+        self.assertRaises(ValueError, cmd.run_argv_aliases, ["-v"])
+        self.assertEqual(0, trace.get_verbosity_level())
+
+    def test_failing_cleanup_keeps_the_command_error(self):
+        def run(cmd, verbose=False):
+            raise ValueError("the real error")
+
+        self._break_cleanup()
+        cmd = self._command(run)
+        cmd.takes_options = ["verbose"]
+        e = self.assertRaises(ValueError, cmd.run_argv_aliases, ["-v"])
+        self.assertEqual("the real error", str(e))
+        # The reset still happened, so the next command starts clean.
+        self.assertEqual(0, trace.get_verbosity_level())
+
+    def test_failing_cleanup_surfaces_when_the_command_succeeded(self):
+        self._break_cleanup()
+        self.assertRaises(
+            RuntimeError, self._command(lambda cmd: 0).run_argv_aliases, []
+        )
+        self.assertEqual(0, trace.get_verbosity_level())
+
+
+class TestRunBzrCatchErrors(tests.TestCase):
+    def test_error_becomes_exit_code(self):
+        self.assertEqual(3, commands.run_bzr_catch_errors(["no-such-command"]))
+
+    def test_success(self):
+        self.assertEqual(0, commands.run_bzr_catch_errors(["rocks"]))
+
+
+class TestRunBzrCleanup(tests.TestCase):
+    """The cleanup run_bzr does after a command."""
+
+    def setUp(self):
+        super().setUp()
+        commands.install_bzr_command_hooks()
+
+    def register(self, run):
+        cmd_class = type("cmd_cleanup_probe", (commands.Command,), {"run": run})
+        commands.register_command(cmd_class)
+        self.addCleanup(commands.plugin_cmds.remove, "cleanup-probe")
+
+    def break_reset(self):
+        # The overrides are reset before the command too; only the reset after
+        # it fails.
+        overrides = breezy.get_global_state().cmdline_overrides
+        calls = []
+        reset = overrides._reset
+
+        def boom():
+            calls.append(None)
+            if len(calls) > 1:
+                raise RuntimeError("reset blew up")
+            reset()
+
+        self.overrideAttr(overrides, "_reset", boom)
+
+    def test_failing_reset_surfaces(self):
+        self.register(lambda cmd: 0)
+        self.break_reset()
+        self.assertRaises(RuntimeError, commands.run_bzr, ["cleanup-probe"])
+
+    def test_failing_reset_keeps_the_command_error(self):
+        def run(cmd):
+            raise ValueError("the real error")
+
+        self.register(run)
+        self.break_reset()
+        e = self.assertRaises(ValueError, commands.run_bzr, ["cleanup-probe"])
+        self.assertEqual("the real error", str(e))
+
+    def test_verbosity_restored(self):
+        option.set_verbosity_level(2)
+        self.addCleanup(option.set_verbosity_level, 0)
+        self.register(lambda cmd: 0)
+        commands.run_bzr(["cleanup-probe", "-v"])
+        self.assertEqual(2, option.verbosity_level())
+
+
+class TestCommandExitStack(tests.TestCase):
+    """The ExitStack a command's run is wrapped in."""
+
+    def _run(self, run):
+        cmd_class = type("cmd_exit_stack_test", (commands.Command,), {"run": run})
+        return cmd_class().run()
+
+    def test_cleanups_run_in_reverse(self):
+        log = []
+
+        def run(cmd):
+            cmd.add_cleanup(log.append, "first")
+            cmd.add_cleanup(log.append, "second")
+            log.append("body")
+            return 7
+
+        self.assertEqual(7, self._run(run))
+        self.assertEqual(["body", "second", "first"], log)
+
+    def test_cleanups_run_when_run_raises(self):
+        log = []
+
+        def run(cmd):
+            cmd.add_cleanup(log.append, "cleanup")
+            raise ValueError("boom")
+
+        e = self.assertRaises(ValueError, self._run, run)
+        self.assertEqual("boom", str(e))
+        self.assertEqual(["cleanup"], log)
+
+    def test_entered_context_can_suppress(self):
+        log = []
+
+        def run(cmd):
+            cmd.enter_context(contextlib.suppress(ValueError))
+            log.append("body")
+            raise ValueError("swallowed")
+
+        self.assertIs(None, self._run(run))
+        self.assertEqual(["body"], log)
+
+    def test_cleanup_now_runs_cleanups_early(self):
+        log = []
+
+        def run(cmd):
+            cmd.add_cleanup(log.append, "early")
+            cmd.cleanup_now()
+            log.append("after")
+
+        self._run(run)
+        self.assertEqual(["early", "after"], log)

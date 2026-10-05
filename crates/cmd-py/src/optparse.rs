@@ -468,6 +468,114 @@ impl PyOption {
     }
 }
 
+/// The ``breezy.option`` type callable converting the argument of a value
+/// option of `kind`.
+fn value_type<'py>(
+    py: Python<'py>,
+    kind: breezy::option::ValueKind,
+) -> PyResult<Bound<'py, PyAny>> {
+    use breezy::option::ValueKind;
+    match kind {
+        ValueKind::Str => py.import("builtins")?.getattr("str"),
+        ValueKind::Int => py.import("builtins")?.getattr("int"),
+        ValueKind::Float => py.import("builtins")?.getattr("float"),
+        ValueKind::RevisionRange => py.import("breezy.option")?.getattr("_parse_revision_str"),
+        ValueKind::Change => py.import("breezy.option")?.getattr("_parse_change_str"),
+    }
+}
+
+/// Build the ``breezy.option`` option object for `def`.
+///
+/// With `keys`, a registry option's value is the chosen key rather than the
+/// registered object; native commands take keys.
+pub(crate) fn python_option<'py>(
+    py: Python<'py>,
+    def: &breezy::option::OptionDef,
+    keys: bool,
+) -> PyResult<Bound<'py, PyAny>> {
+    use breezy::option::{Choices, OptionKind};
+
+    let module = py.import("breezy.option")?;
+    let kwargs = pyo3::types::PyDict::new(py);
+    if let Some(short) = def.short {
+        kwargs.set_item("short_name", short.to_string())?;
+    }
+    let class = match &def.kind {
+        OptionKind::Flag => "Option",
+        OptionKind::Value(kind) => {
+            kwargs.set_item("type", value_type(py, *kind)?)?;
+            "Option"
+        }
+        OptionKind::List(kind) => {
+            kwargs.set_item("type", value_type(py, *kind)?)?;
+            "ListOption"
+        }
+        OptionKind::Registry {
+            choices,
+            value_switches,
+            enum_switch,
+            title,
+            short_value_switches,
+        } => {
+            match choices {
+                Choices::Fixed(choices) => {
+                    let registry = py.import("breezy.registry")?.getattr("Registry")?.call0()?;
+                    for choice in choices {
+                        let choice_kwargs = pyo3::types::PyDict::new(py);
+                        choice_kwargs.set_item("help", &choice.help)?;
+                        registry.call_method(
+                            "register",
+                            (&choice.key, &choice.key),
+                            Some(&choice_kwargs),
+                        )?;
+                    }
+                    kwargs.set_item("registry", registry)?;
+                }
+                Choices::Registry(r) => {
+                    kwargs.set_item("lazy_registry", (&r.module, &r.attribute))?;
+                }
+            }
+            if keys {
+                kwargs.set_item("converter", py.import("builtins")?.getattr("str")?)?;
+            }
+            kwargs.set_item("value_switches", value_switches)?;
+            kwargs.set_item("enum_switch", enum_switch)?;
+            kwargs.set_item("title", title)?;
+            if !short_value_switches.is_empty() {
+                let shorts = pyo3::types::PyDict::new(py);
+                for (key, short) in short_value_switches {
+                    shorts.set_item(key, short.to_string())?;
+                }
+                kwargs.set_item("short_value_switches", shorts)?;
+            }
+            if def.param_name.is_some() || def.argname.is_some() || def.hidden {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "registry option {} can not have a parameter name, argument name or be hidden",
+                    def.name
+                )));
+            }
+            return module
+                .getattr("RegistryOption")?
+                .call((&def.name, &def.help), Some(&kwargs));
+        }
+    };
+    kwargs.set_item("help", &def.help)?;
+    kwargs.set_item("param_name", &def.param_name)?;
+    kwargs.set_item("argname", &def.argname)?;
+    kwargs.set_item("hidden", def.hidden)?;
+    module.getattr(class)?.call((&def.name,), Some(&kwargs))
+}
+
+/// The options shared between commands, as ``breezy.option`` objects, for
+/// ``Option.OPTIONS``.
+#[pyfunction]
+pub(crate) fn shared_options(py: Python<'_>) -> PyResult<Vec<Bound<'_, PyAny>>> {
+    breezy::option::shared_options()
+        .iter()
+        .map(|def| python_option(py, def, false))
+        .collect()
+}
+
 /// The short switch of registry `option`'s value `key`, if it has one.
 fn short_value_switch(option: &Bound<'_, PyAny>, key: &Bound<'_, PyAny>) -> PyResult<Option<char>> {
     let shorts = option.getattr("short_value_switches")?;

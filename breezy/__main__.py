@@ -48,37 +48,15 @@ if os.name == "posix":
 
 
 def main():
-    """Main entry point for the Breezy command-line interface."""
-    import breezy.breakin
+    """Main entry point for the Breezy command-line interface.
 
-    breezy.breakin.hook_debugger_to_signal()
+    Runs the command given in ``sys.argv`` inside a ``breezy.initialize``
+    context. This never returns normally: the process is ended abruptly with
+    ``os._exit``, as the ``brz`` binary does.
+    """
+    from breezy._cmd_rs import run_main
 
-    import breezy.commands
-    import breezy.trace
-
-    with breezy.initialize():
-        exit_val = breezy.commands.main()
-        if profiling:
-            profile_imports.log_stack_info(sys.stderr)
-
-    # By this point we really have completed everything we want to do, and
-    # there's no point doing any additional cleanup.  Abruptly exiting here
-    # stops any background threads getting into trouble as code is unloaded,
-    # and it may also be slightly faster, through avoiding gc of objects that
-    # are just about to be discarded anyhow.  Also file buffers won't be
-    # flushed, but our policy is to always close files from a finally block.
-    # -- mbp 20070215
-    # We do still need to run two cleanup phases that the normal interpreter
-    # shutdown would do for us: atexit hooks (the selftest uses one to remove
-    # its TEST_ROOT) and pending weakref finalizers (DiskTreeTransform uses
-    # one to remove leaked limbo dirs).  Without these, every selftest run
-    # leaks /tmp/testbzr-*.tmp and /tmp/{bzr,git}-limbo-*.
-    import atexit
-    import weakref
-
-    atexit._run_exitfuncs()
-    weakref.finalize._exitfunc()
-    os._exit(exit_val)
+    run_main(profiling)
 
 
 if __name__ == "__main__":

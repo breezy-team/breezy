@@ -19,6 +19,7 @@ import_exception!(breezy.errors, NoWhoami);
 import_exception!(breezy.errors, LockCorrupt);
 import_exception!(breezy.errors, NoSuchTag);
 import_exception!(breezy.errors, TagAlreadyExists);
+import_exception!(breezy.errors, BzrError);
 
 import_exception!(breezy.bugtracker, MalformedBugIdentifier);
 import_exception!(breezy.bugtracker, InvalidBugTrackerURL);
@@ -513,12 +514,22 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
     Ok(breezy::help::format_see_also(see_also.unwrap().as_slice()))
 }
 
+mod commands;
 mod email_message;
 mod help;
 mod optparse;
 mod registry;
 mod utextwrap;
 
+use commands::{
+    add_command_hooks, all_command_names, builtin_command_names, command_available_in_plugin,
+    command_listing, external_command_help, find_external_command, get_bzr_command, get_cmd_object,
+    get_cmd_object_inner, get_external_command, get_plugin_command, guess_typoed_command,
+    help_text, install_bzr_command_hooks, list_bzr_commands, match_argform, parse_args,
+    plugin_command_names, probe_for_provider, register_builtin_commands, register_command, run_bzr,
+    run_main, scan_module_for_commands, spawn_external_command, try_plugin_provider, Command,
+    CommandInfo, CommandRegistry, ProvidersRegistry, RunWrapper,
+};
 use optparse::{
     apply_verbosity, set_verbosity_level, split_revision_range, verbosity_level, PyOption,
     RegistryOption,
@@ -526,6 +537,8 @@ use optparse::{
 use registry::{
     calc_parent_name, get_named_object, registry_super, LazyObjectGetter, ObjectGetter, Registry,
 };
+
+import_exception!(breezy.errors, CommandError);
 
 #[pyclass]
 struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
@@ -1653,6 +1666,8 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     let helpm = PyModule::new(py, "help")?;
     help::help_topics(&helpm)?;
+    helpm.add_function(wrap_pyfunction!(help_text, &helpm)?)?;
+    helpm.add_function(wrap_pyfunction!(command_listing, &helpm)?)?;
     m.add_submodule(&helpm)?;
 
     let uncommitm = PyModule::new(py, "uncommit")?;
@@ -1664,13 +1679,52 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     cmdlinem.add_function(wrap_pyfunction!(split, &cmdlinem)?)?;
     m.add_submodule(&cmdlinem)?;
 
-    m.add_class::<TreeBuilder>()?;
+    let commandsm = PyModule::new(py, "commands")?;
+    commandsm.add_class::<Command>()?;
+    commandsm.add_class::<RunWrapper>()?;
+    commandsm.add_function(wrap_pyfunction!(match_argform, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(parse_args, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(run_bzr, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(get_cmd_object_inner, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(get_cmd_object, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(guess_typoed_command, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(all_command_names, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(spawn_external_command, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(external_command_help, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(add_command_hooks, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(install_bzr_command_hooks, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(find_external_command, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(get_external_command, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(probe_for_provider, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(try_plugin_provider, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(command_available_in_plugin, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(register_builtin_commands, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(scan_module_for_commands, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(register_command, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(builtin_command_names, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(plugin_command_names, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(get_bzr_command, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(list_bzr_commands, &commandsm)?)?;
+    commandsm.add_function(wrap_pyfunction!(get_plugin_command, &commandsm)?)?;
+    commandsm.add_class::<CommandInfo>()?;
+    commandsm.add_class::<CommandRegistry>()?;
+    commandsm.add_function(wrap_pyfunction!(
+        commands::builtin_command_registry,
+        &commandsm
+    )?)?;
+    commandsm.add_function(wrap_pyfunction!(
+        commands::plugin_command_registry,
+        &commandsm
+    )?)?;
+    commandsm.add_class::<ProvidersRegistry>()?;
+    m.add_submodule(&commandsm)?;
 
     let optparsem = PyModule::new(py, "optparse")?;
     optparsem.add_function(wrap_pyfunction!(verbosity_level, &optparsem)?)?;
     optparsem.add_function(wrap_pyfunction!(set_verbosity_level, &optparsem)?)?;
     optparsem.add_function(wrap_pyfunction!(apply_verbosity, &optparsem)?)?;
     optparsem.add_function(wrap_pyfunction!(split_revision_range, &optparsem)?)?;
+    optparsem.add_function(wrap_pyfunction!(optparse::shared_options, &optparsem)?)?;
     optparsem.add_class::<optparse::Parser>()?;
     optparsem.add_class::<PyOption>()?;
     optparsem.add_class::<RegistryOption>()?;
@@ -1699,6 +1753,8 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyutilsm.add_function(wrap_pyfunction!(calc_parent_name, &pyutilsm)?)?;
     m.add_submodule(&pyutilsm)?;
 
+    m.add_class::<TreeBuilder>()?;
+
     let diffm = PyModule::new(py, "diff")?;
     diffm.add_function(wrap_pyfunction!(unified_diff_bytes, &diffm)?)?;
     diffm.add_function(wrap_pyfunction!(internal_diff, &diffm)?)?;
@@ -1711,6 +1767,8 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     let email_messagem = PyModule::new(py, "email_message")?;
     email_message::email_message(&email_messagem)?;
     m.add_submodule(&email_messagem)?;
+
+    m.add_function(wrap_pyfunction!(run_main, m)?)?;
 
     // PyO3 submodule hack for proper import support
     let sys = py.import("sys")?;
@@ -1725,6 +1783,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.diff", module_name), &diffm)?;
     modules.set_item(format!("{}.utextwrap", module_name), &utextwrapm)?;
     modules.set_item(format!("{}.email_message", module_name), &email_messagem)?;
+    modules.set_item(format!("{}.commands", module_name), &commandsm)?;
     modules.set_item(format!("{}.optparse", module_name), &optparsem)?;
     modules.set_item(format!("{}.hooks", module_name), &hooksm)?;
     modules.set_item(format!("{}.registry", module_name), &registrym)?;

@@ -443,58 +443,12 @@ _standard_option(
     custom_callback=_verbosity_level_callback,
 )
 
-# Declare commonly used options
-_global_option(
-    "change",
-    type=_parse_change_str,
-    short_name="c",
-    param_name="revision",
-    help='Select changes introduced by the specified revision. See also "help revisionspec".',
-)
-_global_option(
-    "directory",
-    short_name="d",
-    type=str,
-    help="Branch to operate on, instead of working directory.",
-)
-_global_option("file", type=str, short_name="F")
-_global_registry_option(
-    "log-format",
-    "Use specified log format.",
-    lazy_registry=("breezy.log", "log_formatter_registry"),
-    value_switches=True,
-    title="Log format",
-    short_value_switches={"short": "S"},
-)
-_global_registry_option(
-    "merge-type",
-    "Select a particular merge algorithm.",
-    lazy_registry=("breezy.merge", "merge_type_registry"),
-    value_switches=True,
-    title="Merge algorithm",
-)
-_global_option("message", type=str, short_name="m", help="Message string.")
-_global_option(
-    "null",
-    short_name="0",
-    help="Use an ASCII NUL (\\0) separator rather than a newline.",
-)
-_global_option(
-    "overwrite",
-    help="Ignore differences between branches and overwrite unconditionally.",
-)
-_global_option("remember", help="Remember the specified location as a default.")
-_global_option("reprocess", help="Reprocess to reduce spurious conflicts.")
-_global_option(
-    "revision",
-    type=_parse_revision_str,
-    short_name="r",
-    help='See "help revisionspec" for details.',
-)
-_global_option("show-ids", help="Show internal object ids.")
-_global_option(
-    "timezone", type=str, help="Display timezone as local, original, or utc."
-)
+# The commonly used options are shared with the native commands.
+from ._cmd_rs.optparse import shared_options as _shared_options
+
+for _option in _shared_options():
+    Option.OPTIONS[_option.name] = _option
+del _option
 
 diff_writer_registry = _mod_registry.Registry[str, Callable, None]()
 diff_writer_registry.register("plain", lambda x: x, "Plaintext diff output.")

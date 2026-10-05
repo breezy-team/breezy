@@ -61,6 +61,9 @@ Bug Fixes
    take keyword arguments only. Enumerating forges raised ``TypeError``
    before this. (Zainab Mehmut)
 
+ * ``brz help topics`` now lists its topics in a stable order; previously the
+   order varied between invocations. (Jelmer Vernooĳ)
+
  * The quilt plugin's hook that (un)applies patches before a merge now runs;
    it was installed on a hook point that does not exist. (Jelmer Vernooĳ)
 
@@ -81,6 +84,11 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    breezy.
 
+ * ``breezy.commands.builtin_command_registry`` and ``plugin_cmds`` are no
+   longer ``breezy.registry.Registry`` instances. They support ``register``,
+   ``register_lazy``, ``get``, ``get_info``, ``remove``, ``keys``, ``in`` and
+   iteration. (Jelmer Vernooĳ)
+
  * ``breezy.option.get_optparser`` returns a parser implemented in Rust
    rather than an ``optparse.OptionParser``. It provides ``parse_args``,
    ``values`` and ``format_option_help``. ``Option.add_option`` and the
@@ -98,11 +106,21 @@ API Changes
    ``breezy.hooks.lazy_hook_keys()``, and ``HookPoint`` takes a ``lazy_key``
    rather than a ``callbacks`` list. (Jelmer Vernooĳ)
 
+ * The ``Command``, ``Option``, ``RegistryOption``, ``Hooks``, ``HookPoint``
+   and ``Registry`` base classes are implemented in Rust. They can still be
+   subclassed. (Jelmer Vernooĳ)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin
    developers, but interesting for brz developers.
+
+ * The command-line layer is now largely implemented in Rust: option parsing
+   (replacing ``optparse``), command lookup and dispatch, the help search, the
+   hook and registry machinery, and the ``Command`` base class itself.
+   Commands can be implemented in Rust; plugins can still register and wrap
+   commands, options and hooks from Python. (Jelmer Vernooĳ)
 
 Testing
 *******

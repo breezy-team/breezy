@@ -71,11 +71,26 @@ pub mod tree;
 /// Tree builder utilities.
 pub mod treebuilder;
 
+/// Command trait and infrastructure.
+pub mod command;
+
 /// Command-line option parsing.
 pub mod optparse;
 
 /// Pure helpers for command-line option definitions (the `Option` class).
 pub mod options;
+
+/// Native command registry and the command-lookup traits.
+pub mod registry;
+
+#[doc(hidden)]
+/// Re-export of the `inventory` crate for use by the `declare_command!` macro.
+pub use inventory as __inventory;
+
+/// Command-line option definitions and parsed option values.
+pub mod option;
+
+pub mod version;
 
 #[cfg(feature = "pyo3")]
 /// Python bindings for Tree.
@@ -84,6 +99,21 @@ pub mod pytree;
 #[cfg(feature = "pyo3")]
 /// Python bindings for Branch.
 pub mod pybranch;
+
+#[cfg(feature = "pyo3")]
+/// Python bindings for Command.
+pub mod pycommand;
+
+#[cfg(feature = "pyo3")]
+/// Command orchestration driven through PyO3 (entry path, lookup, parsing).
+pub mod commands;
+
+/// The command tables, holding Python as well as native commands.
+pub mod pyregistry;
+
+#[cfg(feature = "pyo3")]
+/// The help indexes that render live Python objects.
+pub mod pyhelp;
 
 #[cfg(feature = "pyo3")]
 /// Python bindings for hooks.

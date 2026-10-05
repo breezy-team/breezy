@@ -26,6 +26,7 @@ as if they were internal Breezy commands.
 
 import os
 
+from ._cmd_rs import commands as _commands_rs
 from .commands import Command
 
 
@@ -42,21 +43,9 @@ class ExternalCommand(Command):
         Returns:
             ExternalCommand instance if found, None otherwise.
         """
-        import os.path
-
-        bzrpath = os.environ.get("BZRPATH", "")
-
-        for dir in bzrpath.split(os.pathsep):
-            # Empty directories are not real paths
-            if not dir:
-                continue
-            # This needs to be os.path.join() or windows cannot
-            # find the batch file that you are wanting to execute
-            path = os.path.join(dir, cmd)
-            if os.path.isfile(path):
-                return ExternalCommand(path)
-
-        return None
+        # The command is constructed through cls, so a subclass gets instances
+        # of itself.
+        return _commands_rs.find_external_command(cls, cmd)
 
     def __init__(self, path):
         """Initialize an ExternalCommand instance.
@@ -64,6 +53,7 @@ class ExternalCommand(Command):
         Args:
             path: The filesystem path to the external command.
         """
+        super().__init__()
         self.path = path
 
     def name(self):
@@ -92,9 +82,10 @@ class ExternalCommand(Command):
             alias_argv: Unused parameter for compatibility.
 
         Returns:
-            The exit code of the external command.
+            The exit code of the external command, or the negated signal
+            number if it was killed by a signal.
         """
-        return os.spawnv(os.P_WAIT, self.path, [self.path] + argv)  # noqa: S606
+        return _commands_rs.spawn_external_command(self.path, argv)
 
     def help(self):
         """Get help text for the external command.
@@ -103,5 +94,4 @@ class ExternalCommand(Command):
             Help text from running the command with --help flag.
         """
         m = f"external command from {self.path}\n\n"
-        pipe = os.popen(f"{self.path} --help")  # noqa: S605
-        return m + pipe.read()
+        return m + _commands_rs.external_command_help(self.path)
