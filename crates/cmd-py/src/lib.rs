@@ -515,9 +515,14 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
 
 mod email_message;
 mod help;
+mod optparse;
 mod registry;
 mod utextwrap;
 
+use optparse::{
+    apply_verbosity, set_verbosity_level, split_revision_range, verbosity_level, PyOption,
+    RegistryOption,
+};
 use registry::{
     calc_parent_name, get_named_object, registry_super, LazyObjectGetter, ObjectGetter, Registry,
 };
@@ -1661,6 +1666,16 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     m.add_class::<TreeBuilder>()?;
 
+    let optparsem = PyModule::new(py, "optparse")?;
+    optparsem.add_function(wrap_pyfunction!(verbosity_level, &optparsem)?)?;
+    optparsem.add_function(wrap_pyfunction!(set_verbosity_level, &optparsem)?)?;
+    optparsem.add_function(wrap_pyfunction!(apply_verbosity, &optparsem)?)?;
+    optparsem.add_function(wrap_pyfunction!(split_revision_range, &optparsem)?)?;
+    optparsem.add_class::<optparse::Parser>()?;
+    optparsem.add_class::<PyOption>()?;
+    optparsem.add_class::<RegistryOption>()?;
+    m.add_submodule(&optparsem)?;
+
     let hooksm = PyModule::new(py, "hooks")?;
     hooksm.add_class::<PyHookPoint>()?;
     hooksm.add_class::<Hooks>()?;
@@ -1710,6 +1725,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.diff", module_name), &diffm)?;
     modules.set_item(format!("{}.utextwrap", module_name), &utextwrapm)?;
     modules.set_item(format!("{}.email_message", module_name), &email_messagem)?;
+    modules.set_item(format!("{}.optparse", module_name), &optparsem)?;
     modules.set_item(format!("{}.hooks", module_name), &hooksm)?;
     modules.set_item(format!("{}.registry", module_name), &registrym)?;
     modules.set_item(format!("{}.pyutils", module_name), &pyutilsm)?;

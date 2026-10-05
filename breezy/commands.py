@@ -805,7 +805,7 @@ class Command:
         if "usage" in opts:  # e.g. brz add --usage
             self.outf.write(self.get_help_text(verbose=False))
             return 0
-        trace.set_verbosity_level(option._verbosity_level)
+        trace.set_verbosity_level(option.verbosity_level())
         if "verbose" in self.supported_std_options:
             opts["verbose"] = trace.is_verbose()
         elif "verbose" in opts:
@@ -1314,8 +1314,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     try:
         # We can be called recursively (tests for example), but we don't want
         # the verbosity level to propagate.
-        saved_verbosity_level = option._verbosity_level
-        option._verbosity_level = 0
+        saved_verbosity_level = option.verbosity_level()
+        option.set_verbosity_level(0)
         if opt_lsprof:
             if opt_coverage:
                 trace.warning("--coverage ignored, because --lsprof is in use.")
@@ -1335,7 +1335,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         # --verbose in their own way.
         if debug.debug_flag_enabled("memory"):
             trace.debug_memory("Process status after command:", short=False)
-        option._verbosity_level = saved_verbosity_level
+        option.set_verbosity_level(saved_verbosity_level)
         # Reset the overrides
         cmdline_overrides._reset()
 

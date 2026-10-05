@@ -314,6 +314,28 @@ class OptionTests(TestCase):
         self.assertEqual("mars", value)
 
 
+class TestParserValues(TestCase):
+    def test_fresh_values_per_parse(self):
+        parser = option.get_optparser(
+            [option.Option("hello", type=str), option.ListOption("item", type=str)]
+        )
+        first, _ = parser.parse_args(["--hello=world", "--item=a"])
+        second, _ = parser.parse_args([])
+        self.assertIsNot(first, second)
+        self.assertEqual({"hello": "world", "item": ["a"]}, first)
+        self.assertEqual(
+            {"hello": option.OptionParser.DEFAULT_VALUE, "item": []}, second
+        )
+        self.assertIs(second, parser.values)
+
+    def test_registry_option_default(self):
+        reg = registry.Registry()
+        reg.register("one", 1, help="One.")
+        parser = option.get_optparser([option.RegistryOption("format", "", reg)])
+        values, _ = parser.parse_args([])
+        self.assertEqual({"format": option.OptionParser.DEFAULT_VALUE}, values)
+
+
 class TestListOptions(TestCase):
     """Tests for ListOption, used to specify lists on the command-line."""
 
@@ -384,6 +406,50 @@ class TestListOptions(TestCase):
         options = [option.ListOption("hello", type=str, param_name="greeting")]
         opts, _args = self.parse(options, ["--hello=world", "--hello=sailor"])
         self.assertEqual(["world", "sailor"], opts.greeting)
+
+
+class TestOptionHelpLayout(TestCase):
+    """The options help is laid out as optparse lays it out."""
+
+    def optparse_help(self, options):
+        import optparse
+
+        from ..i18n import gettext
+
+        class Formatter(optparse.IndentedHelpFormatter):
+            def format_option(self, option):
+                if option.help:
+                    option.help = gettext(option.help)
+                return super().format_option(option)
+
+        parser = optparse.OptionParser(add_help_option=False)
+        parser.formatter = Formatter()
+        for opt in options:
+            opt.add_option(parser, opt.short_name())
+        return parser.format_option_help()
+
+    def test_builtin_commands(self):
+        commands.install_bzr_command_hooks()
+        for name in sorted(commands.builtin_command_names()):
+            cmd = commands.get_cmd_object(name)
+            options = [v for k, v in sorted(cmd.options().items())]
+            self.assertEqual(
+                self.optparse_help(options),
+                option.get_optparser(options).format_option_help(),
+                f"options help of {name}",
+            )
+
+    def test_columns(self):
+        self.overrideEnv("COLUMNS", "50")
+        options = [
+            option.Option(
+                "message", type=str, help="A message that is long enough to wrap."
+            )
+        ]
+        self.assertEqual(
+            self.optparse_help(options),
+            option.get_optparser(options).format_option_help(),
+        )
 
 
 class TestOptionDefinitions(TestCase):
@@ -466,9 +532,9 @@ class TestOptionMisc(TestCase):
 
 class TestVerboseQuietLinkage(TestCase):
     def check(self, parser, level, args):
-        option._verbosity_level = 0
+        option.set_verbosity_level(0)
         _opts, args = parser.parse_args(args)
-        self.assertEqual(level, option._verbosity_level)
+        self.assertEqual(level, option.verbosity_level())
 
     def test_verbose_quiet_linkage(self):
         parser = option.get_optparser(

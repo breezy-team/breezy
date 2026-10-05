@@ -71,6 +71,12 @@ pub mod tree;
 /// Tree builder utilities.
 pub mod treebuilder;
 
+/// Command-line option parsing.
+pub mod optparse;
+
+/// Pure helpers for command-line option definitions (the `Option` class).
+pub mod options;
+
 #[cfg(feature = "pyo3")]
 /// Python bindings for Tree.
 pub mod pytree;

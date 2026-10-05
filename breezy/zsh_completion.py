@@ -25,6 +25,7 @@ zsh completion function that can be sourced or evaluated to enable tab completio
 for Breezy commands in zsh shells.
 """
 
+import optparse
 import sys
 
 import breezy
@@ -369,7 +370,10 @@ class DataCollector:
                 and any related switches.
         """
         optswitches = {}
-        parser = option.get_optparser([opt])
+        # opt.add_option drives an optparse-style parser to enumerate the
+        # option's switches; use a throwaway optparse parser here (breezy's own
+        # command parsing does not use optparse).
+        parser = optparse.OptionParser()
         parser = self.wrap_parser(optswitches, parser)
         optswitches.clear()
         opt.add_option(parser, opt.short_name())

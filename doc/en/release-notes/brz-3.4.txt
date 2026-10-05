@@ -81,6 +81,19 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    breezy.
 
+ * ``breezy.option.get_optparser`` returns a parser implemented in Rust
+   rather than an ``optparse.OptionParser``. It provides ``parse_args``,
+   ``values`` and ``format_option_help``. ``Option.add_option`` and the
+   ``_optparse_*callback`` methods are only used to generate the shell
+   completion functions, so overriding them no longer changes how command
+   lines are parsed. ``breezy.option.GettextIndentedHelpFormatter`` has been
+   removed. (Jelmer Vernooĳ)
+
+ * The verbosity level set by ``-v`` and ``-q`` is read and set with
+   ``breezy.option.verbosity_level()`` and ``set_verbosity_level()``,
+   replacing the ``breezy.option._verbosity_level`` variable.
+   (Jelmer Vernooĳ)
+
  * ``breezy.hooks._lazy_hooks`` has been replaced by
    ``breezy.hooks.lazy_hook_keys()``, and ``HookPoint`` takes a ``lazy_key``
    rather than a ``callbacks`` list. (Jelmer Vernooĳ)
