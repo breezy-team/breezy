@@ -1765,7 +1765,9 @@ class TestCase(testtools.TestCase):
             ),
         )
         self._log_file = pseudo_log_file
-        self._log_memento = trace.push_log_file(self._log_file, short=True)
+        self._log_memento = trace.push_log_file(
+            self._log_file, short=True, capture_root=True
+        )
         self.addCleanup(self._finishLogFile)
 
     @contextlib.contextmanager

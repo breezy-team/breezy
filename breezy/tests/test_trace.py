@@ -310,6 +310,29 @@ class TestTrace(TestCase):
             tmp1.close()
             tmp2.close()
 
+    def test_push_log_file_leaves_root_logger_alone(self):
+        # A program using breezy keeps its own logging configuration.
+        records = []
+
+        class Recorder(logging.Handler):
+            def emit(self, record):
+                records.append(record.getMessage())
+
+        root = logging.getLogger()
+        recorder = Recorder()
+        root.addHandler(recorder)
+        self.addCleanup(root.removeHandler, recorder)
+        handlers = root.handlers[:]
+        tmp = tempfile.NamedTemporaryFile()
+        self.addCleanup(tmp.close)
+        memento = push_log_file(tmp, short=True)
+        try:
+            self.assertEqual(handlers, root.handlers)
+            logging.getLogger("some.library").warning("library warning")
+        finally:
+            pop_log_file(memento)
+        self.assertEqual(["library warning"], records)
+
     def test__open_brz_log_uses_stderr_for_failures(self):
         # If _open_brz_log cannot open the file, the failure is routed through
         # the `brz` logger so the test fixture's in-memory log attachment
