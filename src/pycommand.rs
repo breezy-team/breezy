@@ -90,6 +90,99 @@ impl Command for CmdAssertFail {
 
 crate::declare_command!(CmdAssertFail);
 
+/// The hidden ``shell-complete`` command, which prints completions for shells.
+///
+/// The commands, including the native ones, are read from the Python command
+/// registry, so plugin commands and overrides are included.
+#[derive(Debug, Default)]
+pub struct CmdShellComplete;
+
+impl Command for CmdShellComplete {
+    fn spec(&self) -> CommandSpec {
+        CommandSpec {
+            help: Some(
+                "Show appropriate completions for context.\n\n\
+                 For a list of all available commands, say 'brz shell-complete'."
+                    .to_string(),
+            ),
+            aliases: vec!["s-c".to_string()],
+            takes_args: vec!["context?".to_string()],
+            hidden: true,
+            display: true,
+            ..CommandSpec::new("shell-complete")
+        }
+    }
+
+    fn run(
+        &self,
+        ctx: &mut dyn CommandContext,
+        _opts: &crate::option::ParsedOptions,
+        args: &crate::command::MatchedArgs,
+    ) -> Result<i32, CommandError> {
+        let lines = Python::attach(|py| match args.scalar("context") {
+            None => command_completions(py),
+            Some(name) => option_completions(py, name),
+        })?;
+        for line in lines {
+            writeln!(ctx.out(), "{line}")?;
+        }
+        Ok(0)
+    }
+}
+
+crate::declare_command!(CmdShellComplete);
+
+/// The ``shell-complete`` lines for all visible commands and their aliases,
+/// sorted by name.
+fn command_completions(py: Python<'_>) -> Result<Vec<String>, CommandError> {
+    let commands = py.import("breezy.commands")?;
+    commands.call_method0("install_bzr_command_hooks")?;
+    let mut entries: Vec<(String, Option<String>)> = Vec::new();
+    for name in commands.call_method0("all_command_names")?.try_iter()? {
+        let name: String = name?.extract()?;
+        let cmd = commands.call_method1("get_cmd_object", (&name,))?;
+        if cmd.getattr("hidden")?.is_truthy()? {
+            continue;
+        }
+        let help: Option<String> = cmd.call_method0("help")?.extract()?;
+        let aliases: Vec<String> = cmd.getattr("aliases")?.extract()?;
+        entries.extend(aliases.into_iter().map(|alias| (alias, help.clone())));
+        entries.push((name, help));
+    }
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(entries
+        .iter()
+        .map(|(name, help)| crate::shellcomplete::command_line(name, help.as_deref()))
+        .collect())
+}
+
+/// The ``shell-complete`` lines for the options and arguments of the command
+/// `name`.
+fn option_completions(py: Python<'_>, name: &str) -> Result<Vec<String>, CommandError> {
+    let cmd = py
+        .import("breezy.commands")?
+        .call_method1("get_cmd_object", (name,))?;
+    if cmd.call_method0("help")?.is_none() {
+        return Err(CommandError::internal_as(
+            "NotImplementedError",
+            format!("sorry, no detailed shellcomplete yet for '{name}'"),
+        ));
+    }
+    let options = cmd.call_method0("options")?.call_method0("values")?;
+    let mut lines = Vec::new();
+    for opt in options.try_iter()? {
+        let opt = opt?;
+        let opt_name: String = opt.getattr("name")?.extract()?;
+        let short_name: Option<String> = opt.call_method0("short_name")?.extract()?;
+        lines.push(crate::shellcomplete::option_line(
+            &opt_name,
+            short_name.as_deref(),
+        ));
+    }
+    lines.extend(cmd.getattr("takes_args")?.extract::<Vec<String>>()?);
+    Ok(lines)
+}
+
 /// Read the description of the Python command object `cmd`.
 ///
 /// Options are left empty: a Python command's options are Python ``Option``

@@ -66,6 +66,9 @@ pub mod email_message;
 /// Text wrapping with East Asian width support.
 pub mod utextwrap;
 
+/// Output formatting for ``brz shell-complete``.
+pub mod shellcomplete;
+
 /// Tree traits and types.
 pub mod tree;
 /// Tree builder utilities.

@@ -6322,27 +6322,6 @@ class cmd_help(Command):  # noqa: D101
         breezy.help.help(topic)
 
 
-class cmd_shell_complete(Command):  # noqa: D101
-    __doc__ = """Show appropriate completions for context.
-
-    For a list of all available commands, say 'brz shell-complete'.
-    """
-    takes_args = ["context?"]
-    aliases = ["s-c"]
-    hidden = True
-
-    @display_command
-    def run(self, context=None):
-        """Execute the shell-complete command.
-
-        Args:
-            context: Completion context to process.
-        """
-        from . import shellcomplete
-
-        shellcomplete.shellcomplete(context)
-
-
 class cmd_missing(Command):  # noqa: D101
     __doc__ = """Show unmerged/unpulled revisions between two branches.
 
