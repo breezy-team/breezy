@@ -99,7 +99,7 @@ jobs:
             rustup show
           CIBW_BEFORE_BUILD_LINUX: >
             pip install -U setuptools-rust &&
-            yum install libatomic -y &&
+            yum install libatomic openssl-devel -y &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
             rustup show
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: >
