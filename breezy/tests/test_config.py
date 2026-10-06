@@ -3245,6 +3245,11 @@ foo:policy = appendpath
         ((_, section),) = matcher.get_sections()
         self.assertEqual("example<", section.locals["branchname"])
 
+    def test_branch_name_colo_with_slash(self):
+        store = self.get_store(self)
+        matcher = config.LocationMatcher(store, "file:///,branch=foo%2Fbar")
+        self.assertEqual("foo/bar", matcher.branch_name)
+
     def test_branch_name_basename(self):
         store = self.get_store(self)
         store._load_from_string(

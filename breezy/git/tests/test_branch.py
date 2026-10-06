@@ -44,6 +44,17 @@ class TestGitBranch(tests.TestCaseInTempDir):
         b = d.create_branch()
         self.assertEqual(b.ref, b"refs/remotes/origin/unstable")
 
+    def test_open_by_non_utf8_ref(self):
+        GitRepo.init(".")
+        url = "{},ref={}".format(
+            urlutils.local_path_to_url(self.test_dir), "refs%2Fheads%2Fcaf%E9"
+        )
+        b = ControlDir.open(url).create_branch()
+        self.assertEqual(b.ref, b"refs/heads/caf\xe9")
+        self.assertIn(",ref=refs%2Fheads%2Fcaf%E9", b.user_url)
+        b = ControlDir.open(b.user_url).create_branch()
+        self.assertEqual(b.ref, b"refs/heads/caf\xe9")
+
     def test_open_existing(self):
         GitRepo.init(".")
         d = ControlDir.open(".")

@@ -801,6 +801,15 @@ class TestTransportFromUrl(tests.TestCaseInTempDir):
             f.write("data")
         self.assertTrue(t.has("afile"))
 
+    def test_set_segment_parameter_normalises_escapes(self):
+        url = urlutils.local_path_to_url(self.test_dir) + ",branch=foo%2fbar"
+        t = transport.get_transport_from_url(url)
+        t.set_segment_parameter("arm", "board")
+        self.assertEqual(
+            {"arm": "board", "branch": "foo/bar"}, t.get_segment_parameters()
+        )
+        self.assertIn(",arm=board,branch=foo%2Fbar", t.base)
+
 
 class TestLocalTransports(tests.TestCase):
     def test_get_transport_from_abspath(self):

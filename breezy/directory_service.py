@@ -197,9 +197,7 @@ class ColocatedDirectory(Directory):
 
     def look_up(self, name, url, purpose=None):
         dir = _mod_controldir.ControlDir.open_containing(".")[0]
-        return urlutils.join_segment_parameters(
-            dir.user_url, {"branch": urlutils.escape(name)}
-        )
+        return urlutils.join_segment_parameters(dir.user_url, {"branch": name})
 
 
 directories.register("co:", ColocatedDirectory, "Easy access to colocated branches")

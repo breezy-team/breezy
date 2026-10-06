@@ -1799,6 +1799,20 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual({}, transport.get_segment_parameters())
         self.assertEqual(orig_base, transport.base)
 
+    def test_set_segment_parameter_escapes(self):
+        """Segment parameter values are escaped in base."""
+        transport = self.get_transport("foo")
+        orig_base = transport.base
+        transport.set_segment_parameter("arm", "bo/ard")
+        self.assertEqual("{},arm=bo%2Fard".format(orig_base), transport.base)
+        self.assertEqual({"arm": "bo/ard"}, transport.get_segment_parameters())
+
+    def test_segment_parameters_unescaped(self):
+        """Segment parameter values are unescaped."""
+        url = self._server.get_url() + ",arm=bo%2Fard"
+        transport = _mod_transport.get_transport_from_url(url)
+        self.assertEqual({"arm": "bo/ard"}, transport.get_segment_parameters())
+
     def test_stat_symlink(self):
         # if a transport points directly to a symlink (and supports symlinks
         # at all) you can tell this.  helps with bug 32669.

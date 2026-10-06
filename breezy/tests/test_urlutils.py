@@ -330,11 +330,29 @@ class TestUrlToPath(TestCase):
             "/somedir/path,key1=val1",
             join_segment_parameters("/somedir/path", {"key1": "val1"}),
         )
-        self.assertRaises(
-            urlutils.InvalidURLJoin,
-            join_segment_parameters,
-            "/somedir/path",
-            {"branch": "brr,brr,brr"},
+        self.assertEqual(
+            "/somedir/path,branch=brr%2Cbrr%2Cbrr",
+            join_segment_parameters("/somedir/path", {"branch": "brr,brr,brr"}),
+        )
+        self.assertEqual(
+            "/somedir/path,branch=foo%2Fbar",
+            join_segment_parameters("/somedir/path", {"branch": "foo/bar"}),
+        )
+        self.assertEqual(
+            "/somedir/path,branch=foo%252Fbar",
+            join_segment_parameters("/somedir/path", {"branch": "foo%2Fbar"}),
+        )
+        self.assertEqual(
+            "/somedir/path,branch=foo%3Dbar",
+            join_segment_parameters("/somedir/path", {"branch": "foo=bar"}),
+        )
+        self.assertEqual(
+            "/somedir/path,branch=%C3%A5",
+            join_segment_parameters("/somedir/path", {"branch": "\xe5"}),
+        )
+        self.assertEqual(
+            "/somedir/path,branch=foo%2Fbar,key1=val1",
+            join_segment_parameters("/somedir/path,branch=foo%2Fbar", {"key1": "val1"}),
         )
         self.assertRaises(
             urlutils.InvalidURLJoin,
@@ -364,6 +382,62 @@ class TestUrlToPath(TestCase):
         )
         self.assertRaises(
             TypeError, join_segment_parameters, "/,key1=val1", {"foo": 42}
+        )
+
+    def test_segment_parameters_roundtrip(self):
+        for value in ["tip", "foo/bar", "foo,bar", "foo=bar", "foo%2Fbar", "\xe5 b"]:
+            url = urlutils.join_segment_parameters("/somedir/path", {"branch": value})
+            self.assertEqual(
+                ("/somedir/path", {"branch": value}),
+                urlutils.split_segment_parameters(url),
+            )
+
+    def test_split_segment_parameters_invalid_utf8(self):
+        self.assertEqual(
+            ("/somedir/path", {"branch": "caf\ufffd"}),
+            urlutils.split_segment_parameters("/somedir/path,branch=caf%E5"),
+        )
+
+    def test_split_segment_parameters_invalid_escape(self):
+        self.assertEqual(
+            ("/somedir/path", {"branch": "foo%zz"}),
+            urlutils.split_segment_parameters("/somedir/path,branch=foo%zz"),
+        )
+        self.assertEqual(
+            ("/somedir/path", {"branch": "100%"}),
+            urlutils.split_segment_parameters("/somedir/path,branch=100%"),
+        )
+
+    def test_segment_parameters_empty_value(self):
+        self.assertEqual(
+            "/somedir/path,branch=",
+            urlutils.join_segment_parameters("/somedir/path", {"branch": ""}),
+        )
+        self.assertEqual(
+            ("/somedir/path", {"branch": ""}),
+            urlutils.split_segment_parameters("/somedir/path,branch="),
+        )
+
+    def test_segment_parameters_surrounding_space(self):
+        self.assertEqual(
+            "/somedir/path,branch=%20tip%20",
+            urlutils.join_segment_parameters("/somedir/path", {"branch": " tip "}),
+        )
+        self.assertEqual(
+            ("/somedir/path", {"branch": " tip "}),
+            urlutils.split_segment_parameters("/somedir/path,branch=%20tip%20"),
+        )
+        self.assertEqual(
+            ("/somedir/path", {"branch": " tip "}),
+            urlutils.split_segment_parameters("/somedir/path,branch= tip "),
+        )
+
+    def test_join_segment_parameters_normalises_existing(self):
+        self.assertEqual(
+            "/somedir/path,branch=foo%2Fbar,key1=val1",
+            urlutils.join_segment_parameters(
+                "/somedir/path,branch=foo%2fbar", {"key1": "val1"}
+            ),
         )
 
     def test_function_type(self):
@@ -631,16 +705,24 @@ class TestUrlToPath(TestCase):
             split_segment_parameters("/some,dir/path,branch=tip"),
         )
         self.assertEqual(
-            ("/somedir/path", {"ref": "heads%2Ftip"}),
+            ("/somedir/path", {"ref": "heads/tip"}),
             split_segment_parameters("/somedir/path,ref=heads%2Ftip"),
         )
         self.assertEqual(
-            ("/somedir/path", {"ref": "heads%2Ftip", "key1": "val1"}),
+            ("/somedir/path", {"ref": "heads/tip", "key1": "val1"}),
             split_segment_parameters("/somedir/path,ref=heads%2Ftip,key1=val1"),
         )
         self.assertEqual(
-            ("/somedir/path", {"ref": "heads%2F=tip"}),
+            ("/somedir/path", {"ref": "heads/=tip"}),
             split_segment_parameters("/somedir/path,ref=heads%2F=tip"),
+        )
+        self.assertEqual(
+            ("/somedir/path", {"branch": "foo%2Fbar"}),
+            split_segment_parameters("/somedir/path,branch=foo%252Fbar"),
+        )
+        self.assertEqual(
+            ("/somedir/path", {"branch": "\xe5"}),
+            split_segment_parameters("/somedir/path,branch=%C3%A5"),
         )
         # Check relative references with relative paths
         self.assertEqual(("", {"key1": "val1"}), split_segment_parameters(",key1=val1"))
