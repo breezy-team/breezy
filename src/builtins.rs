@@ -46,6 +46,36 @@ impl Command for CmdRoot {
 
 crate::declare_command!(CmdRoot);
 
+/// The hidden ``relpath`` command: shows the path of a file relative to the
+/// tree root.
+#[derive(Debug, Default)]
+pub struct CmdRelpath;
+
+impl Command for CmdRelpath {
+    fn spec(&self) -> CommandSpec {
+        CommandSpec {
+            help: Some("Show path of a file relative to root".to_string()),
+            takes_args: vec!["filename".to_string()],
+            hidden: true,
+            display: true,
+            ..CommandSpec::new("relpath")
+        }
+    }
+
+    fn run(
+        &self,
+        ctx: &mut dyn CommandContext,
+        _opts: &ParsedOptions,
+        args: &MatchedArgs,
+    ) -> Result<i32, CommandError> {
+        let (_tree, relpath) = crate::workingtree::open_containing(args.scalar("filename"))?;
+        writeln!(ctx.out(), "{relpath}")?;
+        Ok(0)
+    }
+}
+
+crate::declare_command!(CmdRelpath);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -64,8 +94,20 @@ mod tests {
     }
 
     #[test]
+    fn relpath_spec() {
+        let spec = CmdRelpath.spec();
+        assert_eq!("relpath", spec.name);
+        assert_eq!(vec!["filename".to_string()], spec.takes_args);
+        assert!(spec.hidden);
+        assert!(spec.display);
+        assert_eq!(EncodingType::Strict, spec.encoding_type);
+        assert!(spec.options.is_empty());
+    }
+
+    #[test]
     fn commands_registered() {
         let registry = crate::registry::command_registry();
         assert!(registry.get("root").is_some());
+        assert!(registry.get("relpath").is_some());
     }
 }

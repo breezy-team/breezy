@@ -100,6 +100,7 @@ def load_tests(loader, basic_tests, pattern):
         "test_reconcile",
         "test_reconfigure",
         "test_reference",
+        "test_relpath",
         "test_remerge",
         "test_remove",
         "test_re_sign",
