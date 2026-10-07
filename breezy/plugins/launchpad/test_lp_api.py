@@ -16,6 +16,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import sys
+
 from ... import bedding, errors, osutils
 from ...tests import TestCase
 from ...tests.features import ModuleAvailableFeature
@@ -132,3 +134,77 @@ class TestGetAuthEngine(TestCase):
 
         self._get_auth_engine_against(PositionalOnly)
         self.assertEqual(["production", "breezy"], recorded)
+
+
+class FailingLpApiFinder:
+    """Import hook that makes ``from . import lp_api`` raise.
+
+    launchpadlib is installed wherever these tests run, so the only way to
+    reach the missing dependency path is to fail the import deliberately.
+    """
+
+    name = "breezy.plugins.launchpad.lp_api"
+
+    def __init__(self, exception):
+        self.exception = exception
+
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == self.name:
+            raise self.exception
+        return None
+
+
+class TestIterInstancesWithoutLaunchpadlib(TestCase):
+    """Launchpad.iter_instances must cope with launchpadlib absent."""
+
+    def break_lp_api(self, exception):
+        """Make importing lp_api raise ``exception`` for this test."""
+        from .. import launchpad as lp_package
+
+        finder = FailingLpApiFinder(exception)
+        saved = sys.modules.pop(finder.name, None)
+        if saved is not None:
+            self.addCleanup(sys.modules.__setitem__, finder.name, saved)
+        if hasattr(lp_package, "lp_api"):
+            self.addCleanup(setattr, lp_package, "lp_api", lp_package.lp_api)
+            delattr(lp_package, "lp_api")
+        sys.meta_path.insert(0, finder)
+        self.addCleanup(sys.meta_path.remove, finder)
+
+    def test_no_instances(self):
+        from .forge import Launchpad
+
+        self.break_lp_api(errors.DependencyNotPresent("launchpadlib", "nope"))
+        self.assertEqual([], list(Launchpad.iter_instances()))
+
+    def test_reason_is_logged(self):
+        from .forge import Launchpad
+
+        self.break_lp_api(errors.DependencyNotPresent("launchpadlib", "nope"))
+        list(Launchpad.iter_instances())
+        self.assertContainsRe(self.get_log(), "not listing Launchpad instances")
+
+    def test_other_errors_still_propagate(self):
+        from .forge import Launchpad
+
+        self.break_lp_api(ValueError("this is a bug, not a missing dependency"))
+        self.assertRaises(ValueError, list, Launchpad.iter_instances())
+
+    def test_instances_are_listed_when_launchpadlib_is_present(self):
+        self.requireFeature(launchpadlib_feature)
+        from . import lp_api
+        from .forge import Launchpad
+
+        class AuthEngine:
+            unique_consumer_id = "breezy"
+
+        class Store:
+            def load(self, consumer_id):
+                return object()
+
+        self.overrideAttr(lp_api, "get_credential_store", Store)
+        self.overrideAttr(lp_api, "get_auth_engine", lambda root: AuthEngine())
+        instances = list(Launchpad.iter_instances())
+        self.assertNotEqual([], instances)
+        for instance in instances:
+            self.assertIsInstance(instance, Launchpad)
