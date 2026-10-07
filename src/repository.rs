@@ -45,11 +45,40 @@ impl std::error::Error for Error {}
 /// `breezy.repository.Repository` class. Methods that return rich Python-only
 /// domain objects use [`PyObject`].
 ///
-// TODO: A handful of Python Repository methods are not yet mirrored here:
-// find_branches, suspend_write_group, resume_write_group, get_revision_deltas,
-// get_revision_reconcile, store_revision_signature, verify_revision_signatures.
-// search_missing_revision_ids also omits Python's `if_present_ids` parameter.
 pub trait Repository {
+    /// The Python repository this one wraps, if it wraps one.
+    ///
+    /// Bindings use this to hand a Python-backed repository back to Python
+    /// as the original object rather than as a Rust object proxying to it.
+    fn python_object(&self) -> Option<&PyObject> {
+        None
+    }
+
+    /// The branches this repository serves; with `using`, those in control
+    /// directories below it too.
+    fn find_branches(
+        &self,
+        using: bool,
+    ) -> Result<Vec<Box<dyn crate::branch::Branch + Send + Sync>>, Error>;
+
+    /// The URL of the repository, as the user refers to it.
+    fn base(&self) -> Result<String, Error>;
+
+    /// The URL of the directory holding the repository's control directory.
+    fn user_url(&self) -> Result<String, Error>;
+
+    /// The URL of the repository's own control files.
+    fn control_url(&self) -> Result<String, Error>;
+
+    /// The control directory the repository lives in.
+    fn controldir(&self) -> Result<Box<dyn crate::controldir::ControlDir>, Error>;
+
+    /// Whether the repository can be read at arbitrary positions cheaply.
+    fn supports_random_access(&self) -> Result<bool, Error>;
+
+    /// The repository's lockable control files, as a Python object.
+    fn control_files(&self) -> Result<PyObject, Error>;
+
     // Transports
 
     /// The transport for user-visible data.
@@ -150,6 +179,18 @@ pub trait Repository {
     /// Returns a Python `TreeDelta`.
     fn get_revision_delta(&self, revision_id: &RevisionId) -> Result<PyObject, Error>;
 
+    /// The deltas of the Python `revisions` objects against their first
+    /// parents, limited to `specific_files` when given.
+    fn get_revision_deltas(
+        &self,
+        revisions: &[PyObject],
+        specific_files: Option<&[&str]>,
+    ) -> Result<Vec<PyObject>, Error>;
+
+    /// The Python revision object for `revision_id`, read without the
+    /// checks reconciliation would trip over.
+    fn get_revision_reconcile(&self, revision_id: &RevisionId) -> Result<PyObject, Error>;
+
     /// Return the revision id for a revno, given a known later `(revno, revid)`.
     ///
     /// Returns a Python `(found, result)` tuple: `(True, revision_id)` when the
@@ -218,6 +259,23 @@ pub trait Repository {
         signature: &[u8],
     ) -> Result<(), Error>;
 
+    /// Store `plaintext` signed with the Python GPG strategy as the signature
+    /// of `revision_id`.
+    fn store_revision_signature(
+        &mut self,
+        gpg_strategy: &PyObject,
+        plaintext: &[u8],
+        revision_id: &RevisionId,
+    ) -> Result<(), Error>;
+
+    /// Verify the signatures of `revision_ids` with the Python GPG strategy,
+    /// giving a Python ``(revision_id, result, key)`` tuple for each.
+    fn verify_revision_signatures(
+        &self,
+        revision_ids: &[RevisionId],
+        gpg_strategy: &PyObject,
+    ) -> Result<Vec<PyObject>, Error>;
+
     /// Sign `revision_id` using a GPG strategy.
     fn sign_revision(
         &mut self,
@@ -250,6 +308,12 @@ pub trait Repository {
     /// Abort the current write group.
     fn abort_write_group(&mut self, suppress_errors: bool) -> Result<(), Error>;
 
+    /// Suspend the current write group, returning the tokens that resume it.
+    fn suspend_write_group(&mut self) -> Result<Vec<String>, Error>;
+
+    /// Resume the write group suspended with `tokens`.
+    fn resume_write_group(&mut self, tokens: &[String]) -> Result<(), Error>;
+
     /// Re-read data to synchronise with disk.
     fn refresh_data(&mut self) -> Result<(), Error>;
 
@@ -274,6 +338,7 @@ pub trait Repository {
         other: &PyObject,
         find_ghosts: bool,
         revision_ids: Option<&[RevisionId]>,
+        if_present_ids: Option<&[RevisionId]>,
         limit: Option<u64>,
     ) -> Result<PyObject, Error>;
 
@@ -347,4 +412,19 @@ pub trait Repository {
         revision_id: Option<&RevisionId>,
         lossy: bool,
     ) -> Result<PyObject, Error>;
+}
+
+/// Open the repository at `location`, as ``Repository.open`` does.
+pub fn open(location: &str) -> Result<crate::controldir::RepositoryRef, crate::controldir::Error> {
+    crate::controldir::open(location)?.open_repository()
+}
+
+/// Create a repository in `controldir`, as ``Repository.create`` does.
+///
+/// Python initialises the default repository format there; the control
+/// directory's own repository creation is the same for the formats in use.
+pub fn create(
+    controldir: &dyn crate::controldir::ControlDir,
+) -> Result<crate::controldir::RepositoryRef, crate::controldir::Error> {
+    controldir.create_repository(false)
 }

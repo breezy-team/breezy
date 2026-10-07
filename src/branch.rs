@@ -53,10 +53,33 @@ impl std::error::Error for Error {}
 /// rich Python-only domain objects use [`PyObject`]; methods with a trivial
 /// constant default in Python are given a Rust default.
 pub trait Branch {
+    /// The Python branch this one wraps, if it wraps one.
+    ///
+    /// Bindings use this to hand a Python-backed branch back to Python as the
+    /// original object rather than as a Rust object proxying to it.
+    fn python_object(&self) -> Option<&PyObject> {
+        None
+    }
+
     // Properties and identity
 
     /// The name of this branch (the empty string for the default branch).
     fn name(&self) -> Result<String, Error>;
+
+    /// The URL of the branch, as the user refers to it.
+    fn base(&self) -> Result<String, Error>;
+
+    /// The URL of the directory holding the branch's control directory.
+    fn user_url(&self) -> Result<String, Error>;
+
+    /// The URL of the branch's own control files.
+    fn control_url(&self) -> Result<String, Error>;
+
+    /// The repository holding the branch's revisions.
+    fn repository(&self) -> Result<crate::controldir::RepositoryRef, Error>;
+
+    /// The control directory the branch lives in.
+    fn controldir(&self) -> Result<Box<dyn crate::controldir::ControlDir>, Error>;
 
     /// The transport for user files in the branch's control directory.
     ///
@@ -399,4 +422,27 @@ pub trait Branch {
     ///
     /// Returns a Python `Unshelver`.
     fn get_unshelver(&self, tree: &PyObject) -> Result<PyObject, Error>;
+}
+
+/// Open the branch at `location`, as ``Branch.open`` does.
+pub fn open(location: &str) -> Result<crate::controldir::BranchRef, crate::controldir::Error> {
+    crate::controldir::open(location)?.open_branch(None)
+}
+
+/// Open the branch `name` at `transport`, as ``Branch.open_from_transport``
+/// does.
+pub fn open_from_transport(
+    transport: crate::controldir::TransportRef,
+    name: Option<&str>,
+) -> Result<crate::controldir::BranchRef, crate::controldir::Error> {
+    crate::controldir::open_from_transport(transport)?.open_branch(name)
+}
+
+/// Open the branch containing `location`, as ``Branch.open_containing``
+/// does, with the part of `location` below it.
+pub fn open_containing(
+    location: &str,
+) -> Result<(crate::controldir::BranchRef, String), crate::controldir::Error> {
+    let (dir, relpath) = crate::controldir::open_containing(location)?;
+    Ok((dir.open_branch(None)?, relpath))
 }

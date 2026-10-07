@@ -65,6 +65,18 @@ where
     })
 }
 
+fn getattr_extract<T>(obj: &Py<PyAny>, name: &str) -> Result<T, Error>
+where
+    T: for<'a, 'py> FromPyObject<'a, 'py, Error = PyErr>,
+{
+    Python::attach(|py| {
+        obj.bind(py)
+            .getattr(name)
+            .and_then(|r| r.extract())
+            .map_err(|e| map_err(py, e))
+    })
+}
+
 fn getattr_obj(obj: &Py<PyAny>, name: &str) -> Result<PyObject, Error> {
     Python::attach(|py| {
         obj.bind(py)
@@ -75,6 +87,150 @@ fn getattr_obj(obj: &Py<PyAny>, name: &str) -> Result<PyObject, Error> {
 }
 
 impl Repository for PyRepository {
+    fn python_object(&self) -> Option<&PyObject> {
+        Some(&self.0)
+    }
+
+    fn find_branches(
+        &self,
+        using: bool,
+    ) -> Result<Vec<Box<dyn crate::branch::Branch + Send + Sync>>, Error> {
+        Python::attach(|py| {
+            let kwargs = pyo3::types::PyDict::new(py);
+            kwargs.set_item("using", using).unwrap();
+            self.0
+                .bind(py)
+                .call_method("find_branches", (), Some(&kwargs))
+                .and_then(|branches| {
+                    branches
+                        .try_iter()?
+                        .map(|branch| {
+                            Ok(Box::new(crate::pybranch::PyBranch::new(branch?.unbind()))
+                                as Box<dyn crate::branch::Branch + Send + Sync>)
+                        })
+                        .collect::<PyResult<Vec<_>>>()
+                })
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn suspend_write_group(&mut self) -> Result<Vec<String>, Error> {
+        call0_extract(&self.0, "suspend_write_group")
+    }
+
+    fn resume_write_group(&mut self, tokens: &[String]) -> Result<(), Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .call_method1("resume_write_group", (tokens.to_vec(),))
+                .map(|_| ())
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn get_revision_deltas(
+        &self,
+        revisions: &[PyObject],
+        specific_files: Option<&[&str]>,
+    ) -> Result<Vec<PyObject>, Error> {
+        Python::attach(|py| {
+            let kwargs = pyo3::types::PyDict::new(py);
+            kwargs
+                .set_item("specific_files", specific_files.map(|f| f.to_vec()))
+                .unwrap();
+            let revisions: Vec<_> = revisions.iter().map(|r| r.bind(py)).collect();
+            self.0
+                .bind(py)
+                .call_method("get_revision_deltas", (revisions,), Some(&kwargs))
+                .and_then(|deltas| {
+                    deltas
+                        .try_iter()?
+                        .map(|delta| Ok(delta?.unbind()))
+                        .collect::<PyResult<Vec<_>>>()
+                })
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn get_revision_reconcile(&self, revision_id: &RevisionId) -> Result<PyObject, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .call_method1("get_revision_reconcile", (revision_id,))
+                .map(|r| r.unbind())
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn store_revision_signature(
+        &mut self,
+        gpg_strategy: &PyObject,
+        plaintext: &[u8],
+        revision_id: &RevisionId,
+    ) -> Result<(), Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .call_method1(
+                    "store_revision_signature",
+                    (
+                        gpg_strategy.bind(py),
+                        pyo3::types::PyBytes::new(py, plaintext),
+                        revision_id,
+                    ),
+                )
+                .map(|_| ())
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn verify_revision_signatures(
+        &self,
+        revision_ids: &[RevisionId],
+        gpg_strategy: &PyObject,
+    ) -> Result<Vec<PyObject>, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .call_method1(
+                    "verify_revision_signatures",
+                    (revision_ids.to_vec(), gpg_strategy.bind(py)),
+                )
+                .and_then(|results| {
+                    results
+                        .try_iter()?
+                        .map(|result| Ok(result?.unbind()))
+                        .collect::<PyResult<Vec<_>>>()
+                })
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn base(&self) -> Result<String, Error> {
+        getattr_extract(&self.0, "base")
+    }
+
+    fn user_url(&self) -> Result<String, Error> {
+        getattr_extract(&self.0, "user_url")
+    }
+
+    fn control_url(&self) -> Result<String, Error> {
+        getattr_extract(&self.0, "control_url")
+    }
+
+    fn controldir(&self) -> Result<Box<dyn crate::controldir::ControlDir>, Error> {
+        let dir = getattr_obj(&self.0, "controldir")?;
+        Ok(Box::new(crate::pycontroldir::PyControlDir::new(dir)))
+    }
+
+    fn supports_random_access(&self) -> Result<bool, Error> {
+        getattr_extract(&self.0, "supports_random_access")
+    }
+
+    fn control_files(&self) -> Result<PyObject, Error> {
+        getattr_obj(&self.0, "control_files")
+    }
+
     fn user_transport(&self) -> Result<PyObject, Error> {
         getattr_obj(&self.0, "user_transport")
     }
@@ -449,6 +605,7 @@ impl Repository for PyRepository {
         other: &PyObject,
         find_ghosts: bool,
         revision_ids: Option<&[RevisionId]>,
+        if_present_ids: Option<&[RevisionId]>,
         limit: Option<u64>,
     ) -> Result<PyObject, Error> {
         Python::attach(|py| {
@@ -456,6 +613,9 @@ impl Repository for PyRepository {
             kwargs.set_item("find_ghosts", find_ghosts).unwrap();
             kwargs
                 .set_item("revision_ids", revision_ids.map(|r| r.to_vec()))
+                .unwrap();
+            kwargs
+                .set_item("if_present_ids", if_present_ids.map(|r| r.to_vec()))
                 .unwrap();
             kwargs.set_item("limit", limit).unwrap();
             self.0

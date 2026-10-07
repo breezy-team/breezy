@@ -25,7 +25,11 @@ The class hierarchy mirrors the trait hierarchy.
 from dromedary.errors import NoSuchFile
 
 from breezy import _cmd_rs
+from breezy.branch import Branch
+from breezy.errors import NoRepositoryPresent
+from breezy.repository import Repository
 from breezy.tests import TestCaseWithTransport
+from breezy.workingtree import WorkingTree
 
 
 class TestRustTreeBinding(TestCaseWithTransport):
@@ -226,3 +230,108 @@ class TestRustRepositoryBinding(TestCaseWithTransport):
         # Returns a (found, revision_id) tuple; the tip is revno 1.
         with repo.lock_read():
             self.assertEqual((True, revid), wrapped.get_rev_id_for_revno(1, (1, revid)))
+
+
+class TestRustControlDir(TestCaseWithTransport):
+    """The control directory layer, reached through _cmd_rs.ControlDir."""
+
+    def test_python_backed_objects_come_back_unwrapped(self):
+        from breezy.git.dir import LocalGitDir
+        from breezy.git.workingtree import GitWorkingTree
+
+        tree = self.make_branch_and_tree("gittree", format="git")
+        opened = _cmd_rs.ControlDir.open(tree.basedir)
+        self.assertIsInstance(opened, LocalGitDir)
+        self.assertIsInstance(_cmd_rs.WorkingTree.open(tree.basedir), GitWorkingTree)
+        # A wrapped Python control directory hands out its own objects too.
+        wrapped = _cmd_rs.ControlDir(tree.controldir)
+        self.assertIs(tree.controldir, wrapped.open_workingtree().controldir)
+        self.assertIsInstance(wrapped.open_workingtree(), GitWorkingTree)
+
+    def test_wrapped_python_repository_finds_branches(self):
+        tree = self.make_branch_and_tree("tree")
+        repository = _cmd_rs.Repository(tree.branch.repository)
+        self.assertEqual(
+            [tree.branch.base], [b.base for b in repository.find_branches()]
+        )
+
+    def test_create_uses_python_default_format(self):
+        from breezy.bzr.bzrdir import BzrDir
+
+        created = _cmd_rs.ControlDir.create("new")
+        self.assertIsInstance(created, BzrDir)
+        self.assertRaises(NoRepositoryPresent, created.open_repository)
+        created.create_repository()
+        self.assertTrue(_cmd_rs.ControlDir(created).has_repository())
+        branch = _cmd_rs.ControlDir.create_branch_convenience("other")
+        self.assertTrue(branch.controldir.has_workingtree())
+        tree = _cmd_rs.ControlDir.create_standalone_workingtree("third")
+        self.assertTrue(tree.controldir.has_branch())
+
+    def test_open_containing_tree_or_branch(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/sub/"])
+        opened_tree, branch, relpath = (
+            _cmd_rs.ControlDir.open_containing_tree_or_branch("tree/sub")
+        )
+        self.assertIsInstance(opened_tree, WorkingTree)
+        self.assertIsInstance(branch, Branch)
+        self.assertEqual("sub", relpath)
+        self.assertEqual(tree.basedir, opened_tree.basedir)
+        _tree, _branch, repository, relpath = (
+            _cmd_rs.ControlDir.open_containing_tree_branch_or_repository("tree/sub")
+        )
+        self.assertIsInstance(repository, Repository)
+        self.assertEqual("sub", relpath)
+
+    def test_find_branches(self):
+        self.make_branch_and_tree("a")
+        self.build_tree(["b/"])
+        self.make_branch_and_tree("b/nested")
+        self.make_branch_and_tree("c", format="git")
+        transport = self.get_transport()
+        found = _cmd_rs.ControlDir.find_branches(transport)
+        self.assertEqual(
+            sorted(transport.base + name for name in ["a/", "b/nested/", "c/"]),
+            sorted(b.base for b in found),
+        )
+        dirs = _cmd_rs.ControlDir.find_controldirs(transport)
+        self.assertEqual(3, len(dirs))
+
+    def test_class_method_openers(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/sub/", "tree/sub/file"])
+        branch, relpath = _cmd_rs.Branch.open_containing("tree/sub")
+        self.assertIsInstance(branch, Branch)
+        self.assertEqual("sub", relpath)
+        self.assertEqual(tree.branch.base, _cmd_rs.Branch.open("tree").base)
+        self.assertEqual(
+            tree.branch.base,
+            _cmd_rs.Branch.open_from_transport(self.get_transport("tree")).base,
+        )
+        self.assertIsInstance(_cmd_rs.Repository.open("tree"), Repository)
+        opened, relpaths = _cmd_rs.WorkingTree.open_containing_paths(["tree/sub/file"])
+        self.assertEqual(tree.basedir, opened.basedir)
+        self.assertEqual(["sub/file"], relpaths)
+        opened, relpath = _cmd_rs.WorkingTree.open_containing("tree/sub")
+        self.assertEqual("sub", relpath)
+        self.assertTrue(_cmd_rs.Tree.versionable_kind("file"))
+        self.assertFalse(_cmd_rs.Tree.versionable_kind("bogus"))
+        self.assertTrue(opened.case_sensitive)
+        self.assertEqual(tree.branch.base, opened.branch.base)
+        self.assertEqual(tree.controldir.user_url, opened.controldir.user_url)
+        self.assertEqual(tree.branch.repository.base, opened.branch.repository.base)
+        self.assertEqual(
+            tree.controldir.control_url, _cmd_rs.ControlDir.open("tree").control_url
+        )
+        self.assertEqual(
+            tree.controldir.root_transport.base,
+            _cmd_rs.ControlDir.open("tree").root_transport.base,
+        )
+
+    def test_default_format_mirrors_python(self):
+        from breezy.controldir import ControlDirFormat
+
+        self.assertIs(
+            ControlDirFormat.get_default_format(), _cmd_rs.get_default_format()
+        )

@@ -56,6 +56,18 @@ pub(crate) fn err_to_py(err: Error) -> PyErr {
 #[pyclass(module = "breezy._cmd_rs")]
 pub struct Branch(Box<dyn breezy::branch::Branch + Send + Sync>);
 
+/// Hand a branch to Python: the Python branch it wraps, or a [`Branch`]
+/// around a native one.
+pub(crate) fn branch_to_py(
+    py: Python<'_>,
+    branch: Box<dyn breezy::branch::Branch + Send + Sync>,
+) -> PyResult<Py<PyAny>> {
+    match branch.python_object() {
+        Some(obj) => Ok(obj.clone_ref(py)),
+        None => Ok(Py::new(py, Branch::from_boxed(branch))?.into_any()),
+    }
+}
+
 impl Branch {
     /// Wrap an already-boxed branch.
     pub fn from_boxed(branch: Box<dyn breezy::branch::Branch + Send + Sync>) -> Self {
@@ -91,10 +103,58 @@ impl Branch {
     ///     UnknownFormatError: If the control directory format is not
     ///         recognised.
     #[staticmethod]
-    fn open(location: &str) -> PyResult<Self> {
-        Ok(Branch(
-            breezy::controldir::open(location)?.open_branch(None)?,
-        ))
+    fn open(py: Python<'_>, location: &str) -> PyResult<Py<PyAny>> {
+        branch_to_py(py, breezy::branch::open(location)?)
+    }
+
+    /// Open the branch rooted at a transport.
+    ///
+    /// Only the transport's ``base`` URL is used; a new transport is opened
+    /// for it.
+    ///
+    /// Args:
+    ///     transport: A transport pointing at the branch's location.
+    ///     name: Name of a colocated branch, or None for the default branch.
+    ///
+    /// Returns:
+    ///     The branch. A branch backed by a Python branch object is returned
+    ///     as that object.
+    ///
+    /// Raises:
+    ///     NotBranchError: If there is no branch at the location.
+    #[staticmethod]
+    #[pyo3(signature = (transport, name=None))]
+    fn open_from_transport(
+        py: Python<'_>,
+        transport: &Bound<'_, PyAny>,
+        name: Option<&str>,
+    ) -> PyResult<Py<PyAny>> {
+        let base: String = transport.getattr("base")?.extract()?;
+        let transport = breezy::controldir::get_transport(&base)?;
+        branch_to_py(py, breezy::branch::open_from_transport(transport, name)?)
+    }
+
+    /// Open an existing branch which contains a location.
+    ///
+    /// This probes for a branch at the location, and searches upwards from
+    /// there until a control directory is found or the root is reached.
+    ///
+    /// Args:
+    ///     location: The URL or local path to start searching from.
+    ///
+    /// Returns:
+    ///     A tuple ``(branch, relpath)``, where ``relpath`` is the unused
+    ///     portion of the location below the branch root. A branch backed by a
+    ///     Python branch object is returned as that object.
+    ///
+    /// Raises:
+    ///     NotBranchError: If no containing branch is found.
+    ///     UnknownFormatError: If the control directory format is not
+    ///         recognised.
+    #[staticmethod]
+    fn open_containing(py: Python<'_>, location: &str) -> PyResult<(Py<PyAny>, String)> {
+        let (branch, relpath) = breezy::branch::open_containing(location)?;
+        Ok((branch_to_py(py, branch)?, relpath))
     }
 
     /// The name of this branch, or the empty string for the default branch.
@@ -107,6 +167,36 @@ impl Branch {
     #[getter]
     fn user_transport(&self) -> PyResult<Py<PyAny>> {
         self.0.user_transport().map_err(err_to_py)
+    }
+
+    /// The URL of the branch.
+    #[getter]
+    fn base(&self) -> PyResult<String> {
+        self.0.base().map_err(err_to_py)
+    }
+
+    /// The URL of the directory holding the branch, as the user sees it.
+    #[getter]
+    fn user_url(&self) -> PyResult<String> {
+        self.0.user_url().map_err(err_to_py)
+    }
+
+    /// The URL of the branch's own control files.
+    #[getter]
+    fn control_url(&self) -> PyResult<String> {
+        self.0.control_url().map_err(err_to_py)
+    }
+
+    /// The repository holding this branch's revisions.
+    #[getter]
+    fn repository(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        crate::repository::repository_to_py(py, self.0.repository().map_err(err_to_py)?)
+    }
+
+    /// The control directory this branch lives in.
+    #[getter]
+    fn controldir(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        crate::controldir::controldir_to_py(py, self.0.controldir().map_err(err_to_py)?)
     }
 
     /// Return the branch's tags.

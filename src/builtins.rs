@@ -37,7 +37,7 @@ impl Command for CmdRoot {
             ctx.out(),
             "{}",
             tree.basedir()
-                .map_err(|e| CommandError::user(e.to_string()))?
+                .map_err(crate::controldir::Error::from)?
                 .display()
         )?;
         Ok(0)

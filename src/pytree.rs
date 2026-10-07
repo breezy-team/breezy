@@ -147,6 +147,10 @@ where
 }
 
 impl Tree for PyTree {
+    fn python_object(&self) -> Option<&PyObject> {
+        Some(&self.0)
+    }
+
     fn supports_rename_tracking(&self) -> Result<bool, Error> {
         call0_bool(&self.0, "supports_rename_tracking")
     }
@@ -733,6 +737,16 @@ impl Tree for PyTree {
 }
 
 impl MutableTree for PyTree {
+    fn case_sensitive(&self) -> Result<bool, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("case_sensitive")
+                .and_then(|c| c.extract())
+                .map_err(|e| map_py_err_to_err(py, e))
+        })
+    }
+
     fn is_control_filename(&self, filename: &str) -> Result<bool, Error> {
         call1_extract(&self.0, "is_control_filename", (filename,))
     }
@@ -964,6 +978,16 @@ impl WorkingTree for PyTree {
         call0_bool(&self.0, "requires_rich_root")
     }
 
+    fn views(&self) -> Result<PyObject, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("views")
+                .map(|v| v.unbind())
+                .map_err(|e| map_py_err_to_err(py, e))
+        })
+    }
+
     fn supports_views(&self) -> Result<bool, Error> {
         call0_bool(&self.0, "supports_views")
     }
@@ -972,12 +996,28 @@ impl WorkingTree for PyTree {
         call0_bool(&self.0, "supports_setting_file_ids")
     }
 
-    fn branch(&self) -> Result<PyObject, Error> {
+    fn branch(&self) -> Result<crate::controldir::BranchRef, Error> {
         Python::attach(|py| {
             self.0
                 .bind(py)
                 .getattr("branch")
-                .map(|r| r.unbind())
+                .map(|b| {
+                    Box::new(crate::pybranch::PyBranch::new(b.unbind()))
+                        as crate::controldir::BranchRef
+                })
+                .map_err(|e| map_py_err_to_err(py, e))
+        })
+    }
+
+    fn controldir(&self) -> Result<Box<dyn crate::controldir::ControlDir>, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("controldir")
+                .map(|d| {
+                    Box::new(crate::pycontroldir::PyControlDir::new(d.unbind()))
+                        as Box<dyn crate::controldir::ControlDir>
+                })
                 .map_err(|e| map_py_err_to_err(py, e))
         })
     }
@@ -1019,6 +1059,24 @@ impl WorkingTree for PyTree {
             self.0
                 .bind(py)
                 .call_method1("relpath", (path,))
+                .and_then(|r| r.extract())
+                .map_err(|e| map_py_err_to_err(py, e))
+        })
+    }
+
+    fn safe_relpath_files(
+        &self,
+        file_list: &[&str],
+        canonicalize: bool,
+        apply_view: bool,
+    ) -> Result<Vec<String>, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .call_method1(
+                    "safe_relpath_files",
+                    (file_list.to_vec(), canonicalize, apply_view),
+                )
                 .and_then(|r| r.extract())
                 .map_err(|e| map_py_err_to_err(py, e))
         })

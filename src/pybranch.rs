@@ -74,6 +74,10 @@ where
 }
 
 impl Branch for PyBranch {
+    fn python_object(&self) -> Option<&PyObject> {
+        Some(&self.0)
+    }
+
     fn name(&self) -> Result<String, Error> {
         Python::attach(|py| {
             self.0
@@ -81,6 +85,62 @@ impl Branch for PyBranch {
                 .getattr("name")
                 .and_then(|n| n.extract::<Option<String>>())
                 .map(Option::unwrap_or_default)
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn base(&self) -> Result<String, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("base")
+                .and_then(|b| b.extract())
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn user_url(&self) -> Result<String, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("user_url")
+                .and_then(|b| b.extract())
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn control_url(&self) -> Result<String, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("control_url")
+                .and_then(|b| b.extract())
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn repository(&self) -> Result<crate::controldir::RepositoryRef, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("repository")
+                .map(|r| {
+                    Box::new(crate::pyrepository::PyRepository::new(r.unbind()))
+                        as crate::controldir::RepositoryRef
+                })
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn controldir(&self) -> Result<Box<dyn crate::controldir::ControlDir>, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("controldir")
+                .map(|d| {
+                    Box::new(crate::pycontroldir::PyControlDir::new(d.unbind()))
+                        as Box<dyn crate::controldir::ControlDir>
+                })
                 .map_err(|e| map_err(py, e))
         })
     }

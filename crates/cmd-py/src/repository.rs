@@ -38,6 +38,18 @@ fn err_to_py(err: Error) -> PyErr {
 #[pyclass(module = "breezy._cmd_rs")]
 pub struct Repository(Box<dyn breezy::repository::Repository + Send + Sync>);
 
+/// Hand a repository to Python: the Python repository it wraps, or a
+/// [`Repository`] around a native one.
+pub(crate) fn repository_to_py(
+    py: Python<'_>,
+    repository: Box<dyn breezy::repository::Repository + Send + Sync>,
+) -> PyResult<Py<PyAny>> {
+    match repository.python_object() {
+        Some(obj) => Ok(obj.clone_ref(py)),
+        None => Ok(Py::new(py, Repository::from_boxed(repository))?.into_any()),
+    }
+}
+
 impl Repository {
     /// Wrap an already-boxed repository.
     pub fn from_boxed(repo: Box<dyn breezy::repository::Repository + Send + Sync>) -> Self {
@@ -71,16 +83,204 @@ impl Repository {
     ///     NotBranchError: If there is no control directory at ``location``.
     ///     NoRepositoryPresent: If the control directory has no repository.
     #[staticmethod]
-    fn open(location: &str) -> PyResult<Self> {
-        Ok(Repository(
-            breezy::controldir::open(location)?.open_repository()?,
-        ))
+    fn open(py: Python<'_>, location: &str) -> PyResult<Py<PyAny>> {
+        repository_to_py(py, breezy::repository::open(location)?)
+    }
+
+    /// Create a repository in the default format in a control directory.
+    ///
+    /// Args:
+    ///     controldir: The control directory to create the repository in,
+    ///         either a breezy ``ControlDir`` or a
+    ///         ``breezy._cmd_rs.ControlDir``.
+    ///
+    /// Returns:
+    ///     The new repository. A repository backed by a breezy repository
+    ///     object is returned as that object.
+    #[staticmethod]
+    fn create(py: Python<'_>, controldir: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        let repository = match controldir.extract::<PyRef<'_, crate::controldir::ControlDir>>() {
+            Ok(wrapped) => breezy::repository::create(wrapped.inner())?,
+            Err(_) => breezy::repository::create(&breezy::pycontroldir::PyControlDir::new(
+                controldir.clone().unbind(),
+            ))?,
+        };
+        repository_to_py(py, repository)
+    }
+
+    /// Whether items in revision trees can be read individually.
+    ///
+    /// If False, the repository only supports bulk fetching and pushing of
+    /// data.
+    #[getter]
+    fn supports_random_access(&self) -> PyResult<bool> {
+        self.0.supports_random_access().map_err(err_to_py)
+    }
+
+    /// The lockable control files used for locking the repository.
+    #[getter]
+    fn control_files(&self) -> PyResult<Py<PyAny>> {
+        self.0.control_files().map_err(err_to_py)
+    }
+
+    /// Find the branches in and underneath this repository.
+    ///
+    /// Control directories below the repository are searched too, including
+    /// branches nested inside other branches.
+    ///
+    /// Args:
+    ///     using: If True, only list branches that use this repository.
+    ///
+    /// Returns:
+    ///     A list of Branch objects.
+    #[pyo3(signature = (using=false))]
+    fn find_branches(&self, py: Python<'_>, using: bool) -> PyResult<Vec<Py<PyAny>>> {
+        self.0
+            .find_branches(using)
+            .map_err(err_to_py)?
+            .into_iter()
+            .map(|branch| crate::branch::branch_to_py(py, branch))
+            .collect()
+    }
+
+    /// Suspend the current write group so it can be resumed later.
+    ///
+    /// Returns:
+    ///     A list of str tokens to pass to ``resume_write_group``.
+    ///
+    /// Raises:
+    ///     UnsuspendableWriteGroup: If the repository format does not support
+    ///         suspending write groups.
+    fn suspend_write_group(&mut self) -> PyResult<Vec<String>> {
+        self.0.suspend_write_group().map_err(err_to_py)
+    }
+
+    /// Resume a write group that was suspended with ``suspend_write_group``.
+    ///
+    /// The repository must be write-locked. End the write group with
+    /// ``commit_write_group``, ``abort_write_group`` or
+    /// ``suspend_write_group``.
+    ///
+    /// Args:
+    ///     tokens: The list of str tokens returned by ``suspend_write_group``.
+    ///
+    /// Raises:
+    ///     NotWriteLocked: If the repository is not write-locked.
+    ///     BzrError: If a write group is already open.
+    ///     UnresumableWriteGroup: If the write group can not be resumed.
+    ///     UnsuspendableWriteGroup: If the format does not support suspending
+    ///         and resuming write groups.
+    fn resume_write_group(&mut self, tokens: Vec<String>) -> PyResult<()> {
+        self.0.resume_write_group(&tokens).map_err(err_to_py)
+    }
+
+    /// Return the deltas of revisions against their left-hand parents.
+    ///
+    /// Args:
+    ///     revisions: A list of Revision objects (not revision ids). The trees
+    ///         involved are held in memory while the deltas are computed.
+    ///     specific_files: If not None, a list of paths in the first revision;
+    ///         each delta is then limited to those files, their parents and
+    ///         their children.
+    ///
+    /// Returns:
+    ///     A list of TreeDelta objects, one per revision, in the same order.
+    #[pyo3(signature = (revisions, specific_files=None))]
+    fn get_revision_deltas(
+        &self,
+        revisions: Vec<Py<PyAny>>,
+        specific_files: Option<Vec<String>>,
+    ) -> PyResult<Vec<Py<PyAny>>> {
+        let specific_files: Option<Vec<&str>> = specific_files
+            .as_ref()
+            .map(|files| files.iter().map(String::as_str).collect());
+        self.0
+            .get_revision_deltas(&revisions, specific_files.as_deref())
+            .map_err(err_to_py)
+    }
+
+    /// Return a revision, skipping the consistency checks of ``get_revision``.
+    ///
+    /// Only meant for ``reconcile`` and similar commands that repair or test
+    /// the revision graph.
+    ///
+    /// Args:
+    ///     revision_id: The revision id, as bytes.
+    ///
+    /// Returns:
+    ///     The Revision object.
+    fn get_revision_reconcile(&self, revision_id: Vec<u8>) -> PyResult<Py<PyAny>> {
+        self.0
+            .get_revision_reconcile(&RevisionId::from(revision_id))
+            .map_err(err_to_py)
+    }
+
+    /// Sign text with GPG and store the signature for a revision.
+    ///
+    /// Args:
+    ///     gpg_strategy: The ``breezy.gpg.GPGStrategy`` to sign with.
+    ///     plaintext: The text to sign, as bytes.
+    ///     revision_id: The revision id to store the signature for, as bytes.
+    fn store_revision_signature(
+        &mut self,
+        gpg_strategy: Py<PyAny>,
+        plaintext: Vec<u8>,
+        revision_id: Vec<u8>,
+    ) -> PyResult<()> {
+        self.0
+            .store_revision_signature(&gpg_strategy, &plaintext, &RevisionId::from(revision_id))
+            .map_err(err_to_py)
+    }
+
+    /// Verify the signatures of several revisions.
+    ///
+    /// Args:
+    ///     revision_ids: The revision ids to verify, as a list of bytes.
+    ///     gpg_strategy: The ``breezy.gpg.GPGStrategy`` to verify with.
+    ///
+    /// Returns:
+    ///     A list of ``(revision_id, result, key)`` tuples, one per revision,
+    ///     where ``result`` is one of the ``breezy.gpg.SIGNATURE_*`` values.
+    fn verify_revision_signatures(
+        &self,
+        revision_ids: Vec<Vec<u8>>,
+        gpg_strategy: Py<PyAny>,
+    ) -> PyResult<Vec<Py<PyAny>>> {
+        let revision_ids: Vec<RevisionId> =
+            revision_ids.into_iter().map(RevisionId::from).collect();
+        self.0
+            .verify_revision_signatures(&revision_ids, &gpg_strategy)
+            .map_err(err_to_py)
     }
 
     /// The transport for user-visible data.
     #[getter]
     fn user_transport(&self) -> PyResult<Py<PyAny>> {
         self.0.user_transport().map_err(err_to_py)
+    }
+
+    /// The URL of the repository.
+    #[getter]
+    fn base(&self) -> PyResult<String> {
+        self.0.base().map_err(err_to_py)
+    }
+
+    /// The URL of the user-visible directory the repository is in.
+    #[getter]
+    fn user_url(&self) -> PyResult<String> {
+        self.0.user_url().map_err(err_to_py)
+    }
+
+    /// The URL of the repository's control files.
+    #[getter]
+    fn control_url(&self) -> PyResult<String> {
+        self.0.control_url().map_err(err_to_py)
+    }
+
+    /// The control directory that holds the repository.
+    #[getter]
+    fn controldir(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        crate::controldir::controldir_to_py(py, self.0.controldir().map_err(err_to_py)?)
     }
 
     /// The transport for the repository's control files.
@@ -636,17 +836,27 @@ impl Repository {
     ///
     /// Returns:
     ///     A search result describing the missing revisions.
-    #[pyo3(signature = (other, find_ghosts=true, revision_ids=None, limit=None))]
+    #[pyo3(signature = (other, find_ghosts=true, revision_ids=None, if_present_ids=None, limit=None))]
     fn search_missing_revision_ids(
         &self,
         other: Py<PyAny>,
         find_ghosts: bool,
         revision_ids: Option<Vec<Vec<u8>>>,
+        if_present_ids: Option<Vec<Vec<u8>>>,
         limit: Option<u64>,
     ) -> PyResult<Py<PyAny>> {
-        let revids = revision_ids.map(|r| r.into_iter().map(RevisionId::from).collect::<Vec<_>>());
+        let to_revids =
+            |ids: Vec<Vec<u8>>| ids.into_iter().map(RevisionId::from).collect::<Vec<_>>();
+        let revids = revision_ids.map(to_revids);
+        let present = if_present_ids.map(to_revids);
         self.0
-            .search_missing_revision_ids(&other, find_ghosts, revids.as_deref(), limit)
+            .search_missing_revision_ids(
+                &other,
+                find_ghosts,
+                revids.as_deref(),
+                present.as_deref(),
+                limit,
+            )
             .map_err(err_to_py)
     }
 

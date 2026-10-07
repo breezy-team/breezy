@@ -94,6 +94,14 @@ pub enum Sha1OrLink {
 /// that have a trivial constant default in Python are provided with a Rust
 /// default; all other methods are required.
 pub trait Tree {
+    /// The Python tree this one wraps, if it wraps one.
+    ///
+    /// Bindings use this to hand a Python-backed tree back to Python as the
+    /// original object rather than as a Rust object proxying to it.
+    fn python_object(&self) -> Option<&PyObject> {
+        None
+    }
+
     /// Whether this tree supports rename tracking.
     ///
     /// This defaults to `true`, but some implementations may want to override
@@ -391,12 +399,23 @@ pub trait Tree {
     fn preview_transform(&self) -> Result<PyObject, Error>;
 }
 
+/// Whether entries of `kind` can be versioned.
+pub fn versionable_kind(kind: Kind) -> bool {
+    matches!(
+        kind,
+        Kind::File | Kind::Directory | Kind::Symlink | Kind::TreeReference
+    )
+}
+
 /// A trait for trees that can be modified.
 ///
 /// This trait extends [`Tree`] with methods for making changes to the working
 /// directory, such as adding files, creating directories, and committing
 /// changes. It mirrors the Python `breezy.mutabletree.MutableTree` class.
 pub trait MutableTree: Tree {
+    /// Whether file names in the tree are case sensitive.
+    fn case_sensitive(&self) -> Result<bool, Error>;
+
     /// Whether `filename` is the name of a control file in this tree.
     fn is_control_filename(&self, filename: &str) -> Result<bool, Error>;
 
@@ -549,13 +568,17 @@ pub trait WorkingTree: MutableTree {
     /// Whether the tree supports views.
     fn supports_views(&self) -> Result<bool, Error>;
 
+    /// The tree's views, as a Python view manager object.
+    fn views(&self) -> Result<PyObject, Error>;
+
     /// Whether the tree supports setting file ids.
     fn supports_setting_file_ids(&self) -> Result<bool, Error>;
 
     /// Return the branch this working tree is connected to.
-    ///
-    /// Returns a Python branch object.
-    fn branch(&self) -> Result<PyObject, Error>;
+    fn branch(&self) -> Result<crate::controldir::BranchRef, Error>;
+
+    /// The control directory the tree lives in.
+    fn controldir(&self) -> Result<Box<dyn crate::controldir::ControlDir>, Error>;
 
     /// Return the transport for user files in the working tree.
     ///
@@ -577,6 +600,16 @@ pub trait WorkingTree: MutableTree {
 
     /// Return the path portion of `path` relative to the tree base.
     fn relpath(&self, path: &str) -> Result<String, Error>;
+
+    /// The tree-relative paths of `file_list`: canonicalised for the
+    /// filesystem when `canonicalize`, and checked against the current view
+    /// when `apply_view`.
+    fn safe_relpath_files(
+        &self,
+        file_list: &[&str],
+        canonicalize: bool,
+        apply_view: bool,
+    ) -> Result<Vec<String>, Error>;
 
     /// Return the revision tree for the current last revision.
     ///

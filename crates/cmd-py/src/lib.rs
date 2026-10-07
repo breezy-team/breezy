@@ -1,7 +1,5 @@
-use breezy::controldir::Prober;
 use breezy::graphshim::Graph;
 use breezy::pybranch::PyBranch;
-use breezy::pycontroldir::PyProber;
 use breezy::pytree::PyTree;
 use breezy::RevisionId;
 
@@ -16,7 +14,6 @@ use pyo3::types::{PyBytes, PyString, PyTuple, PyType};
 use pyo3_filelike::PyBinaryFile;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
 
 import_exception!(breezy.errors, NoWhoami);
 import_exception!(breezy.errors, LockCorrupt);
@@ -519,6 +516,7 @@ fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
 
 mod branch;
 mod commands;
+mod controldir;
 mod email_message;
 mod help;
 mod native;
@@ -1599,43 +1597,12 @@ impl KnownHooksRegistry {
     }
 }
 
-/// A Python prober class and the wrapper it was registered as.
-type RegisteredProber = (Py<PyAny>, Arc<dyn Prober>);
-
-/// The Python prober classes registered into the Rust registry, with the
-/// wrapper each one was registered as, so it can be unregistered again.
-fn registered_probers() -> &'static Mutex<Vec<RegisteredProber>> {
-    static REGISTERED: OnceLock<Mutex<Vec<RegisteredProber>>> = OnceLock::new();
-    REGISTERED.get_or_init(|| Mutex::new(Vec::new()))
-}
-
-/// Register the Python prober class `prober` with the Rust control directory
-/// registry, so control directories it detects can be opened from Rust.
-#[pyfunction]
-fn register_prober(py: Python<'_>, prober: Py<PyAny>) -> PyResult<()> {
-    let wrapped: Arc<dyn Prober> = Arc::new(PyProber::new(prober.clone_ref(py)));
-    breezy::controldir::register_prober(Arc::clone(&wrapped));
-    registered_probers().lock().unwrap().push((prober, wrapped));
-    Ok(())
-}
-
-/// Undo [`register_prober`] for the Python prober class `prober`.
-#[pyfunction]
-fn unregister_prober(py: Python<'_>, prober: &Bound<'_, PyAny>) -> PyResult<()> {
-    let mut registered = registered_probers().lock().unwrap();
-    let index = registered
-        .iter()
-        .position(|(class, _)| class.bind(py).is(prober))
-        .ok_or_else(|| PyValueError::new_err(format!("prober {prober} is not registered")))?;
-    let (_, wrapped) = registered.remove(index);
-    breezy::controldir::unregister_prober(&wrapped);
-    Ok(())
-}
-
 #[pymodule]
 fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(register_prober, m)?)?;
-    m.add_function(wrap_pyfunction!(unregister_prober, m)?)?;
+    m.add_function(wrap_pyfunction!(controldir::register_prober, m)?)?;
+    m.add_function(wrap_pyfunction!(controldir::unregister_prober, m)?)?;
+    m.add_function(wrap_pyfunction!(controldir::set_default_format, m)?)?;
+    m.add_function(wrap_pyfunction!(controldir::get_default_format, m)?)?;
     // Route Rust `log` records to Python's `logging` module so that fixtures
     // like the test suite's `breezy.trace.push_log_file` see them. Without
     // this, Rust code that hits `log::warn!` etc. (or that fell back to
@@ -1808,6 +1775,8 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<tree::RevisionTree>()?;
     m.add_class::<branch::Branch>()?;
     m.add_class::<repository::Repository>()?;
+    m.add_class::<controldir::ControlDir>()?;
+    m.add_class::<controldir::ControlDirFormat>()?;
 
     let diffm = PyModule::new(py, "diff")?;
     diffm.add_function(wrap_pyfunction!(unified_diff_bytes, &diffm)?)?;
