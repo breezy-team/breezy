@@ -31,6 +31,9 @@ pub mod bugtracker;
 /// Command-line argument splitting.
 pub mod cmdline;
 
+/// Rename detection by content similarity.
+pub mod rename_map;
+
 /// Branch management traits and types.
 pub mod branch;
 /// Control directory management traits and types.

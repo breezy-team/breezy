@@ -520,6 +520,7 @@ mod help;
 mod native;
 mod optparse;
 mod registry;
+mod rename_map;
 mod utextwrap;
 
 use commands::{
@@ -1774,6 +1775,10 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     email_message::email_message(&email_messagem)?;
     m.add_submodule(&email_messagem)?;
 
+    let rename_mapm = PyModule::new(py, "rename_map")?;
+    rename_map::rename_map(&rename_mapm)?;
+    m.add_submodule(&rename_mapm)?;
+
     m.add_function(wrap_pyfunction!(run_main, m)?)?;
 
     // PyO3 submodule hack for proper import support
@@ -1789,6 +1794,7 @@ fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     modules.set_item(format!("{}.diff", module_name), &diffm)?;
     modules.set_item(format!("{}.utextwrap", module_name), &utextwrapm)?;
     modules.set_item(format!("{}.email_message", module_name), &email_messagem)?;
+    modules.set_item(format!("{}.rename_map", module_name), &rename_mapm)?;
     modules.set_item(format!("{}.commands", module_name), &commandsm)?;
     modules.set_item(format!("{}.optparse", module_name), &optparsem)?;
     modules.set_item(format!("{}.hooks", module_name), &hooksm)?;

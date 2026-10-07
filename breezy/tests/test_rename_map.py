@@ -20,12 +20,8 @@ import os
 from breezy import trace
 from breezy.tests import TestCaseWithTransport
 
+from .._cmd_rs.rename_map import edge_hash
 from ..rename_map import RenameMap
-
-
-def myhash(val):
-    """This the hash used by RenameMap."""
-    return hash(val) % (1024 * 1024 * 10)
 
 
 class TestRenameMap(TestCaseWithTransport):
@@ -35,9 +31,9 @@ class TestRenameMap(TestCaseWithTransport):
     def test_add_edge_hashes(self):
         rn = RenameMap(None)
         rn.add_edge_hashes(self.a_lines, "a")
-        self.assertEqual({"a"}, rn.edge_hashes[myhash(("a\n", "b\n"))])
-        self.assertEqual({"a"}, rn.edge_hashes[myhash(("b\n", "c\n"))])
-        self.assertIs(None, rn.edge_hashes.get(myhash(("c\n", "d\n"))))
+        self.assertEqual({"a"}, rn.edge_hash_tags(edge_hash(b"a\n", b"b\n")))
+        self.assertEqual({"a"}, rn.edge_hash_tags(edge_hash(b"b\n", b"c\n")))
+        self.assertIs(None, rn.edge_hash_tags(edge_hash(b"c\n", b"d\n")))
 
     def test_add_file_edge_hashes(self):
         tree = self.make_branch_and_tree("tree")
@@ -45,9 +41,9 @@ class TestRenameMap(TestCaseWithTransport):
         tree.add("a", ids=b"a")
         rn = RenameMap(tree)
         rn.add_file_edge_hashes(tree, [b"a"])
-        self.assertEqual({b"a"}, rn.edge_hashes[myhash(("a\n", "b\n"))])
-        self.assertEqual({b"a"}, rn.edge_hashes[myhash(("b\n", "c\n"))])
-        self.assertIs(None, rn.edge_hashes.get(myhash(("c\n", "d\n"))))
+        self.assertEqual({b"a"}, rn.edge_hash_tags(edge_hash(b"a\n", b"b\n")))
+        self.assertEqual({b"a"}, rn.edge_hash_tags(edge_hash(b"b\n", b"c\n")))
+        self.assertIs(None, rn.edge_hash_tags(edge_hash(b"c\n", b"d\n")))
 
     def test_hitcounts(self):
         rn = RenameMap(None)
