@@ -82,6 +82,9 @@ pub mod treebuilder;
 /// Command trait and infrastructure.
 pub mod command;
 
+/// Native implementations of commands from ``breezy.builtins``.
+pub mod builtins;
+
 /// Command-line option parsing.
 pub mod optparse;
 

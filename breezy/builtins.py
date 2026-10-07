@@ -3139,23 +3139,6 @@ class cmd_added(Command):  # noqa: D101
                 self.outf.write(osutils.quotefn(path) + "\n")
 
 
-class cmd_root(Command):  # noqa: D101
-    __doc__ = """Show the tree root directory.
-
-    The root is the nearest enclosing directory with a control
-    directory."""
-
-    takes_args = ["filename?"]
-
-    @display_command
-    def run(self, filename=None):
-        """Print the branch root."""
-        from .workingtree import WorkingTree
-
-        tree = WorkingTree.open_containing(filename)[0]
-        self.outf.write(tree.basedir + "\n")
-
-
 def _parse_limit(limitstring):
     """Parse a limit string into an integer.
 

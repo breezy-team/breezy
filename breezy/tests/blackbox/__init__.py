@@ -110,6 +110,7 @@ def load_tests(loader, basic_tests, pattern):
         "test_resolve_location",
         "test_revert",
         "test_revno",
+        "test_root",
         "test_revision_history",
         "test_revision_info",
         "test_rmbranch",
