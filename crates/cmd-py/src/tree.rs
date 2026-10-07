@@ -1378,6 +1378,14 @@ impl WorkingTree {
         base(&self_)?.get_config_stack().map_err(err_to_py)
     }
 
+    /// The absolute path of the root of this working tree, as a str.
+    // Paths are returned as OsString so they reach Python as str, like the
+    // Python tree's, rather than as pathlib.Path.
+    #[getter]
+    fn basedir(self_: PyRef<'_, Self>) -> PyResult<std::ffi::OsString> {
+        Ok(base(&self_)?.basedir().map_err(err_to_py)?.into_os_string())
+    }
+
     /// Return the absolute path of ``path`` in this working tree.
     ///
     /// Args:
@@ -1385,8 +1393,11 @@ impl WorkingTree {
     ///
     /// Returns:
     ///     The absolute path as a str.
-    fn abspath(self_: PyRef<'_, Self>, path: &str) -> PyResult<std::path::PathBuf> {
-        base(&self_)?.abspath(path).map_err(err_to_py)
+    fn abspath(self_: PyRef<'_, Self>, path: &str) -> PyResult<std::ffi::OsString> {
+        Ok(base(&self_)?
+            .abspath(path)
+            .map_err(err_to_py)?
+            .into_os_string())
     }
 
     /// Return ``path`` relative to the root of this working tree.
