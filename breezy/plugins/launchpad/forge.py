@@ -828,7 +828,12 @@ class Launchpad(Forge):
         Yields:
             Launchpad forge instances for which credentials are available.
         """
-        from . import lp_api
+        try:
+            from . import lp_api
+        except errors.DependencyNotPresent as e:
+            # launchpadlib is an optional dependency.
+            mutter("not listing Launchpad instances: %s", e)
+            return
 
         credential_store = lp_api.get_credential_store()
         for service_root in set(lp_uris.service_roots.values()):
