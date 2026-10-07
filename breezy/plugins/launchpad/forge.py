@@ -288,7 +288,7 @@ class Launchpad(Forge):
 
     @classmethod
     def probe_from_hostname(cls, hostname, possible_transports=None):
-        if re.match(hostname, r"(bazaar|git).*\.launchpad\.net"):
+        if re.match(r"(bazaar|git).*\.launchpad\.net", hostname):
             return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
         raise UnsupportedForge(hostname)
 
