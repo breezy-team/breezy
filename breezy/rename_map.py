@@ -30,43 +30,17 @@ from io import BytesIO
 from bzrformats.inventory import NoSuchId
 
 from . import osutils, progress, trace
+from ._cmd_rs.rename_map import RenameMap as _RenameMap
 from .i18n import gettext
 from .ui import ui_factory
 
 
-class RenameMap:
-    """Determine a mapping of renames."""
+class RenameMap(_RenameMap):
+    """Determine a mapping of renames.
 
-    def __init__(self, tree):
-        """Initialize a RenameMap for the given tree.
-
-        Args:
-            tree: The tree to analyze for rename detection.
-        """
-        self.tree = tree
-        self.edge_hashes = {}
-
-    @staticmethod
-    def iter_edge_hashes(lines):
-        """Iterate through the hashes of line pairs (which make up an edge).
-
-        The hash is truncated using a modulus to avoid excessive memory
-        consumption by the hitscount dict.  A modulus of 10Mi means that the
-        maximum number of keys is 10Mi.  (Keys are normally 32 bits, e.g.
-        4 Gi)
-        """
-        modulus = 1024 * 1024 * 10
-        for n in range(len(lines)):
-            yield hash(tuple(lines[n : n + 2])) % modulus
-
-    def add_edge_hashes(self, lines, tag):
-        """Update edge_hashes to include the given lines.
-
-        :param lines: The lines to update the hashes for.
-        :param tag: A tag uniquely associated with these lines (i.e. file-id)
-        """
-        for my_hash in self.iter_edge_hashes(lines):
-            self.edge_hashes.setdefault(my_hash, set()).add(tag)
+    The edge hashing and matching live in :mod:`breezy._cmd_rs.rename_map`;
+    this class adds the tree walking around them.
+    """
 
     def add_file_edge_hashes(self, tree, file_ids):
         """Update to reflect the hashes for files in the tree.
@@ -85,27 +59,6 @@ class RenameMap:
                 s.seek(0)
                 self.add_edge_hashes(s.readlines(), file_id)
 
-    def hitcounts(self, lines):
-        """Count the number of hash hits for each tag, for the given lines.
-
-        Hits are weighted according to the number of tags the hash is
-        associated with; more tags means that the hash is less rare and should
-        tend to be ignored.
-        :param lines: The lines to calculate hashes of.
-        :return: a dict of {tag: hitcount}
-        """
-        hits = {}
-        for my_hash in self.iter_edge_hashes(lines):
-            tags = self.edge_hashes.get(my_hash)
-            if tags is None:
-                continue
-            taglen = len(tags)
-            for tag in tags:
-                if tag not in hits:
-                    hits[tag] = 0
-                hits[tag] += 1.0 / taglen
-        return hits
-
     def get_all_hits(self, paths):
         """Find all the hit counts for the listed paths in the tree.
 
@@ -122,62 +75,6 @@ class RenameMap:
     def file_match(self, paths):
         """Return a mapping from file_ids to the supplied paths."""
         return self._match_hits(self.get_all_hits(paths))
-
-    @staticmethod
-    def _match_hits(hit_list):
-        """Using a hit list, determine a path-to-fileid map.
-
-        The hit list is a list of (count, path, file_id), where count is a
-        (possibly float) number, with higher numbers indicating stronger
-        matches.
-        """
-        seen_file_ids = set()
-        path_map = {}
-        for _count, path, file_id in sorted(hit_list, reverse=True):
-            if path in path_map or file_id in seen_file_ids:
-                continue
-            path_map[path] = file_id
-            seen_file_ids.add(file_id)
-        return path_map
-
-    def get_required_parents(self, matches):
-        """Return a dict of all file parents that must be versioned.
-
-        The keys are the required parents and the values are sets of their
-        children.
-        """
-        required_parents = {}
-        for path in matches:
-            while True:
-                child = path
-                path = osutils.dirname(path)
-                if self.tree.is_versioned(path):
-                    break
-                required_parents.setdefault(path, []).append(child)
-        require_ids = {}
-        for parent, children in required_parents.items():
-            child_file_ids = set()
-            for child in children:
-                file_id = matches.get(child)
-                if file_id is not None:
-                    child_file_ids.add(file_id)
-            require_ids[parent] = child_file_ids
-        return require_ids
-
-    def match_parents(self, required_parents, missing_parents):
-        """Map parent directories to file-ids.
-
-        This is done by finding similarity between the file-ids of children of
-        required parent directories and the file-ids of children of missing
-        parent directories.
-        """
-        all_hits = []
-        for file_id, file_id_children in missing_parents.items():
-            for path, path_children in required_parents.items():
-                hits = len(path_children.intersection(file_id_children))
-                if hits > 0:
-                    all_hits.append((hits, path, file_id))
-        return self._match_hits(all_hits)
 
     def _find_missing_files(self, basis):
         missing_files = set()
