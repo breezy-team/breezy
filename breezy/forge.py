@@ -563,6 +563,31 @@ def determine_title(description):
         return firstline[:i]
 
 
+def api_base_url(url):
+    """Determine the base URL of a forge's web API from a project URL.
+
+    An http or https URL is served by the same web server as the API, so its
+    scheme and port are reused. Any other scheme, git+ssh in particular,
+    carries no web port, so fall back to https on the bare host. A port that
+    is the default for the scheme is dropped, so the result still matches the
+    port-less URL a token was stored against.
+
+    The path is replaced with "/", so an instance served under a subpath is
+    probed at the host root. A forge plugin's URL parser returns the whole path
+    as the project path, so nothing here can tell the instance root from the
+    project. Handling a subpath needs a configured instance root.
+
+    :param url: URL of a project hosted on the forge
+    :return: Base URL, without any userinfo
+    """
+    (scheme, _user, _password, host, port, _path) = urlutils.parse_url(url)
+    if scheme not in ("http", "https"):
+        scheme, port = "https", None
+    if port == (443 if scheme == "https" else 80):
+        port = None
+    return str(urlutils.URL(scheme, None, None, host, port, "/"))
+
+
 def get_forge(branch, possible_forges=None):
     """Find the forge for a branch.
 
