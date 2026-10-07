@@ -63,6 +63,47 @@ fn version_text(py: Python<'_>, short: bool) -> PyResult<String> {
     buf.call_method0("getvalue")?.extract()
 }
 
+/// The ``help`` command.
+///
+/// The topic is looked up over the help indexes, which read live Python
+/// commands, plugins and config options.
+#[derive(Debug, Default)]
+pub struct CmdHelp;
+
+impl Command for CmdHelp {
+    fn spec(&self) -> CommandSpec {
+        CommandSpec {
+            help: Some("Show help on a command or other topic.".to_string()),
+            aliases: ["?", "--help", "-?", "-h"].map(String::from).to_vec(),
+            takes_args: vec!["topic?".to_string()],
+            see_also: vec!["topics".to_string()],
+            display: true,
+            encoding_type: EncodingType::Replace,
+            options: vec![
+                crate::option::OptionDef::flag("long", "Show help on all commands.").into(),
+            ],
+            ..CommandSpec::new("help")
+        }
+    }
+
+    fn run(
+        &self,
+        ctx: &mut dyn CommandContext,
+        opts: &crate::option::ParsedOptions,
+        args: &crate::command::MatchedArgs,
+    ) -> Result<i32, CommandError> {
+        let topic = match args.scalar("topic") {
+            None if opts.flag("long") => Some("commands"),
+            topic => topic,
+        };
+        let text = Python::attach(|py| crate::pyhelp::help_text(py, topic))?;
+        write!(ctx.out(), "{text}")?;
+        Ok(0)
+    }
+}
+
+crate::declare_command!(CmdHelp);
+
 /// The hidden ``assert-fail`` command, which exists to exercise the
 /// internal-error bug report: it fails with an ``AssertionError``, reported as
 /// a bug with exit code 4.

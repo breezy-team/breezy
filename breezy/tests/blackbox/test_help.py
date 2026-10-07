@@ -104,6 +104,12 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertEqual(dash_help, qmark_long)
         self.assertEqual(dash_help, qmark_cmds)
 
+    def test_help_long_fresh_process(self):
+        # The "commands" topic is registered by breezy.help, which a fresh
+        # process has not necessarily imported yet.
+        out, _err = self.run_brz_subprocess("help --long")
+        self.assertContainsRe(out, b"\ncommit +")
+
     def test_help_width_zero(self):
         self.overrideEnv("BRZ_COLUMNS", "0")
         self.run_bzr("help commands")
