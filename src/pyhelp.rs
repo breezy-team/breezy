@@ -188,6 +188,8 @@ impl HelpIndex for ConfigOptionIndex<'_> {
 /// Render the help for `topic` over the standard search path: topics,
 /// commands, plugins, then configuration options.
 pub fn help_text(py: Python<'_>, topic: Option<&str>) -> PyResult<String> {
+    // breezy.help registers the "commands" and "hidden-commands" topics.
+    py.import("breezy.help")?;
     let topics = crate::help::TopicIndex;
     let commands = CommandIndex::new(py);
     let plugins = PluginIndex::new(py);
