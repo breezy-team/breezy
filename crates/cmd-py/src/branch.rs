@@ -74,6 +74,29 @@ impl Branch {
         Branch(Box::new(PyBranch::new(branch)))
     }
 
+    /// Open the branch rooted at a location.
+    ///
+    /// A ``,branch=NAME`` segment parameter on the location selects a
+    /// colocated branch by name.
+    ///
+    /// Args:
+    ///     location: The URL or local path of the branch.
+    ///
+    /// Returns:
+    ///     The branch. A branch backed by a Python branch object is returned
+    ///     as that object.
+    ///
+    /// Raises:
+    ///     NotBranchError: If there is no branch at the location.
+    ///     UnknownFormatError: If the control directory format is not
+    ///         recognised.
+    #[staticmethod]
+    fn open(location: &str) -> PyResult<Self> {
+        Ok(Branch(
+            breezy::controldir::open(location)?.open_branch(None)?,
+        ))
+    }
+
     /// The name of this branch, or the empty string for the default branch.
     #[getter]
     fn name(&self) -> PyResult<String> {

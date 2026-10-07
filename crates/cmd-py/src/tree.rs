@@ -1332,6 +1332,26 @@ impl WorkingTree {
             .add_subclass(WorkingTree)
     }
 
+    /// Open the working tree at ``location``.
+    ///
+    /// Args:
+    ///     location: A path or URL.
+    ///
+    /// Returns:
+    ///     The working tree.
+    ///
+    /// Raises:
+    ///     NotBranchError: If there is no control directory at ``location``.
+    ///     NoWorkingTree: If the control directory has no working tree.
+    #[staticmethod]
+    fn open(py: Python<'_>, location: &str) -> PyResult<Py<Self>> {
+        let tree = breezy::workingtree::open(location)?;
+        let init = PyClassInitializer::from(Tree(AnyTree::Working(tree)))
+            .add_subclass(MutableTree)
+            .add_subclass(WorkingTree);
+        Py::new(py, init)
+    }
+
     /// Return True if this tree can store merge-modified hashes.
     fn supports_merge_modified(self_: PyRef<'_, Self>) -> PyResult<bool> {
         base(&self_)?.supports_merge_modified().map_err(err_to_py)
