@@ -16,7 +16,7 @@
 
 """Helper functions for proposing merges."""
 
-from . import errors, hooks, registry, urlutils
+from . import errors, hooks, registry, trace, urlutils
 
 
 class AutoMergeUnavailable(errors.BzrError):
@@ -607,7 +607,10 @@ def iter_forge_instances(forge: type[Forge] | None = None):
     else:
         forge_clses = [forge]
     for forge_cls in forge_clses:
-        yield from forge_cls.iter_instances()
+        try:
+            yield from forge_cls.iter_instances()
+        except errors.DependencyNotPresent as e:
+            trace.mutter("skipping forge %r: %s", forge_cls, e)
 
 
 def get_proposal_by_url(url):
