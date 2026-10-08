@@ -16,8 +16,8 @@
 
 import os
 
+from .. import errors, registry, tests, urlutils
 from .. import forge as _mod_forge
-from .. import registry, tests, urlutils
 from ..forge import (
     Forge,
     MergeProposal,
@@ -25,6 +25,7 @@ from ..forge import (
     determine_title,
     get_forge,
     get_proposal_by_url,
+    iter_forge_instances,
 )
 
 
@@ -141,3 +142,38 @@ And here are some more details.
 """
             ),
         )
+
+
+class MissingDependencyForge(Forge):
+    """Forge that reports its dependency is not installed."""
+
+    @classmethod
+    def iter_instances(cls):
+        raise errors.DependencyNotPresent("somelib", "not installed")
+
+
+class OtherErrorForge(Forge):
+    """Forge that raises an error of another kind while listing its instances."""
+
+    @classmethod
+    def iter_instances(cls):
+        raise errors.BzrError("not a missing dependency")
+
+
+class IterForgeInstancesTests(tests.TestCase):
+    """A forge with a missing dependency must not hide the ones after it."""
+
+    def setUp(self):
+        super().setUp()
+        self.overrideAttr(_mod_forge, "forges", registry.Registry())
+        # "broken" sorts before "sample", so it is always reached first.
+        _mod_forge.forges.register("sample", SampleForge)
+
+    def test_skips_forge_with_missing_dependency(self):
+        _mod_forge.forges.register("broken", MissingDependencyForge)
+        self.assertEqual([SampleForge], [type(i) for i in iter_forge_instances()])
+        self.assertContainsRe(self.get_log(), "skipping forge .*not installed")
+
+    def test_does_not_hide_other_errors(self):
+        _mod_forge.forges.register("broken", OtherErrorForge)
+        self.assertRaises(errors.BzrError, list, iter_forge_instances())
