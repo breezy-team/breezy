@@ -40,6 +40,7 @@ pub(crate) fn err_to_py(err: Error) -> PyErr {
             Python::attach(|py| breezy::pyerrors::unsupported_operation(py, &msg))
         }
         Error::Other(msg) => PyRuntimeError::new_err(msg),
+        Error::Python(e) => e,
     }
 }
 
@@ -72,15 +73,6 @@ impl AnyTree {
             AnyTree::Mutable(t) => t.as_ref(),
             AnyTree::Working(t) => t.as_ref(),
             AnyTree::Revision(t) => t.as_ref(),
-        }
-    }
-
-    fn as_tree_mut(&mut self) -> &mut (dyn breezy::tree::Tree + Send + Sync) {
-        match self {
-            AnyTree::Tree(t) => t.as_mut(),
-            AnyTree::Mutable(t) => t.as_mut(),
-            AnyTree::Working(t) => t.as_mut(),
-            AnyTree::Revision(t) => t.as_mut(),
         }
     }
 
@@ -157,10 +149,6 @@ impl Tree {
 
     fn tree(&self) -> &(dyn breezy::tree::Tree + Send + Sync) {
         self.0.as_tree()
-    }
-
-    fn tree_mut(&mut self) -> &mut (dyn breezy::tree::Tree + Send + Sync) {
-        self.0.as_tree_mut()
     }
 }
 
@@ -815,13 +803,20 @@ impl Tree {
     /// Returns:
     ///     A ``breezy.lock.LogicalLockResult``, which can be used as a context
     ///     manager to release the lock.
-    fn lock_read(&self) -> PyResult<Py<PyAny>> {
-        self.tree().lock_read().map_err(err_to_py)
+    fn lock_read(slf: &Bound<'_, Self>) -> PyResult<Py<PyAny>> {
+        let lock = slf.borrow().tree().lock_read()?;
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.lock", "LogicalLockResult"),
+            None,
+        )
     }
 
     /// Release one lock held on this tree.
-    fn unlock(&mut self) -> PyResult<()> {
-        self.tree_mut().unlock().map_err(PyRuntimeError::new_err)
+    fn unlock(&self) -> PyResult<()> {
+        Ok(self.tree().unlock()?)
     }
 
     /// Return a revision tree for ``revision_id`` from data the tree has
@@ -1118,14 +1113,21 @@ impl MutableTree {
     /// Returns:
     ///     A ``breezy.lock.LogicalLockResult``, which can be used as a context
     ///     manager to release the lock.
-    fn lock_tree_write(mut self_: PyRefMut<'_, Self>) -> PyResult<()> {
-        self_
+    fn lock_tree_write(slf: &Bound<'_, Self>) -> PyResult<Py<PyAny>> {
+        let lock = slf
+            .borrow()
             .as_super()
             .0
-            .as_mutable_mut()
+            .as_mutable()
             .ok_or_else(|| wrong_level("MutableTree"))?
-            .lock_tree_write()
-            .map_err(PyRuntimeError::new_err)
+            .lock_tree_write()?;
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.lock", "LogicalLockResult"),
+            None,
+        )
     }
 
     /// Lock the tree and its branch for writing.
@@ -1133,14 +1135,21 @@ impl MutableTree {
     /// Returns:
     ///     A ``breezy.lock.LogicalLockResult``, which can be used as a context
     ///     manager to release the lock.
-    fn lock_write(mut self_: PyRefMut<'_, Self>) -> PyResult<Py<PyAny>> {
-        self_
+    fn lock_write(slf: &Bound<'_, Self>) -> PyResult<Py<PyAny>> {
+        let lock = slf
+            .borrow()
             .as_super()
             .0
-            .as_mutable_mut()
+            .as_mutable()
             .ok_or_else(|| wrong_level("MutableTree"))?
-            .lock_write()
-            .map_err(err_to_py)
+            .lock_write()?;
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.lock", "LogicalLockResult"),
+            None,
+        )
     }
 
     /// Create a directory in the tree and version it.
@@ -1616,8 +1625,8 @@ impl WorkingTree {
     /// The user is asked for confirmation through the UI factory if the lock
     /// may belong to an active process. The lock on the repository is checked
     /// as well.
-    fn break_lock(mut self_: PyRefMut<'_, Self>) -> PyResult<()> {
-        base_mut(&mut self_)?.break_lock().map_err(err_to_py)
+    fn break_lock(self_: PyRef<'_, Self>) -> PyResult<()> {
+        Ok(base(&self_)?.break_lock()?)
     }
 
     /// Duplicate this working tree into another control directory.
@@ -1923,8 +1932,8 @@ impl WorkingTree {
     }
 
     /// Return True if the tree's lock on disk is held, by anyone.
-    fn get_physical_lock_status(self_: PyRef<'_, Self>) -> PyResult<Py<PyAny>> {
-        base(&self_)?.get_physical_lock_status().map_err(err_to_py)
+    fn get_physical_lock_status(self_: PyRef<'_, Self>) -> PyResult<bool> {
+        Ok(base(&self_)?.get_physical_lock_status()?)
     }
 
     /// Set the last revision of this working tree.

@@ -1,6 +1,5 @@
 use crate::repository::{Error, PyObject, Repository};
 use bazaar::RevisionId;
-use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use std::collections::HashMap;
@@ -24,24 +23,11 @@ impl PyRepository {
     }
 }
 
-import_exception!(breezy.errors, NoSuchRevision);
-import_exception!(breezy.errors, UnsupportedOperation);
-
-fn map_err(py: Python<'_>, err: PyErr) -> Error {
-    if err.is_instance_of::<NoSuchRevision>(py) {
-        let revid = err
-            .value(py)
-            .getattr("revision")
-            .and_then(|r| r.extract::<RevisionId>());
-        match revid {
-            Ok(revid) => Error::NoSuchRevision(revid),
-            Err(_) => Error::Other(err.to_string()),
-        }
-    } else if err.is_instance_of::<UnsupportedOperation>(py) {
-        Error::UnsupportedOperation(err.to_string())
-    } else {
-        Error::Other(err.to_string())
-    }
+/// Python exceptions are kept as they are, so they reach Python again with
+/// all their arguments; [`Error::is_no_such_revision`] recognises the one
+/// Rust code handles.
+fn map_err(_py: Python<'_>, err: PyErr) -> Error {
+    Error::Python(err)
 }
 
 fn call0(obj: &Py<PyAny>, name: &str) -> Result<PyObject, Error> {
@@ -239,8 +225,8 @@ impl Repository for PyRepository {
         getattr_obj(&self.0, "control_transport")
     }
 
-    fn break_lock(&mut self) -> Result<(), Error> {
-        call0(&self.0, "break_lock").map(|_| ())
+    fn break_lock(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "break_lock")
     }
 
     fn is_locked(&self) -> Result<bool, Error> {
@@ -251,34 +237,31 @@ impl Repository for PyRepository {
         call0_extract(&self.0, "is_write_locked")
     }
 
-    fn lock_write(&mut self, token: Option<&str>) -> Result<PyObject, Error> {
-        Python::attach(|py| {
-            self.0
-                .bind(py)
-                .call_method1("lock_write", (token,))
-                .map(|r| r.unbind())
-                .map_err(|e| map_err(py, e))
-        })
+    fn lock_write(
+        &self,
+        token: Option<&[u8]>,
+    ) -> Result<crate::lock::WriteLockRef, crate::lock::Error> {
+        crate::pylock::lock_write_with_token(&self.0, token)
     }
 
-    fn lock_read(&self) -> Result<PyObject, Error> {
-        call0(&self.0, "lock_read")
+    fn lock_read(&self) -> Result<crate::lock::ReadLockRef, crate::lock::Error> {
+        crate::pylock::lock_read(&self.0)
     }
 
-    fn unlock(&mut self) -> Result<(), Error> {
-        call0(&self.0, "unlock").map(|_| ())
+    fn unlock(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "unlock")
     }
 
-    fn get_physical_lock_status(&self) -> Result<PyObject, Error> {
-        call0(&self.0, "get_physical_lock_status")
+    fn get_physical_lock_status(&self) -> Result<bool, crate::lock::Error> {
+        crate::pylock::get_physical_lock_status(&self.0)
     }
 
-    fn leave_lock_in_place(&mut self) -> Result<(), Error> {
-        call0(&self.0, "leave_lock_in_place").map(|_| ())
+    fn leave_lock_in_place(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "leave_lock_in_place")
     }
 
-    fn dont_leave_lock_in_place(&mut self) -> Result<(), Error> {
-        call0(&self.0, "dont_leave_lock_in_place").map(|_| ())
+    fn dont_leave_lock_in_place(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "dont_leave_lock_in_place")
     }
 
     fn has_same_location(&self, other: &PyObject) -> Result<bool, Error> {

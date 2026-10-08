@@ -34,11 +34,13 @@ impl<T: MutableTree> TreeBuilder<T> {
     /// # Panics
     ///
     /// Panics if the builder already has a tree.
-    pub fn start_tree(&mut self, mut tree: T) {
+    pub fn start_tree(&mut self, tree: T) {
         if self.tree.is_some() {
             panic!("TreeBuilder already has a tree");
         }
-        tree.lock_tree_write().expect("lock_tree_write");
+        // Released by `finish_tree` through the tree, as Python's builder
+        // does.
+        tree.lock_tree_write().expect("lock_tree_write").detach();
         self.tree = Some(tree);
         self.root_done = false;
     }
@@ -56,7 +58,7 @@ impl<T: MutableTree> TreeBuilder<T> {
     ///
     /// Panics if the builder does not have a tree.
     pub fn finish_tree(&mut self) -> T {
-        let mut tree = if let Some(tree) = self.tree.take() {
+        let tree = if let Some(tree) = self.tree.take() {
             tree
         } else {
             panic!("TreeBuilder does not have a tree");

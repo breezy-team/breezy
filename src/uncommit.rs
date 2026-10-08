@@ -19,8 +19,8 @@ pub fn remove_tags<B: Branch>(
     old_tip: RevisionId,
     parents: &[RevisionId],
 ) -> std::result::Result<Vec<String>, crate::tags::Error> {
-    let mut tags = branch.tags();
-    let reverse_tags = tags.get_reverse_tag_dict();
+    let mut tags = branch.tags()?;
+    let reverse_tags = tags.get_reverse_tag_dict()?;
 
     let ancestors = graph.find_unique_ancestors(old_tip, parents);
     let mut removed_tags = Vec::new();

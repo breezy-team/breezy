@@ -22,13 +22,15 @@ behind the trait object, so calls made here travel Python -> Rust -> Python.
 The class hierarchy mirrors the trait hierarchy.
 """
 
+import os
+
 from dromedary.errors import NoSuchFile
 
 from breezy import _cmd_rs
-from breezy.branch import Branch
+from breezy.branch import Branch, PullResult
 from breezy.errors import NoRepositoryPresent
 from breezy.repository import Repository
-from breezy.tests import TestCaseWithTransport
+from breezy.tests import TestCase, TestCaseWithTransport, features
 from breezy.workingtree import WorkingTree
 
 
@@ -335,3 +337,87 @@ class TestRustControlDir(TestCaseWithTransport):
         self.assertIs(
             ControlDirFormat.get_default_format(), _cmd_rs.get_default_format()
         )
+
+
+class Boom(Exception):
+    """Raised by every attribute of ``RaisingObject``."""
+
+
+class RaisingObject:
+    """A stand-in for a breezy object whose every attribute raises Boom."""
+
+    def __getattr__(self, name):
+        raise Boom(name)
+
+
+class TestPythonErrorsPropagate(TestCase):
+    """Errors from the wrapped Python object reach the caller unchanged."""
+
+    def test_branch(self):
+        branch = _cmd_rs.Branch(RaisingObject())
+        for name in (
+            "last_revision",
+            "is_locked",
+            "peek_lock_mode",
+            "supports_tags",
+            "get_tag_dict",
+        ):
+            self.assertRaises(Boom, getattr(branch, name))
+        self.assertRaises(Boom, getattr, branch, "name")
+
+    def test_repository(self):
+        repository = _cmd_rs.Repository(RaisingObject())
+        for name in (
+            "is_locked",
+            "is_write_locked",
+            "supports_rich_root",
+            "is_in_write_group",
+        ):
+            self.assertRaises(Boom, getattr(repository, name))
+        self.assertRaises(Boom, repository.has_same_location, RaisingObject())
+
+
+class TestPythonResultTypes(TestCaseWithTransport):
+    """Results the Python trees give are converted, not rejected."""
+
+    def make_tree(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/dir/", "tree/file"])
+        tree.add(["dir", "file"])
+        return tree
+
+    def test_path_content_summary_sha1(self):
+        tree = self.make_tree()
+        rtree = tree.branch.repository.revision_tree(tree.commit("one"))
+        with rtree.lock_read():
+            expected = rtree.path_content_summary("file")
+            self.assertIsInstance(expected[3], bytes)
+            self.assertEqual(expected, _cmd_rs.Tree(rtree).path_content_summary("file"))
+
+    def test_path_content_summary_symlink(self):
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
+        tree = self.make_tree()
+        os.symlink("file", "tree/link")
+        tree.add(["link"])
+        with tree.lock_read():
+            self.assertEqual(
+                tree.path_content_summary("link"),
+                _cmd_rs.WorkingTree(tree).path_content_summary("link"),
+            )
+
+    def test_get_file_size_of_directory(self):
+        tree = self.make_tree()
+        rtree = tree.branch.repository.revision_tree(tree.commit("one"))
+        with rtree.lock_read():
+            self.assertIs(None, rtree.get_file_size("dir"))
+            self.assertIs(None, _cmd_rs.Tree(rtree).get_file_size("dir"))
+
+    def test_pull_returns_pull_result(self):
+        tree = self.make_tree()
+        tree.commit("one")
+        other = tree.controldir.sprout("other").open_workingtree()
+        tip = tree.commit("two")
+        with other.lock_write():
+            result = _cmd_rs.WorkingTree(other).pull(tree.branch)
+        self.assertIsInstance(result, PullResult)
+        self.assertEqual(tip, other.last_revision())

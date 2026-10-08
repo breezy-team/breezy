@@ -35,6 +35,10 @@ pub enum Error {
     UnsupportedOperation(String),
     /// A generic error occurred.
     Other(String),
+    /// A Python exception raised by a Python-backed tree, carried as is so
+    /// it reaches Python again with its type intact.
+    #[cfg(feature = "pyo3")]
+    Python(pyo3::PyErr),
 }
 
 impl std::fmt::Display for Error {
@@ -46,6 +50,8 @@ impl std::fmt::Display for Error {
             Error::NoSuchRevision(revid) => write!(f, "No such revision: {}", revid),
             Error::UnsupportedOperation(msg) => write!(f, "Unsupported operation: {}", msg),
             Error::Other(msg) => write!(f, "{}", msg),
+            #[cfg(feature = "pyo3")]
+            Error::Python(e) => write!(f, "{e}"),
         }
     }
 }
@@ -332,9 +338,7 @@ pub trait Tree {
     ) -> Result<PyObject, Error>;
 
     /// Lock the tree for reading.
-    ///
-    /// Returns a Python `LogicalLockResult` whose `unlock` releases the lock.
-    fn lock_read(&self) -> Result<PyObject, Error>;
+    fn lock_read(&self) -> Result<crate::lock::ReadLockRef, crate::lock::Error>;
 
     /// Obtain a cached revision tree for `revision_id`.
     ///
@@ -344,8 +348,8 @@ pub trait Tree {
     /// Return the paths of unknown (unversioned, non-ignored) files.
     fn unknowns(&self) -> Result<Vec<String>, Error>;
 
-    /// Unlock the tree, allowing other processes to modify it.
-    fn unlock(&mut self) -> Result<(), String>;
+    /// Release one lock on the tree.
+    fn unlock(&self) -> Result<(), crate::lock::Error>;
 
     /// Return the subset of `paths` that are not versioned.
     fn filter_unversioned_files(&self, paths: &[&str]) -> Result<Vec<String>, Error> {
@@ -469,12 +473,10 @@ pub trait MutableTree: Tree {
     /// tree. Taking out branch write locks is a relatively expensive process
     /// and may fail if the branch is on read-only media, so branch write locks
     /// should only be taken out when modifying branch data.
-    fn lock_tree_write(&mut self) -> Result<(), String>;
+    fn lock_tree_write(&self) -> Result<crate::lock::WriteLockRef, crate::lock::Error>;
 
     /// Lock the tree and its branch to allow mutating calls.
-    ///
-    /// Returns a Python `LogicalLockResult`.
-    fn lock_write(&mut self) -> Result<PyObject, Error>;
+    fn lock_write(&self) -> Result<crate::lock::WriteLockRef, crate::lock::Error>;
 
     /// Create a directory in the tree.
     ///
@@ -620,7 +622,7 @@ pub trait WorkingTree: MutableTree {
     fn last_revision(&self) -> Result<RevisionId, Error>;
 
     /// Break a lock held by another instance.
-    fn break_lock(&mut self) -> Result<(), Error>;
+    fn break_lock(&self) -> Result<(), crate::lock::Error>;
 
     /// Duplicate this working tree into another control directory.
     fn clone(
@@ -721,10 +723,8 @@ pub trait WorkingTree: MutableTree {
     /// Whether this tree is locked.
     fn is_locked(&self) -> Result<bool, Error>;
 
-    /// Return the physical lock status.
-    ///
-    /// Returns a Python object describing the lock status.
-    fn get_physical_lock_status(&self) -> Result<PyObject, Error>;
+    /// Whether the physical lock is held, by anyone.
+    fn get_physical_lock_status(&self) -> Result<bool, crate::lock::Error>;
 
     /// Change the last revision recorded in the working tree.
     fn set_last_revision(&mut self, new_revision: &RevisionId) -> Result<(), Error>;
@@ -815,4 +815,15 @@ pub trait WorkingTree: MutableTree {
 
     /// Set the tree reference info for `tree_path`.
     fn set_reference_info(&mut self, tree_path: &str, branch_location: &str) -> Result<(), Error>;
+}
+
+impl From<crate::lock::Error> for Error {
+    fn from(err: crate::lock::Error) -> Self {
+        match err {
+            crate::lock::Error::UnsupportedOperation(msg) => Error::UnsupportedOperation(msg),
+            #[cfg(feature = "pyo3")]
+            crate::lock::Error::Python(e) => Error::Python(e),
+            other => Error::Other(other.to_string()),
+        }
+    }
 }

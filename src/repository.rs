@@ -24,11 +24,33 @@ pub enum Error {
     UnsupportedOperation(String),
     /// A generic error occurred.
     Other(String),
+    /// A Python exception raised by a Python-backed implementation, kept so
+    /// it reaches Python again with its type.
+    #[cfg(feature = "pyo3")]
+    Python(pyo3::PyErr),
+}
+
+#[cfg(feature = "pyo3")]
+pyo3::import_exception!(breezy.errors, NoSuchRevision);
+
+impl Error {
+    /// Whether the revision asked for does not exist, as Rust's
+    /// [`Error::NoSuchRevision`] or Python's ``NoSuchRevision``.
+    pub fn is_no_such_revision(&self) -> bool {
+        match self {
+            Error::NoSuchRevision(_) => true,
+            #[cfg(feature = "pyo3")]
+            Error::Python(e) => pyo3::Python::attach(|py| e.is_instance_of::<NoSuchRevision>(py)),
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            #[cfg(feature = "pyo3")]
+            Error::Python(e) => write!(f, "{e}"),
             Error::NoSuchRevision(revid) => write!(f, "No such revision: {}", revid),
             Error::UnsupportedOperation(msg) => write!(f, "Unsupported operation: {}", msg),
             Error::Other(msg) => write!(f, "{}", msg),
@@ -94,7 +116,7 @@ pub trait Repository {
     // Locking
 
     /// Break a lock held by another instance.
-    fn break_lock(&mut self) -> Result<(), Error>;
+    fn break_lock(&self) -> Result<(), crate::lock::Error>;
 
     /// Whether the repository is locked.
     fn is_locked(&self) -> Result<bool, Error>;
@@ -102,29 +124,27 @@ pub trait Repository {
     /// Whether the repository is write-locked.
     fn is_write_locked(&self) -> Result<bool, Error>;
 
-    /// Lock the repository for writing.
-    ///
-    /// Returns a Python `RepositoryWriteLockResult`.
-    fn lock_write(&mut self, token: Option<&str>) -> Result<PyObject, Error>;
+    /// Lock the repository for writing; with `token`, take over the
+    /// physical lock it names.
+    fn lock_write(
+        &self,
+        token: Option<&[u8]>,
+    ) -> Result<crate::lock::WriteLockRef, crate::lock::Error>;
 
     /// Lock the repository for reading.
-    ///
-    /// Returns a Python `LogicalLockResult`.
-    fn lock_read(&self) -> Result<PyObject, Error>;
+    fn lock_read(&self) -> Result<crate::lock::ReadLockRef, crate::lock::Error>;
 
-    /// Release the lock.
-    fn unlock(&mut self) -> Result<(), Error>;
+    /// Release one lock on the repository.
+    fn unlock(&self) -> Result<(), crate::lock::Error>;
 
-    /// Return the physical lock status.
-    ///
-    /// Returns a Python object describing the lock status.
-    fn get_physical_lock_status(&self) -> Result<PyObject, Error>;
+    /// Whether the physical lock is held, by anyone.
+    fn get_physical_lock_status(&self) -> Result<bool, crate::lock::Error>;
 
     /// Keep the physical lock in place on unlock.
-    fn leave_lock_in_place(&mut self) -> Result<(), Error>;
+    fn leave_lock_in_place(&self) -> Result<(), crate::lock::Error>;
 
     /// Release the physical lock on unlock.
-    fn dont_leave_lock_in_place(&mut self) -> Result<(), Error>;
+    fn dont_leave_lock_in_place(&self) -> Result<(), crate::lock::Error>;
 
     // Location and identity
 
@@ -427,4 +447,15 @@ pub fn create(
     controldir: &dyn crate::controldir::ControlDir,
 ) -> Result<crate::controldir::RepositoryRef, crate::controldir::Error> {
     controldir.create_repository(false)
+}
+
+impl From<crate::lock::Error> for Error {
+    fn from(err: crate::lock::Error) -> Self {
+        match err {
+            crate::lock::Error::UnsupportedOperation(msg) => Error::UnsupportedOperation(msg),
+            #[cfg(feature = "pyo3")]
+            crate::lock::Error::Python(e) => Error::Python(e),
+            other => Error::Other(other.to_string()),
+        }
+    }
 }

@@ -519,6 +519,7 @@ mod commands;
 mod controldir;
 mod email_message;
 mod help;
+mod lock;
 mod native;
 mod optparse;
 mod registry;
@@ -699,10 +700,7 @@ fn remove_tags(
         old_tip,
         parents.as_slice(),
     )
-    .map_err(|e| match e {
-        breezy::tags::Error::NoSuchTag(n) => NoSuchTag::new_err(n),
-        breezy::tags::Error::TagAlreadyExists(n) => TagAlreadyExists::new_err(n),
-    })
+    .map_err(branch::tags_err_to_py)
 }
 
 #[pyfunction]

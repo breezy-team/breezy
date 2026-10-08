@@ -158,6 +158,8 @@ impl From<crate::branch::Error> for Error {
     fn from(err: crate::branch::Error) -> Self {
         match err {
             crate::branch::Error::UnsupportedOperation(msg) => Error::UnsupportedOperation(msg),
+            #[cfg(feature = "pyo3")]
+            crate::branch::Error::Python(e) => Error::Python(e),
             other => Error::Other(other.to_string()),
         }
     }
@@ -167,6 +169,8 @@ impl From<crate::repository::Error> for Error {
     fn from(err: crate::repository::Error) -> Self {
         match err {
             crate::repository::Error::UnsupportedOperation(msg) => Error::UnsupportedOperation(msg),
+            #[cfg(feature = "pyo3")]
+            crate::repository::Error::Python(e) => Error::Python(e),
             other => Error::Other(other.to_string()),
         }
     }

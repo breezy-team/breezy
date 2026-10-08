@@ -21,6 +21,7 @@ import_exception!(breezy.errors, NoSuchRevision);
 /// Python; since a native repository has no Python object, `None` is passed.
 fn err_to_py(err: Error) -> PyErr {
     Python::attach(|py| match err {
+        breezy::repository::Error::Python(e) => e,
         Error::NoSuchRevision(revid) => {
             NoSuchRevision::new_err((py.None(), revid.as_bytes().to_vec()))
         }
@@ -293,8 +294,8 @@ impl Repository {
     ///
     /// The UI factory is used to ask for confirmation if the lock may be held
     /// by an active process.
-    fn break_lock(&mut self) -> PyResult<()> {
-        self.0.break_lock().map_err(err_to_py)
+    fn break_lock(&self) -> PyResult<()> {
+        Ok(self.0.break_lock()?)
     }
 
     /// Return True if the repository is locked.
@@ -327,8 +328,16 @@ impl Repository {
     ///         not support lock tokens.
     ///     TokenMismatch: If the token does not match the existing lock.
     #[pyo3(signature = (token=None))]
-    fn lock_write(&mut self, token: Option<&str>) -> PyResult<Py<PyAny>> {
-        self.0.lock_write(token).map_err(err_to_py)
+    fn lock_write(slf: &Bound<'_, Self>, token: Option<Vec<u8>>) -> PyResult<Py<PyAny>> {
+        let lock = slf.borrow().0.lock_write(token.as_deref())?;
+        let token = lock.token().map(<[u8]>::to_vec);
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.repository", "RepositoryWriteLockResult"),
+            Some(token.as_deref()),
+        )
     }
 
     /// Lock the repository for reading.
@@ -338,8 +347,15 @@ impl Repository {
     /// Returns:
     ///     A ``LogicalLockResult`` whose ``unlock`` method releases the lock;
     ///     it can be used as a context manager.
-    fn lock_read(&self) -> PyResult<Py<PyAny>> {
-        self.0.lock_read().map_err(err_to_py)
+    fn lock_read(slf: &Bound<'_, Self>) -> PyResult<Py<PyAny>> {
+        let lock = slf.borrow().0.lock_read()?;
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.lock", "LogicalLockResult"),
+            None,
+        )
     }
 
     /// Release one lock on the repository.
@@ -347,28 +363,28 @@ impl Repository {
     /// Raises:
     ///     BzrError: If a write group is still open when the last write lock
     ///         is released; the write group is aborted.
-    fn unlock(&mut self) -> PyResult<()> {
-        self.0.unlock().map_err(err_to_py)
+    fn unlock(&self) -> PyResult<()> {
+        Ok(self.0.unlock()?)
     }
 
     /// Return True if the physical lock is held, by this or any other process.
-    fn get_physical_lock_status(&self) -> PyResult<Py<PyAny>> {
-        self.0.get_physical_lock_status().map_err(err_to_py)
+    fn get_physical_lock_status(&self) -> PyResult<bool> {
+        Ok(self.0.get_physical_lock_status()?)
     }
 
     /// Keep the physical lock when this object is unlocked.
     ///
     /// Only supported by formats whose ``lock_write`` returns a token.
-    fn leave_lock_in_place(&mut self) -> PyResult<()> {
-        self.0.leave_lock_in_place().map_err(err_to_py)
+    fn leave_lock_in_place(&self) -> PyResult<()> {
+        Ok(self.0.leave_lock_in_place()?)
     }
 
     /// Release the physical lock when this object is unlocked.
     ///
     /// This applies even if this object did not originally take the lock. Only
     /// supported by formats whose ``lock_write`` returns a token.
-    fn dont_leave_lock_in_place(&mut self) -> PyResult<()> {
-        self.0.dont_leave_lock_in_place().map_err(err_to_py)
+    fn dont_leave_lock_in_place(&self) -> PyResult<()> {
+        Ok(self.0.dont_leave_lock_in_place()?)
     }
 
     /// Return True if ``other`` is a repository at the same location.

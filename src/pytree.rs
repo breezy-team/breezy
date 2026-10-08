@@ -635,8 +635,8 @@ impl Tree for PyTree {
         })
     }
 
-    fn lock_read(&self) -> Result<PyObject, Error> {
-        call0(&self.0, "lock_read")
+    fn lock_read(&self) -> Result<crate::lock::ReadLockRef, crate::lock::Error> {
+        crate::pylock::lock_read(&self.0)
     }
 
     fn revision_tree(&self, revision_id: &RevisionId) -> Result<PyObject, Error> {
@@ -660,14 +660,8 @@ impl Tree for PyTree {
         })
     }
 
-    fn unlock(&mut self) -> Result<(), String> {
-        Python::attach(|py| {
-            self.0
-                .bind(py)
-                .call_method0("unlock")
-                .map_err(|e| e.to_string())
-                .map(|_| ())
-        })
+    fn unlock(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "unlock")
     }
 
     /// Python returns a set, so the paths are collected rather than
@@ -829,18 +823,12 @@ impl MutableTree for PyTree {
         })
     }
 
-    fn lock_tree_write(&mut self) -> Result<(), String> {
-        Python::attach(|py| {
-            self.0
-                .bind(py)
-                .call_method0("lock_tree_write")
-                .map_err(|e| e.to_string())
-                .map(|_| ())
-        })
+    fn lock_tree_write(&self) -> Result<crate::lock::WriteLockRef, crate::lock::Error> {
+        crate::pylock::lock_write(&self.0, "lock_tree_write")
     }
 
-    fn lock_write(&mut self) -> Result<PyObject, Error> {
-        call0(&self.0, "lock_write")
+    fn lock_write(&self) -> Result<crate::lock::WriteLockRef, crate::lock::Error> {
+        crate::pylock::lock_write(&self.0, "lock_write")
     }
 
     fn mkdir(&mut self, path: &str) -> Result<Option<FileId>, Error> {
@@ -1090,8 +1078,8 @@ impl WorkingTree for PyTree {
         call1_extract(&self.0, "last_revision", ())
     }
 
-    fn break_lock(&mut self) -> Result<(), Error> {
-        call0(&self.0, "break_lock").map(|_| ())
+    fn break_lock(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "break_lock")
     }
 
     fn clone(
@@ -1317,8 +1305,8 @@ impl WorkingTree for PyTree {
         call0_bool(&self.0, "is_locked")
     }
 
-    fn get_physical_lock_status(&self) -> Result<PyObject, Error> {
-        call0(&self.0, "get_physical_lock_status")
+    fn get_physical_lock_status(&self) -> Result<bool, crate::lock::Error> {
+        crate::pylock::get_physical_lock_status(&self.0)
     }
 
     fn set_last_revision(&mut self, new_revision: &RevisionId) -> Result<(), Error> {

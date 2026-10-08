@@ -138,6 +138,21 @@ impl From<crate::controldir::Error> for CommandError {
     }
 }
 
+impl From<crate::lock::Error> for CommandError {
+    /// A lock error reaches Python as the matching breezy exception, so it
+    /// is reported like the Python commands report it.
+    fn from(err: crate::lock::Error) -> Self {
+        #[cfg(feature = "pyo3")]
+        {
+            CommandError::Python(err.into())
+        }
+        #[cfg(not(feature = "pyo3"))]
+        {
+            CommandError::User(err.to_string())
+        }
+    }
+}
+
 impl From<std::io::Error> for CommandError {
     /// An I/O failure while running a command surfaces as a user error (exit 3),
     /// matching the ``EnvironmentError`` branch of ``trace.report_exception``; a
