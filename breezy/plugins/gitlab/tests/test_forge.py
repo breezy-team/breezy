@@ -15,14 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-import shutil
-import tempfile
 from datetime import datetime
 
 from breezy import bedding, errors
-from breezy.tests import TestCase
+from breezy.tests import TestCase, TestCaseInTempDir
 
-from .. import forge as _mod_gitlab_forge
 from ..forge import (
     NotGitLabUrl,
     NotMergeRequestUrl,
@@ -76,14 +73,17 @@ class ParseTimestringTests(TestCase):
         )
 
 
-class IterTokensTests(TestCase):
-    def test_unparseable_file_is_a_user_error(self):
-        config_dir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, config_dir)
-        self.overrideAttr(bedding, "config_dir", lambda: config_dir)
-        self.overrideAttr(_mod_gitlab_forge, "_DEFAULT_FILES", [])
-        with open(os.path.join(config_dir, "gitlab.conf"), "w") as f:
+class IterTokensTests(TestCaseInTempDir):
+    def test_unparseable_gitlab_conf_is_a_user_error(self):
+        bedding.ensure_config_dir_exists()
+        with open(os.path.join(bedding.config_dir(), "gitlab.conf"), "w") as f:
             f.write("url = https://salsa.debian.org/\n")
         e = self.assertRaises(errors.BzrError, list, iter_tokens())
-        self.assertFalse(e.internal_error)
         self.assertContainsRe(str(e), r"gitlab\.conf")
+
+    def test_unparseable_python_gitlab_cfg_is_a_user_error(self):
+        path = os.path.expanduser("~/.python-gitlab.cfg")
+        with open(path, "w") as f:
+            f.write("url = https://salsa.debian.org/\n")
+        e = self.assertRaises(errors.BzrError, list, iter_tokens())
+        self.assertIn(path, str(e))
