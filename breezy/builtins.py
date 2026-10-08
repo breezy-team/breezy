@@ -8675,36 +8675,6 @@ class cmd_reference(Command):  # noqa: D101
             self.outf.write(f"{path} {location}\n")
 
 
-class cmd_export_pot(Command):  # noqa: D101
-    __doc__ = """Export command helps and error messages in po format."""
-
-    hidden = True
-    takes_options = [
-        Option(
-            "plugin",
-            help="Export help text from named command "
-            "(defaults to all built in commands).",
-            type=str,
-        ),
-        Option(
-            "include-duplicates",
-            help="Output multiple copies of the same msgid "
-            "string if it appears more than once.",
-        ),
-    ]
-
-    def run(self, plugin=None, include_duplicates=False):
-        """Execute the export-pot command.
-
-        Args:
-            plugin: Export help text from named command.
-            include_duplicates: Output multiple copies of the same msgid string.
-        """
-        from .export_pot import export_pot
-
-        export_pot(self.outf, plugin, include_duplicates)
-
-
 class cmd_import(Command):  # noqa: D101
     __doc__ = """Import sources from a directory, tarball or zip file
 

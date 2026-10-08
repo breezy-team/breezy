@@ -4173,7 +4173,6 @@ def _test_suite_testmod_names():
         "breezy.tests.test_errors",
         "breezy.tests.test_estimate_compressed_size",
         "breezy.tests.test_export",
-        "breezy.tests.test_export_pot",
         "breezy.tests.test_extract",
         "breezy.tests.test_features",
         "breezy.tests.test_fetch",

@@ -72,6 +72,9 @@ pub mod utextwrap;
 /// Output formatting for ``brz shell-complete``.
 pub mod shellcomplete;
 
+/// Output formatting for ``brz export-pot``.
+pub mod export_pot;
+
 /// Tree traits and types.
 pub mod tree;
 /// Tree builder utilities.
@@ -120,6 +123,10 @@ pub mod pyregistry;
 #[cfg(feature = "pyo3")]
 /// The help indexes that render live Python objects.
 pub mod pyhelp;
+
+#[cfg(feature = "pyo3")]
+/// Collecting the ``brz export-pot`` messages from live Python objects.
+pub mod pyexport_pot;
 
 #[cfg(feature = "pyo3")]
 /// Python bindings for hooks.
