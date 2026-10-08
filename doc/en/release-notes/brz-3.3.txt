@@ -17,6 +17,10 @@ brz 3.3.23
    not exist. ``NoSuchProject`` carried ``None`` instead.
    (Zainab Mehmut)
 
+ * propose: Keep walking the remaining forges in ``brz forges`` and
+   ``brz my-proposals`` when one of them cannot be reached. Each stopped
+   early on an error it did not expect before this. (Zainab Mehmut)
+
 brz 3.3.22
 ##########
 

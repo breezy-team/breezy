@@ -363,6 +363,8 @@ class cmd_my_merge_proposals(Command):
                         self.outf.write("\n")
             except _mod_forge.ForgeLoginRequired:
                 warning("Skipping %s, login required.", instance)
+            except errors.BzrError as e:
+                warning("Skipping %s: %s", instance, e)
 
 
 class cmd_land_merge_proposal(Command):
@@ -436,9 +438,20 @@ class cmd_forges(Command):
 
     def run(self):
         for instance in _mod_forge.iter_forge_instances():
-            current_user = instance.get_current_user()
+            try:
+                current_user = instance.get_current_user()
+                current_user_url = (
+                    None
+                    if current_user is None
+                    else instance.get_user_url(current_user)
+                )
+            except _mod_forge.ForgeLoginRequired:
+                warning("Skipping %s, login required.", instance)
+                continue
+            except errors.BzrError as e:
+                warning("Skipping %s: %s", instance, e)
+                continue
             if current_user is not None:
-                current_user_url = instance.get_user_url(current_user)
                 if current_user_url is not None:
                     self.outf.write(
                         gettext("%s (%s) - user: %s (%s)\n")
