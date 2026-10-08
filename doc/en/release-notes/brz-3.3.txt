@@ -40,6 +40,10 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * ``brz forges`` and ``brz my-merge-proposals`` now skip a forge whose
+   library is not installed, such as Launchpad without launchpadlib,
+   instead of failing. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
