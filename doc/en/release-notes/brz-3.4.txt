@@ -74,6 +74,10 @@ Bug Fixes
  * Hooks installed lazily for ``breezy.forge.MergeProposalBuilder.hooks``
    now reach it. (Jelmer Vernooĳ)
 
+ * ``brz forges`` and ``brz my-merge-proposals`` now skip a forge whose
+   library is not installed, such as Launchpad without launchpadlib,
+   instead of failing. (Zainab Mehmut)
+
 Documentation
 *************
 
