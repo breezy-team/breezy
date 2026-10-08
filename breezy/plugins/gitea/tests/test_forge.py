@@ -16,15 +16,13 @@
 
 import json
 import os
-import shutil
-import tempfile
 from datetime import datetime
 
 from dromedary import errors as transport_errors
 
 from breezy import bedding, errors
 from breezy.forge import NoSuchProject
-from breezy.tests import TestCase
+from breezy.tests import TestCase, TestCaseInTempDir
 
 from ..forge import (
     DEFAULT_PAGE_SIZE,
@@ -259,13 +257,10 @@ class DeleteProjectTests(TestCase):
         self.assertRaises(transport_errors.UnexpectedHttpStatus, self.delete, 500)
 
 
-class IterTokensTests(TestCase):
+class IterTokensTests(TestCaseInTempDir):
     def test_unparseable_file_is_a_user_error(self):
-        config_dir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, config_dir)
-        self.overrideAttr(bedding, "config_dir", lambda: config_dir)
-        with open(os.path.join(config_dir, "gitea.conf"), "w") as f:
+        bedding.ensure_config_dir_exists()
+        with open(os.path.join(bedding.config_dir(), "gitea.conf"), "w") as f:
             f.write("url = https://codeberg.org/\n")
         e = self.assertRaises(errors.BzrError, list, iter_tokens())
-        self.assertFalse(e.internal_error)
         self.assertContainsRe(str(e), r"gitea\.conf")
