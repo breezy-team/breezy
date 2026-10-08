@@ -16,7 +16,7 @@
 
 """Helper functions for proposing merges."""
 
-from . import errors, hooks, registry, urlutils
+from . import errors, hooks, registry, trace, urlutils
 
 
 class AutoMergeUnavailable(errors.BzrError):
@@ -600,6 +600,9 @@ def get_forge_by_hostname(hostname: str):
 def iter_forge_instances(forge: type[Forge] | None = None):
     """Iterate over all known forge instances.
 
+    When a forge reports a missing dependency while listing its instances,
+    the rest of that listing is skipped, unless it is the forge asked for.
+
     :return: Iterator over Forge instances
     """
     if forge is None:
@@ -607,7 +610,12 @@ def iter_forge_instances(forge: type[Forge] | None = None):
     else:
         forge_clses = [forge]
     for forge_cls in forge_clses:
-        yield from forge_cls.iter_instances()
+        try:
+            yield from forge_cls.iter_instances()
+        except errors.DependencyNotPresent as e:
+            if forge is not None:
+                raise
+            trace.mutter("skipping forge %r: %s", forge_cls, e)
 
 
 def get_proposal_by_url(url):
