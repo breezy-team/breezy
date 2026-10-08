@@ -329,12 +329,15 @@ def iter_tokens():
     import configparser
 
     config = configparser.ConfigParser()
-    config.read(
-        [os.path.expanduser(p) for p in _DEFAULT_FILES]
-        +
-        # backwards compatibility
-        [os.path.join(bedding.config_dir(), "gitlab.conf")]
-    )
+    try:
+        config.read(
+            [os.path.expanduser(p) for p in _DEFAULT_FILES]
+            +
+            # backwards compatibility
+            [os.path.join(bedding.config_dir(), "gitlab.conf")]
+        )
+    except configparser.Error as e:
+        raise errors.BzrError(str(e)) from e
     for name, creds in config.items():
         if "url" not in creds:
             continue
