@@ -15,18 +15,21 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import json
+import os
 from datetime import datetime
 
 from dromedary import errors as transport_errors
 
+from breezy import bedding, errors
 from breezy.forge import NoSuchProject
-from breezy.tests import TestCase
+from breezy.tests import TestCase, TestCaseInTempDir
 
 from ..forge import (
     DEFAULT_PAGE_SIZE,
     Gitea,
     NotGiteaUrl,
     NotMergeRequestUrl,
+    iter_tokens,
     parse_gitea_merge_request_url,
     parse_gitea_url,
     parse_timestring,
@@ -252,3 +255,12 @@ class DeleteProjectTests(TestCase):
 
     def test_unexpected_status(self):
         self.assertRaises(transport_errors.UnexpectedHttpStatus, self.delete, 500)
+
+
+class IterTokensTests(TestCaseInTempDir):
+    def test_unparseable_file_is_a_user_error(self):
+        bedding.ensure_config_dir_exists()
+        with open(os.path.join(bedding.config_dir(), "gitea.conf"), "w") as f:
+            f.write("url = https://codeberg.org/\n")
+        e = self.assertRaises(errors.BzrError, list, iter_tokens())
+        self.assertContainsRe(str(e), r"gitea\.conf")
