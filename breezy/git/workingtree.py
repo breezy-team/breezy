@@ -803,7 +803,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             write_index_dict(shaf, self.index)
             shaf.close()
         except BaseException:
-            f.abort()
+            # flush() passes a plain handle, which has no abort().
+            getattr(f, "abort", f.close)()
             raise
         self._index_dirty = False
 

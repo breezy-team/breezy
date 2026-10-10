@@ -119,6 +119,24 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.assertEqual([], list(subtree.unknowns()))
 
 
+    def test_flush_write_failure_keeps_the_original_error(self):
+        # flush() hands _flush a plain open() handle, which has no abort(), so
+        # a write failure there used to raise AttributeError over the real one.
+        from .. import workingtree as _mod_git_workingtree
+
+        def boom(*args):
+            raise RuntimeError("index write failed")
+
+        self.overrideAttr(_mod_git_workingtree, "write_index_dict", boom)
+        self.tree.lock_write()
+        try:
+            self.tree._index_dirty = True
+            self.assertRaises(RuntimeError, self.tree.flush)
+        finally:
+            self.tree._index_dirty = False
+            self.tree.unlock()
+
+
 class GitWorkingTreeFileTests(TestCaseWithTransport):
     def setUp(self):
         super().setUp()
