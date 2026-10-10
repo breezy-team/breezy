@@ -224,6 +224,54 @@ fn option_completions(py: Python<'_>, name: &str) -> Result<Vec<String>, Command
     Ok(lines)
 }
 
+/// The hidden ``export-pot`` command, which writes the translatable messages
+/// that are not marked with ``gettext`` in ``.pot`` format.
+///
+/// The messages are read from the live Python commands, options, errors and
+/// help topics, so plugin commands are included.
+#[derive(Debug, Default)]
+pub struct CmdExportPot;
+
+impl Command for CmdExportPot {
+    fn spec(&self) -> CommandSpec {
+        use crate::option::{OptionDef, ValueKind};
+        CommandSpec {
+            help: Some("Export command helps and error messages in po format.".to_string()),
+            hidden: true,
+            options: vec![
+                OptionDef::value(
+                    "plugin",
+                    ValueKind::Str,
+                    "Export help text from named command \
+                     (defaults to all built in commands).",
+                )
+                .into(),
+                OptionDef::flag(
+                    "include-duplicates",
+                    "Output multiple copies of the same msgid \
+                     string if it appears more than once.",
+                )
+                .into(),
+            ],
+            ..CommandSpec::new("export-pot")
+        }
+    }
+
+    fn run(
+        &self,
+        ctx: &mut dyn CommandContext,
+        opts: &crate::option::ParsedOptions,
+        _args: &crate::command::MatchedArgs,
+    ) -> Result<i32, CommandError> {
+        let plugin = opts.str("plugin");
+        let include_duplicates = opts.flag("include_duplicates");
+        Python::attach(|py| crate::pyexport_pot::export_pot(py, ctx, plugin, include_duplicates))?;
+        Ok(0)
+    }
+}
+
+crate::declare_command!(CmdExportPot);
+
 /// Read the description of the Python command object `cmd`.
 ///
 /// Options are left empty: a Python command's options are Python ``Option``
