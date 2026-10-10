@@ -65,6 +65,10 @@ Bug Fixes
    take keyword arguments only. Enumerating forges raised ``TypeError``
    before this. (Zainab Mehmut)
 
+ * git: ``bzr_url_to_git_url`` reads the ``ref`` segment parameter again;
+   the Rust port looked at ``revno``, so the ref of a URL was dropped.
+   (Zainab Mehmut)
+
  * ``brz help topics`` now lists its topics in a stable order; previously the
    order varied between invocations. (Jelmer Vernooĳ)
 
