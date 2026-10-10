@@ -56,10 +56,8 @@ class BzrProber(controldir.Prober):
         except _mod_transport.NoSuchFile as e:
             raise errors.NotBranchError(path=transport.base) from e
         except errors.BadHttpRequest as e:
-            if e.reason == "no such method: .bzr":
-                # hgweb
-                raise errors.NotBranchError(path=transport.base) from e
-            raise
+            # hgweb rejects the path rather than reporting a missing file.
+            raise errors.NotBranchError(path=transport.base) from e
 
         try:
             first_line = format_string[: format_string.index(b"\n") + 1]

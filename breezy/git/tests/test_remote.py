@@ -985,3 +985,46 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
 
         self.overrideAttr(t._repository.controldir._client, "archive", raise_unsupp)
         self.assertRaises(GitSmartRemoteNotSupported, t.archive, "tgz", "foo.tar.gz")
+
+
+class RemoteGitProberHttpStatusTests(TestCase):
+    """A server that rejects the refs path is not a git branch."""
+
+    def _probe(self, status):
+        from .. import RemoteGitProber
+
+        class Response:
+            def __init__(self, status):
+                self.status = status
+                # The canonical name for the code, not the phrase the server
+                # sent, which is what a current hgweb would set.
+                self.reason = "Bad Request" if status == 400 else "Error"
+
+            def getheader(self, name, default=None):
+                return default
+
+            def getheaders(self):
+                return []
+
+        class Transport:
+            base = "http://example.invalid/"
+
+            def external_url(self):
+                return self.base
+
+            def request(self, method, url, headers=None, body=None):
+                return Response(status)
+
+        return RemoteGitProber().probe_transport(Transport())
+
+    def test_400_is_not_a_branch(self):
+        # hgweb answers 400 for the refs path, with a reason phrase that no
+        # longer matches the literal this used to compare against.
+        self.assertRaises(NotBranchError, self._probe, 400)
+
+    def test_404_and_405_are_not_a_branch(self):
+        self.assertRaises(NotBranchError, self._probe, 404)
+        self.assertRaises(NotBranchError, self._probe, 405)
+
+    def test_other_errors_are_not_swallowed(self):
+        self.assertRaises(UnexpectedHttpStatus, self._probe, 500)

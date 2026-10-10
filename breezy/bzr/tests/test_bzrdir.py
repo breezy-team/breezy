@@ -1660,3 +1660,23 @@ class TestBzrFormat(TestCase):
     def test_feature_with_space(self):
         # spaces are not allowed in feature names
         self.assertRaises(ValueError, SampleBzrFormat.register_feature, b"nested trees")
+
+
+class BzrProberBadHttpRequestTests(TestCase):
+    """A server that rejects the .bzr path is not a branch."""
+
+    def test_bad_http_request_is_not_a_branch(self):
+        # hgweb answers 400 for any path it does not serve, with a reason
+        # phrase that no longer matches the literal this used to compare
+        # against.
+        from ...bzr import BzrProber
+
+        class Transport:
+            base = "http://example.invalid/"
+
+            def get_bytes(self, path):
+                raise errors.BadHttpRequest(self.base + path, "Bad Request")
+
+        self.assertRaises(
+            errors.NotBranchError, BzrProber().probe_transport, Transport()
+        )
