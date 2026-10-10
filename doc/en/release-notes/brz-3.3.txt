@@ -17,6 +17,11 @@ brz 3.3.23
    not exist. ``NoSuchProject`` carried ``None`` instead.
    (Zainab Mehmut)
 
+ * Let ``-r date:`` select the newest revision in a branch. The bisect
+   stopped one short of the tip, so when only the newest revision came
+   after the date, ``date:`` reported no such revision.
+   (Jelmer Vernooĳ)
+
 brz 3.3.22
 ##########
 

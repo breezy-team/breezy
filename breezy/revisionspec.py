@@ -715,12 +715,12 @@ class RevisionSpec_date(RevisionSpec):
                 last_match = revid
             return RevisionInfo(branch, None, last_match)
 
-    def _bisect_backwards(self, branch, dt, hi):
+    def _bisect_backwards(self, branch, dt, revno):
         import bisect
 
         with branch.lock_read():
-            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1, hi)
-        if rev == branch.revno():
+            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1, revno + 1)
+        if rev > revno:
             raise InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, rev)
 
