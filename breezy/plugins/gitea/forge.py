@@ -138,7 +138,7 @@ def iter_tokens():
 
     auth_config = AuthenticationConfig()
     for name, creds in auth_config._get_config().iteritems():
-        if creds.get("forge") == "gitea":
+        if creds.get("forge") == "gitea" and "url" in creds:
             yield name, creds
 
 
@@ -787,6 +787,21 @@ class Gitea(Forge):
             instance._retrieve_user()
             return instance
         raise UnsupportedForge(url)
+
+    @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        """Create a Gitea instance from a hostname, if credentials exist."""
+        for _name, credentials in iter_tokens():
+            (_scheme, _user, _password, host, _port, _path) = urlutils.parse_url(
+                credentials["url"]
+            )
+            if not host or host.lower() != hostname.lower():
+                continue
+            transport = get_transport(
+                credentials["url"], possible_transports=possible_transports
+            )
+            return cls(transport, credentials.get("private_token"))
+        raise UnsupportedForge(hostname)
 
     @classmethod
     def iter_instances(cls):

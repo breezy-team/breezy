@@ -15,18 +15,21 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import json
+import os
 from datetime import datetime
 
 from dromedary import errors as transport_errors
 
-from breezy.forge import NoSuchProject
-from breezy.tests import TestCase
+from breezy import bedding
+from breezy.forge import NoSuchProject, UnsupportedForge
+from breezy.tests import TestCase, TestCaseInTempDir
 
 from ..forge import (
     DEFAULT_PAGE_SIZE,
     Gitea,
     NotGiteaUrl,
     NotMergeRequestUrl,
+    iter_tokens,
     parse_gitea_merge_request_url,
     parse_gitea_url,
     parse_timestring,
@@ -252,3 +255,53 @@ class DeleteProjectTests(TestCase):
 
     def test_unexpected_status(self):
         self.assertRaises(transport_errors.UnexpectedHttpStatus, self.delete, 500)
+
+
+class GiteaConfigTestCase(TestCaseInTempDir):
+    def write_config(self, name, contents):
+        os.makedirs(bedding.config_dir(), exist_ok=True)
+        with open(os.path.join(bedding.config_dir(), name), "w") as f:
+            f.write(contents)
+
+
+class ProbeFromHostnameTests(GiteaConfigTestCase):
+    def setUp(self):
+        super().setUp()
+        self.write_config(
+            "gitea.conf",
+            "[example]\nurl = http://gitea.example.com:3000/\nprivate_token = sekrit\n",
+        )
+
+    def test_known_hostname(self):
+        forge = Gitea.probe_from_hostname("gitea.example.com")
+        self.assertEqual("gitea.example.com", forge.base_hostname)
+        self.assertEqual("http://gitea.example.com:3000/", forge.base_url)
+        self.assertEqual({"Authorization": "token sekrit"}, forge.headers)
+
+    def test_unknown_hostname(self):
+        self.assertRaises(UnsupportedForge, Gitea.probe_from_hostname, "codeberg.org")
+
+    def test_hostname_case_is_ignored(self):
+        forge = Gitea.probe_from_hostname("Gitea.Example.COM")
+        self.assertEqual("http://gitea.example.com:3000/", forge.base_url)
+
+    def test_first_matching_instance_wins(self):
+        self.write_config(
+            "gitea.conf",
+            "[three]\nurl = http://gitea.example.com:3000/\nprivate_token = a\n"
+            "[eight]\nurl = http://gitea.example.com:8080/\nprivate_token = b\n",
+        )
+        forge = Gitea.probe_from_hostname("gitea.example.com")
+        self.assertEqual("http://gitea.example.com:3000/", forge.base_url)
+
+
+class IterTokensTests(GiteaConfigTestCase):
+    def test_entry_without_url_is_skipped(self):
+        self.write_config(
+            "authentication.conf",
+            "[gitea]\nforge = gitea\nprivate_token = sekrit\n",
+        )
+        self.assertRaises(
+            UnsupportedForge, Gitea.probe_from_hostname, "gitea.example.com"
+        )
+        self.assertEqual([], list(iter_tokens()))
