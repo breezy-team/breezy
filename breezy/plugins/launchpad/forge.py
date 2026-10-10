@@ -510,7 +510,7 @@ class Launchpad(Forge):
         Raises:
             UnsupportedForge: If the hostname is not a Launchpad hostname.
         """
-        if re.match(hostname, r"(bazaar|git).*\.launchpad\.net"):
+        if re.match(r"(bazaar|git).*\.launchpad\.net", hostname):
             return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
         raise UnsupportedForge(hostname)
 
