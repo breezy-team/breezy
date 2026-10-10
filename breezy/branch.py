@@ -723,7 +723,9 @@ class Branch(ControlComponent):
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set("append_revisions_only", enabled)
 
-    def fetch(self, from_branch, stop_revision=None, limit=None, lossy=False):
+    def fetch(
+        self, from_branch, stop_revision=None, limit=None, lossy=False, depth=None
+    ):
         """Copy revisions from from_branch into this branch.
 
         Args:
@@ -732,11 +734,12 @@ class Branch(ControlComponent):
                               of the branch.
           limit: Optional rough limit of revisions to fetch
           lossy: Whether to allow lossy fetching
+          depth: Optional revision depth
         Returns: None
         """
         with self.lock_write():
             return InterBranch.get(from_branch, self).fetch(
-                stop_revision, limit=limit, lossy=lossy
+                stop_revision, limit=limit, lossy=lossy, depth=depth
             )
 
     def get_bound_location(self) -> str | None:
@@ -2255,6 +2258,7 @@ class InterBranch(InterObject[Branch]):
         stop_revision: RevisionID | None = None,
         limit: int | None = None,
         lossy: bool = False,
+        depth: int | None = None,
     ) -> repository.FetchResult:
         """Fetch revisions.
 
@@ -2262,6 +2266,7 @@ class InterBranch(InterObject[Branch]):
           stop_revision: Last revision to fetch
           limit: Optional rough limit of revisions to fetch
           lossy: If True, allow lossy fetches
+          depth: Optional revision depth
         Returns: FetchResult object
         """
         raise NotImplementedError(self.fetch)
@@ -2327,10 +2332,12 @@ class GenericInterBranch(InterBranch):
             if self.source._push_should_merge_tags():
                 self.source.tags.merge_to(self.target.tags, selector=tag_selector)
 
-    def fetch(self, stop_revision=None, limit=None, lossy=False):
+    def fetch(self, stop_revision=None, limit=None, lossy=False, depth=None):
         """Fetch revisions from source to target branch."""
         if self.target.base == self.source.base:
             return (0, [])
+        if depth is not None:
+            raise errors.FetchDepthUnsupported(self)
         from .bzr.fetch import FetchSpecFactory, TargetRepoKinds
 
         with self.source.lock_read(), self.target.lock_write():

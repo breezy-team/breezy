@@ -1614,7 +1614,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
             return False
         return True
 
-    def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+    def fetch(
+        self, stop_revision=None, fetch_tags=None, limit=None, lossy=False, depth=None
+    ):
         """Fetch revisions from source branch.
 
         Args:
@@ -1622,17 +1624,24 @@ class InterFromGitBranch(branch.GenericInterBranch):
             fetch_tags: Whether to fetch tags.
             limit: Maximum number of revisions to fetch.
             lossy: Whether lossy fetch is allowed.
+            depth: Optional revision depth.
 
         Returns:
             FetchResult: Result of the fetch operation.
         """
         self.fetch_objects(
-            stop_revision, fetch_tags=fetch_tags, limit=limit, lossy=lossy
+            stop_revision, fetch_tags=fetch_tags, limit=limit, lossy=lossy, depth=depth
         )
         return _mod_repository.FetchResult()
 
     def fetch_objects(
-        self, stop_revision, fetch_tags, limit=None, lossy=False, tag_selector=None
+        self,
+        stop_revision,
+        fetch_tags,
+        limit=None,
+        lossy=False,
+        tag_selector=None,
+        depth=None,
     ):
         """Fetch objects from source to target repository.
 
@@ -1642,6 +1651,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             limit: Maximum number of revisions to fetch.
             lossy: Whether lossy fetch is allowed.
             tag_selector: Function to select tags to fetch.
+            depth: Optional revision depth.
         """
         interrepo = self._get_interrepo(self.source, self.target)
         if fetch_tags is None:
@@ -1664,7 +1674,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             return real(heads)
 
         pack_hint, head, refs = interrepo.fetch_objects(
-            determine_wants, self.source.mapping, limit=limit, lossy=lossy
+            determine_wants, self.source.mapping, limit=limit, lossy=lossy, depth=depth
         )
         if pack_hint is not None and self.target.repository._format.pack_compresses:
             self.target.repository.pack(hint=pack_hint)
@@ -1855,7 +1865,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
 class InterGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls between Git branches."""
 
-    def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+    def fetch(
+        self, stop_revision=None, fetch_tags=None, limit=None, lossy=False, depth=None
+    ):
         """Fetch revisions between Git branches.
 
         This is an abstract method that must be implemented by subclasses.
@@ -1865,6 +1877,7 @@ class InterGitBranch(branch.GenericInterBranch):
             fetch_tags: Whether to fetch tags.
             limit: Maximum number of revisions to fetch.
             lossy: Whether lossy fetch is allowed.
+            depth: Optional revision depth.
 
         Raises:
             NotImplementedError: Always, as this must be implemented by subclasses.
@@ -1974,7 +1987,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         """
         return isinstance(source, GitBranch) and isinstance(target, LocalGitBranch)
 
-    def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+    def fetch(
+        self, stop_revision=None, fetch_tags=None, limit=None, lossy=False, depth=None
+    ):
         """Fetch revisions from source to target branch.
 
         Args:
@@ -1982,6 +1997,7 @@ class InterGitLocalGitBranch(InterGitBranch):
             fetch_tags: Whether to fetch tags. If None, uses branch configuration.
             limit: Maximum number of revisions to fetch.
             lossy: Whether lossy fetch is allowed.
+            depth: Optional revision depth.
 
         Returns:
             FetchResult: Result of the fetch operation.
@@ -2004,7 +2020,7 @@ class InterGitLocalGitBranch(InterGitBranch):
         determine_wants = interrepo.get_determine_wants_revids(
             [stop_revision], include_tags=fetch_tags
         )
-        interrepo.fetch_objects(determine_wants, limit=limit)
+        interrepo.fetch_objects(determine_wants, limit=limit, depth=depth)
         return _mod_repository.FetchResult()
 
     def _basic_push(self, overwrite=False, stop_revision=None, tag_selector=None):
@@ -2286,7 +2302,9 @@ class InterToGitBranch(branch.GenericInterBranch):
                     refs[ref] = (None, revid)
         return refs, main_ref, (stop_revno, stop_revision)
 
-    def fetch(self, stop_revision=None, fetch_tags=None, lossy=False, limit=None):
+    def fetch(
+        self, stop_revision=None, fetch_tags=None, lossy=False, limit=None, depth=None
+    ):
         """Fetch revisions from Bazaar source to Git target.
 
         Args:
@@ -2294,6 +2312,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             fetch_tags: Whether to fetch tags. If None, uses branch configuration.
             lossy: Whether to allow lossy conversion.
             limit: Maximum number of revisions to fetch.
+            depth: Optional revision depth.
 
         Returns:
             FetchResult: Result of the fetch operation.
@@ -2313,7 +2332,9 @@ class InterToGitBranch(branch.GenericInterBranch):
         ret.append((None, stop_revision))
         if getattr(self.interrepo, "fetch_revs", None):
             try:
-                revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
+                revidmap = self.interrepo.fetch_revs(
+                    ret, lossy=lossy, limit=limit, depth=depth
+                )
             except NoPushSupport as err:
                 raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             return _mod_repository.FetchResult(
@@ -2332,7 +2353,9 @@ class InterToGitBranch(branch.GenericInterBranch):
                     wants.append(git_sha)
                 return wants
 
-            self.interrepo.fetch_objects(determine_wants, lossy=lossy, limit=limit)
+            self.interrepo.fetch_objects(
+                determine_wants, lossy=lossy, limit=limit, depth=depth
+            )
             return _mod_repository.FetchResult()
 
     def pull(

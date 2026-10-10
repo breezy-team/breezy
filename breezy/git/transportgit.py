@@ -667,6 +667,12 @@ class TransportRepo(BaseRepo):
     def _put_named_file(self, relpath, contents):
         self._controltransport.put_bytes(relpath, contents)
 
+    def _del_named_file(self, relpath):
+        try:
+            self._controltransport.delete(relpath)
+        except NoSuchFile:
+            pass
+
     def index_path(self):
         """Return the path to the index file."""
         return self._controltransport.local_abspath(INDEX_FILENAME)
