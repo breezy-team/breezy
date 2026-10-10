@@ -50,7 +50,6 @@ from dulwich.index import (
     ConflictedIndexEntry,
     Index,
     IndexEntry,
-    SHA1Writer,
     build_index_from_tree,
     index_entry_from_path,
     index_entry_from_stat,
@@ -60,6 +59,7 @@ from dulwich.index import (
 )
 from dulwich.object_store import iter_tree_contents
 from dulwich.objects import S_ISGITLINK
+from dulwich.pack import SHA1Writer
 
 from .. import branch as _mod_branch
 from .. import conflicts as _mod_conflicts

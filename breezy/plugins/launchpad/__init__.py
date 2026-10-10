@@ -75,6 +75,7 @@ def load_tests(loader, basic_tests, pattern):
     """
     testmod_names = [
         "test_account",
+        "test_forge",
         "test_lp_api",
         "test_lp_directory",
         "test_lp_login",
