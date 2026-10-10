@@ -260,10 +260,8 @@ class RemoteGitProber(Prober):
             # https://github.com/dulwich/dulwich/issues/562
             headers["User-Agent"] = user_agent_for_github()
         resp = transport.request("GET", url, headers=headers)
-        if resp.status in (404, 405):
-            raise brz_errors.NotBranchError(transport.base)
-        elif resp.status == 400 and resp.reason == "no such method: info":
-            # hgweb :(
+        if resp.status in (400, 404, 405):
+            # 400 is hgweb, which rejects the path rather than serving refs.
             raise brz_errors.NotBranchError(transport.base)
         elif resp.status != 200:
             raise transport_errors.UnexpectedHttpStatus(
