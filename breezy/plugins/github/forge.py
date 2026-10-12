@@ -35,6 +35,7 @@ from ...forge import (
     PrerequisiteBranchUnsupported,
     ReopenFailed,
     UnsupportedForge,
+    UnsupportedForgeHostname,
     determine_title,
 )
 from ...git.urls import git_url_to_bzr_url
@@ -772,7 +773,7 @@ class GitHub(Forge):
                 API_GITHUB_URL, possible_transports=possible_transports
             )
             return cls(transport)
-        raise UnsupportedForge(hostname)
+        raise UnsupportedForgeHostname(hostname)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
