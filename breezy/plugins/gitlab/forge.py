@@ -1011,10 +1011,12 @@ class GitLab(Forge):
             This method automatically handles redirects to find the correct
             project name if the initial request returns a 404.
         """
-        path = f"projects/{urlutils.quote(str(project_name), '')}"
+        project_name = str(project_name)
+        path = f"projects/{urlutils.quote(project_name, '')}"
         response = self._api_request("GET", path)
         if response.status == 404:
-            if not _redirect_checked:
+            # A numeric id never moves, so there is no redirect to look up.
+            if not _redirect_checked and not project_name.isdigit():
                 redirected = self._find_correct_project_name(project_name)
                 if redirected is not None:
                     return self._get_project(redirected, _redirect_checked=True)
@@ -1114,7 +1116,8 @@ class GitLab(Forge):
             The import status is checked at regular intervals until it reaches
             "finished" or "none" state.
         """
-        path = f"projects/{urlutils.quote(str(project_name), '')}/fork"
+        project_name = str(project_name)
+        path = f"projects/{urlutils.quote(project_name, '')}/fork"
         fields = {}
         if owner is not None:
             fields["namespace"] = owner
@@ -1889,7 +1892,8 @@ class GitLab(Forge):
             This operation is irreversible and will permanently delete the project
             and all its data including repositories, issues, and merge requests.
         """
-        path = f"projects/{urlutils.quote(str(project), '')}"
+        project = str(project)
+        path = f"projects/{urlutils.quote(project, '')}"
         response = self._api_request("DELETE", path)
         if response.status == 404:
             raise NoSuchProject(project)
