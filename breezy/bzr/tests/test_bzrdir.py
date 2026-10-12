@@ -1660,3 +1660,25 @@ class TestBzrFormat(TestCase):
     def test_feature_with_space(self):
         # spaces are not allowed in feature names
         self.assertRaises(ValueError, SampleBzrFormat.register_feature, b"nested trees")
+
+
+class BzrProberBadHttpRequestTests(TestCase):
+    """A server that rejects the .bzr path with its own phrase."""
+
+    def _probe(self, reason):
+        class Transport:
+            base = "http://example.invalid/"
+
+            def get_bytes(self, path):
+                raise errors.BadHttpRequest(self.base + path, reason)
+
+        return bzr.BzrProber().probe_transport(Transport())
+
+    def test_hgweb_phrase_is_not_a_branch(self):
+        self.assertRaises(NotBranchError, self._probe, "method not found")
+
+    def test_older_hgweb_phrase_is_not_a_branch(self):
+        self.assertRaises(NotBranchError, self._probe, "no such method: .bzr")
+
+    def test_other_reason_is_not_swallowed(self):
+        self.assertRaises(errors.BadHttpRequest, self._probe, "Bad Request")
