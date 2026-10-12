@@ -144,9 +144,7 @@ class GetProjectTests(TestCase):
             }
         )
         gl = GitLab(transport, "token")
-        self.assertEqual(
-            {"path_with_namespace": "foo/new"}, gl._get_project("foo/old")
-        )
+        self.assertEqual({"path_with_namespace": "foo/new"}, gl._get_project("foo/old"))
         self.assertEqual(
             [
                 ("GET", "https://gitlab.example.com/api/v4/projects/foo%2Fold"),
