@@ -5,6 +5,13 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.24
+##########
+
+ * propose: Keep walking the remaining forges in ``brz forges`` and
+   ``brz my-proposals`` when one of them cannot be reached. Each stopped
+   early on an error it did not expect before this. (Zainab Mehmut)
+
 brz 3.3.23
 ##########
 
