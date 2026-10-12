@@ -56,7 +56,7 @@ class BzrProber(controldir.Prober):
         except _mod_transport.NoSuchFile as e:
             raise errors.NotBranchError(path=transport.base) from e
         except errors.BadHttpRequest as e:
-            if e.reason == "no such method: .bzr":
+            if e.reason in ("method not found", "no such method: .bzr"):
                 # hgweb
                 raise errors.NotBranchError(path=transport.base) from e
             raise
