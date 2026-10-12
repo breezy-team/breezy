@@ -14,18 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
 from datetime import datetime
 
 from dromedary.errors import RedirectRequested
 
+from breezy import bedding, errors
 from breezy.forge import NoSuchProject
-from breezy.tests import TestCase
+from breezy.tests import TestCase, TestCaseInTempDir
 
 from ..forge import (
     GitLab,
     GitLabMergeProposal,
     NotGitLabUrl,
     NotMergeRequestUrl,
+    iter_tokens,
     parse_gitlab_merge_request_url,
     parse_timestring,
 )
@@ -191,3 +194,14 @@ class MetadataTests(TestCase):
         )
         self.assertEqual(datetime(2026, 1, 1, 10, 0, 0), mp.get_created_at())
         self.assertEqual(datetime(2026, 1, 2, 11, 30, 0, 250000), mp.get_updated_at())
+
+
+class IterTokensTests(TestCaseInTempDir):
+    def test_unparseable_file_is_a_user_error(self):
+        bedding.ensure_config_dir_exists()
+        with open(os.path.join(bedding.config_dir(), "gitlab.conf"), "w") as f:
+            f.write("url = https://salsa.debian.org/\n")
+        e = self.assertRaises(errors.BzrError, list, iter_tokens())
+        self.assertContainsRe(
+            str(e), r"(?s)^Unable to parse forge configuration: .*gitlab\.conf"
+        )
