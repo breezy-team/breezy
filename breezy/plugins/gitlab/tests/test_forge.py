@@ -17,9 +17,10 @@
 from datetime import datetime
 
 from breezy.errors import RedirectRequested
-from breezy.forge import NoSuchProject
+from breezy.forge import MergeProposalExists, NoSuchProject
 from breezy.plugins.gitlab.forge import (
     GitLab,
+    GitLabMergeProposal,
     NotGitLabUrl,
     NotMergeRequestUrl,
     parse_gitlab_merge_request_url,
@@ -155,3 +156,46 @@ class GetProjectTests(TestCase):
             ],
             transport.calls,
         )
+
+
+class UpdateMergeProposalTests(TestCase):
+    def test_conflict_without_source_project(self):
+        mr_url = "https://gitlab.example.com/foo/bar/-/merge_requests/5"
+        existing_url = "https://gitlab.example.com/foo/bar/-/merge_requests/3"
+        transport = FakeTransport(
+            {
+                "https://gitlab.example.com/api/v4/projects/2/merge_requests/5": (
+                    FakeResponse(
+                        409,
+                        b'{"message": ["Another open merge request already exists'
+                        b' for this source branch: !3"]}',
+                    )
+                ),
+                "https://gitlab.example.com/api/v4/projects/2/merge_requests/3": (
+                    FakeResponse(
+                        200,
+                        b'{"iid": 3, "project_id": 2, "web_url":'
+                        b' "https://gitlab.example.com/foo/bar/-/merge_requests/3"}',
+                    )
+                ),
+            }
+        )
+        gl = GitLab(transport, "token")
+        proposal = GitLabMergeProposal(
+            gl,
+            {
+                "project_id": 2,
+                "target_project_id": 2,
+                "source_project_id": None,
+                "source_branch": "feature",
+                "iid": 5,
+                "web_url": mr_url,
+            },
+        )
+        self.assertIs(None, proposal.get_source_branch_url())
+        e = self.assertRaises(
+            MergeProposalExists, proposal.set_description, "a description"
+        )
+        self.assertEqual(mr_url, e.url)
+        self.assertEqual(existing_url, e.existing_proposal.url)
+        self.assertEqual("A merge proposal already exists: {}.".format(mr_url), str(e))
