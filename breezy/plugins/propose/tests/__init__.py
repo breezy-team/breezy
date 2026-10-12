@@ -19,6 +19,8 @@ from unittest import TestLoader, TestSuite
 
 def test_suite():
     result = TestSuite()
+    from . import test_cmds
 
-    TestLoader()
+    loader = TestLoader()
+    result.addTests(loader.loadTestsFromModule(test_cmds))
     return result
