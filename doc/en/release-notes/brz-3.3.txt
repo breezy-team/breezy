@@ -35,6 +35,11 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * git, bzr: Decline an hgweb URL that answers the probes with
+   ``400 method not found``, so the Mercurial prober gets a turn.
+   ``brz branch`` stopped with ``UnexpectedHttpStatus`` before this.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
