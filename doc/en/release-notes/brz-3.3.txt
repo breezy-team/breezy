@@ -35,6 +35,10 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * propose: Keep walking the remaining forges in ``brz forges`` and
+   ``brz my-proposals`` when one of them cannot be reached. Each stopped
+   early on an error it did not expect before this. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
