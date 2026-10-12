@@ -32,6 +32,7 @@ from ...forge import (
     MergeProposalExists,
     TitleUnsupported,
     UnsupportedForge,
+    UnsupportedForgeHostname,
 )
 from ...git.urls import git_url_to_bzr_url
 from ...lazy_import import lazy_import
@@ -290,7 +291,7 @@ class Launchpad(Forge):
     def probe_from_hostname(cls, hostname, possible_transports=None):
         if re.match(r"(bazaar|git).*\.launchpad\.net", hostname):
             return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
-        raise UnsupportedForge(hostname)
+        raise UnsupportedForgeHostname(hostname)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):

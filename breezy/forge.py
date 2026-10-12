@@ -44,6 +44,14 @@ class UnsupportedForge(errors.BzrError):
         self.branch = branch
 
 
+class UnsupportedForgeHostname(UnsupportedForge):
+    _fmt = "No supported forge for hostname %(hostname)s."
+
+    def __init__(self, hostname):
+        UnsupportedForge.__init__(self, hostname)
+        self.hostname = hostname
+
+
 class ReopenFailed(errors.BzrError):
     _fmt = "Reopening the merge proposal failed: %(error)s."
 
@@ -382,7 +390,10 @@ class Forge:
 
     @classmethod
     def probe_from_hostname(cls, hostname, possible_transports=None):
-        """Create a Forge object if this forge knows about a hostname."""
+        """Create a Forge object if this forge knows about a hostname.
+
+        :raise UnsupportedForgeHostname: if this forge does not know `hostname`
+        """
         raise NotImplementedError(cls.probe_from_hostname)
 
     @classmethod
@@ -487,13 +498,18 @@ def get_forge(branch, possible_forges=None):
 
 
 def get_forge_by_hostname(hostname: str):
-    """Get a forge from a hostname."""
+    """Get a forge from a hostname.
+
+    :raise UnsupportedForgeHostname: if there is no forge that supports
+        `hostname`
+    :return: A `Forge` object
+    """
     for instance in iter_forge_instances():
         try:
             return instance.probe_from_hostname(hostname)
         except UnsupportedForge:
             pass
-    raise UnsupportedForge(hostname)
+    raise UnsupportedForgeHostname(hostname)
 
 
 def iter_forge_instances(forge: type[Forge] | None = None):
