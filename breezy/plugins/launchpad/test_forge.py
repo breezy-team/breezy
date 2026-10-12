@@ -16,7 +16,7 @@
 
 """Tests for the Launchpad forge."""
 
-from ...forge import UnsupportedForge
+from ...forge import UnsupportedForge, UnsupportedForgeHostname
 from ...tests import TestCase
 from .forge import Launchpad
 
@@ -49,3 +49,9 @@ class TestProbeFromHostname(TestCase):
 
     def test_hostname_is_not_a_pattern(self):
         self.assertRaises(UnsupportedForge, Launchpad.probe_from_hostname, ".*")
+
+    def test_other_host_reports_the_hostname(self):
+        e = self.assertRaises(
+            UnsupportedForgeHostname, Launchpad.probe_from_hostname, "example.invalid"
+        )
+        self.assertEqual("example.invalid", e.hostname)
