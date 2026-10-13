@@ -282,6 +282,13 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertEqual(2, revinfo.revno)
         self.assertEqual(b"alt_r2", revinfo.rev_id)
 
+    def test_empty_revno_with_branch(self):
+        revinfo = self.get_in_history("revno::tree2")
+        self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
+        self.assertEqual(2, revinfo.revno)
+        self.assertEqual(b"alt_r2", revinfo.rev_id)
+        self.assertAsRevisionId(b"alt_r2", "revno::tree2")
+
     def test_int_with_branch(self):
         revinfo = self.get_in_history("2:tree2")
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
