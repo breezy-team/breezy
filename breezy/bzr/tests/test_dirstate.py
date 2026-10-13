@@ -19,7 +19,7 @@
 import os
 import tempfile
 
-from ... import controldir, errors, osutils, tests
+from ... import controldir, errors, filters, osutils, tests
 from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
@@ -2336,6 +2336,17 @@ class TestPackStat(tests.TestCaseWithTransport):
         st.st_mode = 0o100744
         #                                          IGk => IHk
         self.assertPackStat(b"AAAbWEXm4FxF5uBmAAADeABjLNQAAIHk", st)
+
+    def test_pack_stat_filtered(self):
+        """A content filtered tree packs a FilteredStat rather than a stat."""
+        st = _FakeStat(6859, 1172758614, 1172758617, 777, 6499538, 0o100644)
+        self.assertPackStat(
+            b"AAAay0Xm4FZF5uBZAAADCQBjLNIAAIGk", filters.FilteredStat(st)
+        )
+        self.assertPackStat(
+            b"AAAbWEXm4FZF5uBZAAADCQBjLNIAAIGk",
+            filters.FilteredStat(st, st_size=7000),
+        )
 
     def test_pack_stat_float(self):
         """On some platforms mtime and ctime are floats.
