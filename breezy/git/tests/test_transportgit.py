@@ -16,12 +16,53 @@
 
 """Tests for bzr-git's object store."""
 
+import os
+
 from dulwich.objects import Blob
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests
 from dulwich.tests.utils import make_object
 
 from ...tests import TestCaseWithTransport
-from ..transportgit import TransportObjectStore, TransportRefsContainer
+from ..transportgit import (
+    TransportGitFile,
+    TransportObjectStore,
+    TransportRefsContainer,
+)
+
+
+class TransportGitFileTests(TestCaseWithTransport):
+    def test_local_write_takes_the_lock_file(self):
+        transport = self.get_transport()
+        f = TransportGitFile(transport, "afile", "wb")
+        self.addCleanup(f.abort)
+        self.assertTrue(transport.has("afile.lock"))
+
+    def test_write_without_the_lock_file(self):
+        transport = self.get_transport()
+        f = TransportGitFile(transport, "afile", "wb", lock=False)
+        self.addCleanup(f.abort)
+        self.assertFalse(transport.has("afile.lock"))
+
+    def test_close_without_the_lock_file(self):
+        transport = self.get_transport()
+        with TransportGitFile(transport, "afile", "wb", lock=False) as f:
+            f.write(b"contents")
+        self.assertEqual(b"contents", transport.get_bytes("afile"))
+
+    def test_close_without_the_lock_file_sets_the_mode(self):
+        self.addCleanup(os.umask, os.umask(0o022))
+        transport = self.get_transport()
+        with TransportGitFile(transport, "afile", "wb", mask=0o600, lock=False) as f:
+            f.write(b"contents")
+        self.assertTransportMode(transport, "afile", 0o600)
+
+    def test_abort_without_the_lock_file(self):
+        transport = self.get_transport()
+        transport.put_bytes("afile", b"old")
+        f = TransportGitFile(transport, "afile", "wb", lock=False)
+        f.write(b"new")
+        f.abort()
+        self.assertEqual(b"old", transport.get_bytes("afile"))
 
 
 class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport):  # type: ignore
