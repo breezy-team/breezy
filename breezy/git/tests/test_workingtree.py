@@ -85,6 +85,11 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.tree.revert(["a"])
         self.assertFalse(self.tree.is_versioned("a"))
 
+    def test_is_ignored_returns_pattern(self):
+        self.build_tree_contents([(".gitignore", b"*.xyz\n")])
+        self.build_tree(["a.xyz"])
+        self.assertEqual("*.xyz", self.tree.is_ignored("a.xyz"))
+
     def test_is_ignored_directory(self):
         self.assertFalse(self.tree.is_ignored("a"))
         self.build_tree(["a/"])
