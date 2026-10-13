@@ -78,7 +78,7 @@ impl<T: MutableTree> TreeBuilder<T> {
             panic!("TreeBuilder does not have a tree");
         };
         if !self.root_done {
-            tree.add(&[""])?;
+            tree.add(&[""], None)?;
             self.root_done = true;
         }
         for name in recipe {
@@ -87,7 +87,7 @@ impl<T: MutableTree> TreeBuilder<T> {
             } else {
                 let content = format!("contents of {}\n", name);
                 tree.put_file_bytes_non_atomic(name, content.as_bytes())?;
-                tree.add(&[name])?;
+                tree.add(&[name], None)?;
             }
         }
         Ok(())
