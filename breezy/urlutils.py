@@ -509,6 +509,19 @@ def split_segment_parameters(url):
     return (base_url, parameters)
 
 
+def split_segment_parameters_decoded(url):
+    """Split the segment parameters of a URL, decoding the values.
+
+    Only the values are decoded. Keys are not.
+
+    Args:
+      url: A relative or absolute URL
+    Returns: (url, segment_parameters)
+    """
+    (base_url, parameters) = split_segment_parameters(url)
+    return (base_url, {key: unescape(value) for key, value in parameters.items()})
+
+
 def strip_segment_parameters(url):
     """Strip the segment parameters from a URL.
 
@@ -563,6 +576,28 @@ def join_segment_parameters(url, parameters):
         new_parameters[key] = value
     return join_segment_parameters_raw(
         base, *["{}={}".format(*item) for item in sorted(new_parameters.items())]
+    )
+
+
+def join_segment_parameters_encoded(url, parameters):
+    """Create a new URL by adding segment parameters, encoding the values.
+
+    Only the values are encoded, so a value may hold "/" or "," and still
+    come back unchanged from split_segment_parameters_decoded. Keys are
+    not encoded. Parameters already in the URL are kept as they are.
+
+    Args:
+      url: A URL, as string
+      parameters: Dictionary of parameters, keys and values as strings
+    Returns: the new URL
+    """
+    # A value that is not a str is left for join_segment_parameters to reject.
+    return join_segment_parameters(
+        url,
+        {
+            key: escape(value, safe="") if isinstance(value, str) else value
+            for key, value in parameters.items()
+        },
     )
 
 
