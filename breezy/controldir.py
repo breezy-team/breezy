@@ -1481,6 +1481,7 @@ class ControlDirFormat:
     def _set_default_format(klass, format):
         """Set default format (for testing behavior of defaults only)."""
         klass._default_format = format
+        _cmd_rs.set_default_format(format)
 
     @classmethod
     def get_default_format(klass):

@@ -971,28 +971,6 @@ class cmd_mkdir(Command):  # noqa: D101
                 self.outf.write(gettext("added %s\n") % dir)
 
 
-class cmd_relpath(Command):  # noqa: D101
-    __doc__ = """Show path of a file relative to root"""
-
-    takes_args = ["filename"]
-    hidden = True
-
-    @display_command
-    def run(self, filename):
-        """Execute the relpath command.
-
-        Args:
-            filename: File path to show relative to root.
-        """
-        from .workingtree import WorkingTree
-
-        # TODO: jam 20050106 Can relpath return a munged path if
-        #       sys.stdout encoding cannot represent it?
-        _tree, relpath = WorkingTree.open_containing(filename)
-        self.outf.write(relpath)
-        self.outf.write("\n")
-
-
 class cmd_inventory(Command):  # noqa: D101
     __doc__ = """Show inventory of the current working copy or a revision.
 
@@ -3137,23 +3115,6 @@ class cmd_added(Command):  # noqa: D101
                 self.outf.write(path + "\0")
             else:
                 self.outf.write(osutils.quotefn(path) + "\n")
-
-
-class cmd_root(Command):  # noqa: D101
-    __doc__ = """Show the tree root directory.
-
-    The root is the nearest enclosing directory with a control
-    directory."""
-
-    takes_args = ["filename?"]
-
-    @display_command
-    def run(self, filename=None):
-        """Print the branch root."""
-        from .workingtree import WorkingTree
-
-        tree = WorkingTree.open_containing(filename)[0]
-        self.outf.write(tree.basedir + "\n")
 
 
 def _parse_limit(limitstring):

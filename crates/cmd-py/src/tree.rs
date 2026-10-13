@@ -40,6 +40,7 @@ pub(crate) fn err_to_py(err: Error) -> PyErr {
             Python::attach(|py| breezy::pyerrors::unsupported_operation(py, &msg))
         }
         Error::Other(msg) => PyRuntimeError::new_err(msg),
+        Error::Python(e) => e,
     }
 }
 
@@ -72,15 +73,6 @@ impl AnyTree {
             AnyTree::Mutable(t) => t.as_ref(),
             AnyTree::Working(t) => t.as_ref(),
             AnyTree::Revision(t) => t.as_ref(),
-        }
-    }
-
-    fn as_tree_mut(&mut self) -> &mut (dyn breezy::tree::Tree + Send + Sync) {
-        match self {
-            AnyTree::Tree(t) => t.as_mut(),
-            AnyTree::Mutable(t) => t.as_mut(),
-            AnyTree::Working(t) => t.as_mut(),
-            AnyTree::Revision(t) => t.as_mut(),
         }
     }
 
@@ -134,6 +126,21 @@ impl AnyTree {
 #[pyclass(subclass, module = "breezy._cmd_rs")]
 pub struct Tree(AnyTree);
 
+/// Hand a working tree to Python: the Python tree it wraps, or a
+/// [`WorkingTree`] around a native one.
+pub(crate) fn working_tree_to_py(
+    py: Python<'_>,
+    tree: Box<dyn breezy::tree::WorkingTree + Send + Sync>,
+) -> PyResult<Py<PyAny>> {
+    if let Some(obj) = tree.python_object() {
+        return Ok(obj.clone_ref(py));
+    }
+    let init = PyClassInitializer::from(Tree(AnyTree::Working(tree)))
+        .add_subclass(MutableTree)
+        .add_subclass(WorkingTree);
+    Ok(Py::new(py, init)?.into_any())
+}
+
 impl Tree {
     /// Wrap a Rust tree at whichever level it satisfies.
     pub fn from_any(tree: AnyTree) -> Self {
@@ -142,10 +149,6 @@ impl Tree {
 
     fn tree(&self) -> &(dyn breezy::tree::Tree + Send + Sync) {
         self.0.as_tree()
-    }
-
-    fn tree_mut(&mut self) -> &mut (dyn breezy::tree::Tree + Send + Sync) {
-        self.0.as_tree_mut()
     }
 }
 
@@ -800,13 +803,20 @@ impl Tree {
     /// Returns:
     ///     A ``breezy.lock.LogicalLockResult``, which can be used as a context
     ///     manager to release the lock.
-    fn lock_read(&self) -> PyResult<Py<PyAny>> {
-        self.tree().lock_read().map_err(err_to_py)
+    fn lock_read(slf: &Bound<'_, Self>) -> PyResult<Py<PyAny>> {
+        let lock = slf.borrow().tree().lock_read()?;
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.lock", "LogicalLockResult"),
+            None,
+        )
     }
 
     /// Release one lock held on this tree.
-    fn unlock(&mut self) -> PyResult<()> {
-        self.tree_mut().unlock().map_err(PyRuntimeError::new_err)
+    fn unlock(&self) -> PyResult<()> {
+        Ok(self.tree().unlock()?)
     }
 
     /// Return a revision tree for ``revision_id`` from data the tree has
@@ -968,6 +978,18 @@ impl MutableTree {
             .map_err(err_to_py)
     }
 
+    /// Whether file names in this tree are case sensitive.
+    #[getter]
+    fn case_sensitive(self_: PyRef<'_, Self>) -> PyResult<bool> {
+        self_
+            .as_super()
+            .0
+            .as_mutable()
+            .ok_or_else(|| wrong_level("MutableTree"))?
+            .case_sensitive()
+            .map_err(err_to_py)
+    }
+
     /// Add paths to the set of versioned paths.
     ///
     /// The paths are recorded by the next commit. Most callers want
@@ -1091,14 +1113,21 @@ impl MutableTree {
     /// Returns:
     ///     A ``breezy.lock.LogicalLockResult``, which can be used as a context
     ///     manager to release the lock.
-    fn lock_tree_write(mut self_: PyRefMut<'_, Self>) -> PyResult<()> {
-        self_
+    fn lock_tree_write(slf: &Bound<'_, Self>) -> PyResult<Py<PyAny>> {
+        let lock = slf
+            .borrow()
             .as_super()
             .0
-            .as_mutable_mut()
+            .as_mutable()
             .ok_or_else(|| wrong_level("MutableTree"))?
-            .lock_tree_write()
-            .map_err(PyRuntimeError::new_err)
+            .lock_tree_write()?;
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.lock", "LogicalLockResult"),
+            None,
+        )
     }
 
     /// Lock the tree and its branch for writing.
@@ -1106,14 +1135,21 @@ impl MutableTree {
     /// Returns:
     ///     A ``breezy.lock.LogicalLockResult``, which can be used as a context
     ///     manager to release the lock.
-    fn lock_write(mut self_: PyRefMut<'_, Self>) -> PyResult<Py<PyAny>> {
-        self_
+    fn lock_write(slf: &Bound<'_, Self>) -> PyResult<Py<PyAny>> {
+        let lock = slf
+            .borrow()
             .as_super()
             .0
-            .as_mutable_mut()
+            .as_mutable()
             .ok_or_else(|| wrong_level("MutableTree"))?
-            .lock_write()
-            .map_err(err_to_py)
+            .lock_write()?;
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.lock", "LogicalLockResult"),
+            None,
+        )
     }
 
     /// Create a directory in the tree and version it.
@@ -1344,12 +1380,95 @@ impl WorkingTree {
     ///     NotBranchError: If there is no control directory at ``location``.
     ///     NoWorkingTree: If the control directory has no working tree.
     #[staticmethod]
-    fn open(py: Python<'_>, location: &str) -> PyResult<Py<Self>> {
-        let tree = breezy::workingtree::open(location)?;
-        let init = PyClassInitializer::from(Tree(AnyTree::Working(tree)))
-            .add_subclass(MutableTree)
-            .add_subclass(WorkingTree);
-        Py::new(py, init)
+    fn open(py: Python<'_>, location: &str) -> PyResult<Py<PyAny>> {
+        working_tree_to_py(py, breezy::workingtree::open(location)?)
+    }
+
+    /// Open the working tree at ``location``, even if its format is
+    /// unsupported.
+    ///
+    /// Only intended for special cases such as upgrading a control directory.
+    ///
+    /// Args:
+    ///     location: A path or URL.
+    ///
+    /// Returns:
+    ///     The working tree.
+    ///
+    /// Raises:
+    ///     NotBranchError: If there is no control directory at ``location``.
+    ///     NoWorkingTree: If the control directory has no working tree.
+    #[staticmethod]
+    fn open_downlevel(py: Python<'_>, location: &str) -> PyResult<Py<PyAny>> {
+        working_tree_to_py(py, breezy::workingtree::open_downlevel(location)?)
+    }
+
+    /// Open the working tree that contains ``location``.
+    ///
+    /// The tree is searched for at ``location`` and then in each of its parent
+    /// directories.
+    ///
+    /// Args:
+    ///     location: A path or URL, or None for the current directory.
+    ///
+    /// Returns:
+    ///     A ``(tree, relpath)`` tuple with the working tree and the part of
+    ///     ``location`` below the tree root.
+    ///
+    /// Raises:
+    ///     NotBranchError: If no containing control directory is found.
+    #[staticmethod]
+    #[pyo3(signature = (location=None))]
+    fn open_containing(py: Python<'_>, location: Option<&str>) -> PyResult<(Py<PyAny>, String)> {
+        let (tree, relpath) = breezy::workingtree::open_containing(location)?;
+        Ok((working_tree_to_py(py, tree)?, relpath))
+    }
+
+    /// Open the working tree that contains all of ``file_list``.
+    ///
+    /// Used by commands that take any number of paths that must all be in the
+    /// same tree.
+    ///
+    /// Args:
+    ///     file_list: A list of paths. If it is empty, the tree containing
+    ///         ``default_directory`` is opened.
+    ///     default_directory: The directory the paths are relative to, or None
+    ///         for the current directory.
+    ///     canonicalize: Whether to correct the case of the paths to match the
+    ///         tree.
+    ///     apply_view: Whether to check that the paths are inside the tree's
+    ///         current view.
+    ///
+    /// Returns:
+    ///     A ``(tree, relpaths)`` tuple with the working tree and the paths
+    ///     relative to its root. ``relpaths`` is empty if ``file_list`` is.
+    ///
+    /// Raises:
+    ///     NotBranchError: If no containing control directory is found.
+    ///     PathNotChild: If the paths are not all in the same tree.
+    #[staticmethod]
+    #[pyo3(signature = (file_list, default_directory=None, canonicalize=true, apply_view=true))]
+    fn open_containing_paths(
+        py: Python<'_>,
+        file_list: Vec<String>,
+        default_directory: Option<&str>,
+        canonicalize: bool,
+        apply_view: bool,
+    ) -> PyResult<(Py<PyAny>, Vec<String>)> {
+        let file_list: Vec<&str> = file_list.iter().map(String::as_str).collect();
+        let (tree, relpaths) = breezy::workingtree::open_containing_paths(
+            &file_list,
+            default_directory,
+            canonicalize,
+            apply_view,
+        )?;
+        Ok((working_tree_to_py(py, tree)?, relpaths))
+    }
+
+    /// The ``breezy.views`` object for managing this tree's views.
+    #[getter]
+    fn views(self_: PyRef<'_, Self>) -> PyResult<Py<PyAny>> {
+        base(&self_)?.views().map_err(err_to_py)
     }
 
     /// Return True if this tree can store merge-modified hashes.
@@ -1375,7 +1494,16 @@ impl WorkingTree {
     /// The ``Branch`` this working tree is connected to.
     #[getter]
     fn branch(self_: PyRef<'_, Self>) -> PyResult<Py<PyAny>> {
-        base(&self_)?.branch().map_err(err_to_py)
+        crate::branch::branch_to_py(self_.py(), base(&self_)?.branch().map_err(err_to_py)?)
+    }
+
+    /// The ``ControlDir`` this working tree lives in.
+    #[getter]
+    fn controldir(self_: PyRef<'_, Self>) -> PyResult<Py<PyAny>> {
+        crate::controldir::controldir_to_py(
+            self_.py(),
+            base(&self_)?.controldir().map_err(err_to_py)?,
+        )
     }
 
     /// The transport for the user files in this working tree.
@@ -1435,6 +1563,36 @@ impl WorkingTree {
         base(&self_)?.relpath(path).map_err(err_to_py)
     }
 
+    /// Convert user-supplied paths into paths relative to the tree root.
+    ///
+    /// Args:
+    ///     file_list: A list of paths, absolute or relative to the current
+    ///         working directory.
+    ///     canonicalize: Whether to correct the case of the paths to match the
+    ///         tree.
+    ///     apply_view: Whether to check that the paths are inside the tree's
+    ///         current view.
+    ///
+    /// Returns:
+    ///     A list of paths relative to the tree root.
+    ///
+    /// Raises:
+    ///     PathNotChild: If a path is not inside the tree.
+    ///     FileOutsideView: If ``apply_view`` is set and a path is outside the
+    ///         current view.
+    #[pyo3(signature = (file_list, canonicalize=true, apply_view=true))]
+    fn safe_relpath_files(
+        self_: PyRef<'_, Self>,
+        file_list: Vec<String>,
+        canonicalize: bool,
+        apply_view: bool,
+    ) -> PyResult<Vec<String>> {
+        let file_list: Vec<&str> = file_list.iter().map(String::as_str).collect();
+        base(&self_)?
+            .safe_relpath_files(&file_list, canonicalize, apply_view)
+            .map_err(err_to_py)
+    }
+
     /// Return the tree of the last revision of this working tree.
     ///
     /// If the leftmost parent is a ghost, this is an empty tree.
@@ -1467,8 +1625,8 @@ impl WorkingTree {
     /// The user is asked for confirmation through the UI factory if the lock
     /// may belong to an active process. The lock on the repository is checked
     /// as well.
-    fn break_lock(mut self_: PyRefMut<'_, Self>) -> PyResult<()> {
-        base_mut(&mut self_)?.break_lock().map_err(err_to_py)
+    fn break_lock(self_: PyRef<'_, Self>) -> PyResult<()> {
+        Ok(base(&self_)?.break_lock()?)
     }
 
     /// Duplicate this working tree into another control directory.
@@ -1774,8 +1932,8 @@ impl WorkingTree {
     }
 
     /// Return True if the tree's lock on disk is held, by anyone.
-    fn get_physical_lock_status(self_: PyRef<'_, Self>) -> PyResult<Py<PyAny>> {
-        base(&self_)?.get_physical_lock_status().map_err(err_to_py)
+    fn get_physical_lock_status(self_: PyRef<'_, Self>) -> PyResult<bool> {
+        Ok(base(&self_)?.get_physical_lock_status()?)
     }
 
     /// Set the last revision of this working tree.

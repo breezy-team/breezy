@@ -2209,4 +2209,4 @@ class UseExistingRepository(controldir.RepositoryAcquisitionPolicy):
         return self._repository, False
 
 
-controldir.ControlDirFormat._default_format = BzrDirMetaFormat1()
+controldir.ControlDirFormat._set_default_format(BzrDirMetaFormat1())

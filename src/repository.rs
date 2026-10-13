@@ -24,11 +24,33 @@ pub enum Error {
     UnsupportedOperation(String),
     /// A generic error occurred.
     Other(String),
+    /// A Python exception raised by a Python-backed implementation, kept so
+    /// it reaches Python again with its type.
+    #[cfg(feature = "pyo3")]
+    Python(pyo3::PyErr),
+}
+
+#[cfg(feature = "pyo3")]
+pyo3::import_exception!(breezy.errors, NoSuchRevision);
+
+impl Error {
+    /// Whether the revision asked for does not exist, as Rust's
+    /// [`Error::NoSuchRevision`] or Python's ``NoSuchRevision``.
+    pub fn is_no_such_revision(&self) -> bool {
+        match self {
+            Error::NoSuchRevision(_) => true,
+            #[cfg(feature = "pyo3")]
+            Error::Python(e) => pyo3::Python::attach(|py| e.is_instance_of::<NoSuchRevision>(py)),
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            #[cfg(feature = "pyo3")]
+            Error::Python(e) => write!(f, "{e}"),
             Error::NoSuchRevision(revid) => write!(f, "No such revision: {}", revid),
             Error::UnsupportedOperation(msg) => write!(f, "Unsupported operation: {}", msg),
             Error::Other(msg) => write!(f, "{}", msg),
@@ -45,11 +67,40 @@ impl std::error::Error for Error {}
 /// `breezy.repository.Repository` class. Methods that return rich Python-only
 /// domain objects use [`PyObject`].
 ///
-// TODO: A handful of Python Repository methods are not yet mirrored here:
-// find_branches, suspend_write_group, resume_write_group, get_revision_deltas,
-// get_revision_reconcile, store_revision_signature, verify_revision_signatures.
-// search_missing_revision_ids also omits Python's `if_present_ids` parameter.
 pub trait Repository {
+    /// The Python repository this one wraps, if it wraps one.
+    ///
+    /// Bindings use this to hand a Python-backed repository back to Python
+    /// as the original object rather than as a Rust object proxying to it.
+    fn python_object(&self) -> Option<&PyObject> {
+        None
+    }
+
+    /// The branches this repository serves; with `using`, those in control
+    /// directories below it too.
+    fn find_branches(
+        &self,
+        using: bool,
+    ) -> Result<Vec<Box<dyn crate::branch::Branch + Send + Sync>>, Error>;
+
+    /// The URL of the repository, as the user refers to it.
+    fn base(&self) -> Result<String, Error>;
+
+    /// The URL of the directory holding the repository's control directory.
+    fn user_url(&self) -> Result<String, Error>;
+
+    /// The URL of the repository's own control files.
+    fn control_url(&self) -> Result<String, Error>;
+
+    /// The control directory the repository lives in.
+    fn controldir(&self) -> Result<Box<dyn crate::controldir::ControlDir>, Error>;
+
+    /// Whether the repository can be read at arbitrary positions cheaply.
+    fn supports_random_access(&self) -> Result<bool, Error>;
+
+    /// The repository's lockable control files, as a Python object.
+    fn control_files(&self) -> Result<PyObject, Error>;
+
     // Transports
 
     /// The transport for user-visible data.
@@ -65,7 +116,7 @@ pub trait Repository {
     // Locking
 
     /// Break a lock held by another instance.
-    fn break_lock(&mut self) -> Result<(), Error>;
+    fn break_lock(&self) -> Result<(), crate::lock::Error>;
 
     /// Whether the repository is locked.
     fn is_locked(&self) -> Result<bool, Error>;
@@ -73,29 +124,27 @@ pub trait Repository {
     /// Whether the repository is write-locked.
     fn is_write_locked(&self) -> Result<bool, Error>;
 
-    /// Lock the repository for writing.
-    ///
-    /// Returns a Python `RepositoryWriteLockResult`.
-    fn lock_write(&mut self, token: Option<&str>) -> Result<PyObject, Error>;
+    /// Lock the repository for writing; with `token`, take over the
+    /// physical lock it names.
+    fn lock_write(
+        &self,
+        token: Option<&[u8]>,
+    ) -> Result<crate::lock::WriteLockRef, crate::lock::Error>;
 
     /// Lock the repository for reading.
-    ///
-    /// Returns a Python `LogicalLockResult`.
-    fn lock_read(&self) -> Result<PyObject, Error>;
+    fn lock_read(&self) -> Result<crate::lock::ReadLockRef, crate::lock::Error>;
 
-    /// Release the lock.
-    fn unlock(&mut self) -> Result<(), Error>;
+    /// Release one lock on the repository.
+    fn unlock(&self) -> Result<(), crate::lock::Error>;
 
-    /// Return the physical lock status.
-    ///
-    /// Returns a Python object describing the lock status.
-    fn get_physical_lock_status(&self) -> Result<PyObject, Error>;
+    /// Whether the physical lock is held, by anyone.
+    fn get_physical_lock_status(&self) -> Result<bool, crate::lock::Error>;
 
     /// Keep the physical lock in place on unlock.
-    fn leave_lock_in_place(&mut self) -> Result<(), Error>;
+    fn leave_lock_in_place(&self) -> Result<(), crate::lock::Error>;
 
     /// Release the physical lock on unlock.
-    fn dont_leave_lock_in_place(&mut self) -> Result<(), Error>;
+    fn dont_leave_lock_in_place(&self) -> Result<(), crate::lock::Error>;
 
     // Location and identity
 
@@ -149,6 +198,18 @@ pub trait Repository {
     ///
     /// Returns a Python `TreeDelta`.
     fn get_revision_delta(&self, revision_id: &RevisionId) -> Result<PyObject, Error>;
+
+    /// The deltas of the Python `revisions` objects against their first
+    /// parents, limited to `specific_files` when given.
+    fn get_revision_deltas(
+        &self,
+        revisions: &[PyObject],
+        specific_files: Option<&[&str]>,
+    ) -> Result<Vec<PyObject>, Error>;
+
+    /// The Python revision object for `revision_id`, read without the
+    /// checks reconciliation would trip over.
+    fn get_revision_reconcile(&self, revision_id: &RevisionId) -> Result<PyObject, Error>;
 
     /// Return the revision id for a revno, given a known later `(revno, revid)`.
     ///
@@ -218,6 +279,23 @@ pub trait Repository {
         signature: &[u8],
     ) -> Result<(), Error>;
 
+    /// Store `plaintext` signed with the Python GPG strategy as the signature
+    /// of `revision_id`.
+    fn store_revision_signature(
+        &mut self,
+        gpg_strategy: &PyObject,
+        plaintext: &[u8],
+        revision_id: &RevisionId,
+    ) -> Result<(), Error>;
+
+    /// Verify the signatures of `revision_ids` with the Python GPG strategy,
+    /// giving a Python ``(revision_id, result, key)`` tuple for each.
+    fn verify_revision_signatures(
+        &self,
+        revision_ids: &[RevisionId],
+        gpg_strategy: &PyObject,
+    ) -> Result<Vec<PyObject>, Error>;
+
     /// Sign `revision_id` using a GPG strategy.
     fn sign_revision(
         &mut self,
@@ -250,6 +328,12 @@ pub trait Repository {
     /// Abort the current write group.
     fn abort_write_group(&mut self, suppress_errors: bool) -> Result<(), Error>;
 
+    /// Suspend the current write group, returning the tokens that resume it.
+    fn suspend_write_group(&mut self) -> Result<Vec<String>, Error>;
+
+    /// Resume the write group suspended with `tokens`.
+    fn resume_write_group(&mut self, tokens: &[String]) -> Result<(), Error>;
+
     /// Re-read data to synchronise with disk.
     fn refresh_data(&mut self) -> Result<(), Error>;
 
@@ -274,6 +358,7 @@ pub trait Repository {
         other: &PyObject,
         find_ghosts: bool,
         revision_ids: Option<&[RevisionId]>,
+        if_present_ids: Option<&[RevisionId]>,
         limit: Option<u64>,
     ) -> Result<PyObject, Error>;
 
@@ -347,4 +432,30 @@ pub trait Repository {
         revision_id: Option<&RevisionId>,
         lossy: bool,
     ) -> Result<PyObject, Error>;
+}
+
+/// Open the repository at `location`, as ``Repository.open`` does.
+pub fn open(location: &str) -> Result<crate::controldir::RepositoryRef, crate::controldir::Error> {
+    crate::controldir::open(location)?.open_repository()
+}
+
+/// Create a repository in `controldir`, as ``Repository.create`` does.
+///
+/// Python initialises the default repository format there; the control
+/// directory's own repository creation is the same for the formats in use.
+pub fn create(
+    controldir: &dyn crate::controldir::ControlDir,
+) -> Result<crate::controldir::RepositoryRef, crate::controldir::Error> {
+    controldir.create_repository(false)
+}
+
+impl From<crate::lock::Error> for Error {
+    fn from(err: crate::lock::Error) -> Self {
+        match err {
+            crate::lock::Error::UnsupportedOperation(msg) => Error::UnsupportedOperation(msg),
+            #[cfg(feature = "pyo3")]
+            crate::lock::Error::Python(e) => Error::Python(e),
+            other => Error::Other(other.to_string()),
+        }
+    }
 }

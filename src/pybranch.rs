@@ -1,6 +1,5 @@
 use crate::branch::{Branch, Error, PyObject};
 use bazaar::RevisionId;
-use pyo3::import_exception;
 use pyo3::prelude::*;
 
 /// A wrapper around a Python branch object.
@@ -21,33 +20,11 @@ impl PyBranch {
     }
 }
 
-import_exception!(breezy.errors, NoSuchRevision);
-import_exception!(breezy.errors, NotStacked);
-import_exception!(breezy.errors, UpgradeRequired);
-import_exception!(breezy.branch, BindingUnsupported);
-import_exception!(breezy.errors, UnsupportedOperation);
-
-fn map_err(py: Python<'_>, err: PyErr) -> Error {
-    if err.is_instance_of::<NoSuchRevision>(py) {
-        let revid = err
-            .value(py)
-            .getattr("revision")
-            .and_then(|r| r.extract::<RevisionId>());
-        match revid {
-            Ok(revid) => Error::NoSuchRevision(revid),
-            Err(_) => Error::Other(err.to_string()),
-        }
-    } else if err.is_instance_of::<NotStacked>(py) {
-        Error::NotStacked
-    } else if err.is_instance_of::<UpgradeRequired>(py) {
-        Error::UpgradeRequired
-    } else if err.is_instance_of::<BindingUnsupported>(py) {
-        Error::BindingUnsupported
-    } else if err.is_instance_of::<UnsupportedOperation>(py) {
-        Error::UnsupportedOperation(err.to_string())
-    } else {
-        Error::Other(err.to_string())
-    }
+/// Python exceptions are kept as they are, so they reach Python again with
+/// all their arguments; [`Error`]'s predicates recognise the ones Rust code
+/// handles.
+fn map_err(_py: Python<'_>, err: PyErr) -> Error {
+    Error::Python(err)
 }
 
 /// Call a no-argument method and map any error.
@@ -74,6 +51,10 @@ where
 }
 
 impl Branch for PyBranch {
+    fn python_object(&self) -> Option<&PyObject> {
+        Some(&self.0)
+    }
+
     fn name(&self) -> Result<String, Error> {
         Python::attach(|py| {
             self.0
@@ -81,6 +62,62 @@ impl Branch for PyBranch {
                 .getattr("name")
                 .and_then(|n| n.extract::<Option<String>>())
                 .map(Option::unwrap_or_default)
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn base(&self) -> Result<String, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("base")
+                .and_then(|b| b.extract())
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn user_url(&self) -> Result<String, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("user_url")
+                .and_then(|b| b.extract())
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn control_url(&self) -> Result<String, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("control_url")
+                .and_then(|b| b.extract())
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn repository(&self) -> Result<crate::controldir::RepositoryRef, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("repository")
+                .map(|r| {
+                    Box::new(crate::pyrepository::PyRepository::new(r.unbind()))
+                        as crate::controldir::RepositoryRef
+                })
+                .map_err(|e| map_err(py, e))
+        })
+    }
+
+    fn controldir(&self) -> Result<Box<dyn crate::controldir::ControlDir>, Error> {
+        Python::attach(|py| {
+            self.0
+                .bind(py)
+                .getattr("controldir")
+                .map(|d| {
+                    Box::new(crate::pycontroldir::PyControlDir::new(d.unbind()))
+                        as Box<dyn crate::controldir::ControlDir>
+                })
                 .map_err(|e| map_err(py, e))
         })
     }
@@ -114,46 +151,43 @@ impl Branch for PyBranch {
         })
     }
 
-    fn break_lock(&mut self) -> Result<(), Error> {
-        call0(&self.0, "break_lock").map(|_| ())
+    fn break_lock(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "break_lock")
     }
 
     fn is_locked(&self) -> Result<bool, Error> {
         call0_extract(&self.0, "is_locked")
     }
 
-    fn lock_write(&mut self, token: Option<&str>) -> Result<PyObject, Error> {
-        Python::attach(|py| {
-            self.0
-                .bind(py)
-                .call_method1("lock_write", (token,))
-                .map(|r| r.unbind())
-                .map_err(|e| map_err(py, e))
-        })
+    fn lock_write(
+        &self,
+        token: Option<&[u8]>,
+    ) -> Result<crate::lock::WriteLockRef, crate::lock::Error> {
+        crate::pylock::lock_write_with_token(&self.0, token)
     }
 
-    fn lock_read(&self) -> Result<PyObject, Error> {
-        call0(&self.0, "lock_read")
+    fn lock_read(&self) -> Result<crate::lock::ReadLockRef, crate::lock::Error> {
+        crate::pylock::lock_read(&self.0)
     }
 
-    fn unlock(&mut self) -> Result<(), Error> {
-        call0(&self.0, "unlock").map(|_| ())
+    fn unlock(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "unlock")
     }
 
     fn peek_lock_mode(&self) -> Result<Option<String>, Error> {
         call0_extract(&self.0, "peek_lock_mode")
     }
 
-    fn get_physical_lock_status(&self) -> Result<PyObject, Error> {
-        call0(&self.0, "get_physical_lock_status")
+    fn get_physical_lock_status(&self) -> Result<bool, crate::lock::Error> {
+        crate::pylock::get_physical_lock_status(&self.0)
     }
 
-    fn leave_lock_in_place(&mut self) -> Result<(), Error> {
-        call0(&self.0, "leave_lock_in_place").map(|_| ())
+    fn leave_lock_in_place(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "leave_lock_in_place")
     }
 
-    fn dont_leave_lock_in_place(&mut self) -> Result<(), Error> {
-        call0(&self.0, "dont_leave_lock_in_place").map(|_| ())
+    fn dont_leave_lock_in_place(&self) -> Result<(), crate::lock::Error> {
+        crate::pylock::call(&self.0, "dont_leave_lock_in_place")
     }
 
     fn last_revision(&self) -> Result<RevisionId, Error> {
@@ -462,21 +496,19 @@ impl Branch for PyBranch {
         call0(&self.0, "update").map(|_| ())
     }
 
-    fn tags(&self) -> Box<dyn crate::tags::Tags> {
+    fn tags(&self) -> Result<Box<dyn crate::tags::Tags>, Error> {
         Python::attach(|py| {
-            let py_tags = self.0.bind(py).getattr("tags").unwrap();
-            Box::new(crate::pytags::PyTags(py_tags.unbind()))
+            let tags = self
+                .0
+                .bind(py)
+                .getattr("tags")
+                .map_err(|e| map_err(py, e))?;
+            Ok(Box::new(crate::pytags::PyTags(tags.unbind())) as Box<dyn crate::tags::Tags>)
         })
     }
 
-    fn supports_tags(&self) -> bool {
-        Python::attach(|py| {
-            self.0
-                .bind(py)
-                .call_method0("supports_tags")
-                .and_then(|r| r.extract())
-                .unwrap_or(false)
-        })
+    fn supports_tags(&self) -> Result<bool, Error> {
+        call0_extract(&self.0, "supports_tags")
     }
 
     fn automatic_tag_name(&self, revision_id: &RevisionId) -> Result<Option<String>, Error> {

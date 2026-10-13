@@ -14,6 +14,8 @@ use pyo3::types::PyBytes;
 
 import_exception!(breezy.errors, NoSuchRevision);
 import_exception!(breezy.errors, NotStacked);
+import_exception!(breezy.errors, NoSuchTag);
+import_exception!(breezy.errors, TagAlreadyExists);
 
 /// A pair of revision-id byte lists, as returned by `heads_to_fetch`.
 type HeadPair<'py> = (Vec<Bound<'py, PyBytes>>, Vec<Bound<'py, PyBytes>>);
@@ -26,6 +28,7 @@ type HeadPair<'py> = (Vec<Bound<'py, PyBytes>>, Vec<Bound<'py, PyBytes>>);
 /// `None`).
 pub(crate) fn err_to_py(err: Error) -> PyErr {
     Python::attach(|py| match err {
+        breezy::branch::Error::Python(e) => e,
         Error::NoSuchRevision(revid) => {
             NoSuchRevision::new_err((py.None(), revid.as_bytes().to_vec()))
         }
@@ -39,6 +42,16 @@ pub(crate) fn err_to_py(err: Error) -> PyErr {
         Error::UnsupportedOperation(msg) => breezy::pyerrors::unsupported_operation(py, &msg),
         Error::Other(msg) => PyRuntimeError::new_err(msg),
     })
+}
+
+/// Convert a tags error into the matching Python exception.
+pub(crate) fn tags_err_to_py(err: breezy::tags::Error) -> PyErr {
+    match err {
+        breezy::tags::Error::Python(e) => e,
+        breezy::tags::Error::NoSuchTag(tag) => NoSuchTag::new_err((tag,)),
+        breezy::tags::Error::TagAlreadyExists(tag) => TagAlreadyExists::new_err((tag,)),
+        breezy::tags::Error::Branch(e) => err_to_py(*e),
+    }
 }
 
 /// A branch: a line of development holding a history of revisions.
@@ -55,6 +68,18 @@ pub(crate) fn err_to_py(err: Error) -> PyErr {
 ///     branch: The breezy branch object to wrap.
 #[pyclass(module = "breezy._cmd_rs")]
 pub struct Branch(Box<dyn breezy::branch::Branch + Send + Sync>);
+
+/// Hand a branch to Python: the Python branch it wraps, or a [`Branch`]
+/// around a native one.
+pub(crate) fn branch_to_py(
+    py: Python<'_>,
+    branch: Box<dyn breezy::branch::Branch + Send + Sync>,
+) -> PyResult<Py<PyAny>> {
+    match branch.python_object() {
+        Some(obj) => Ok(obj.clone_ref(py)),
+        None => Ok(Py::new(py, Branch::from_boxed(branch))?.into_any()),
+    }
+}
 
 impl Branch {
     /// Wrap an already-boxed branch.
@@ -91,10 +116,58 @@ impl Branch {
     ///     UnknownFormatError: If the control directory format is not
     ///         recognised.
     #[staticmethod]
-    fn open(location: &str) -> PyResult<Self> {
-        Ok(Branch(
-            breezy::controldir::open(location)?.open_branch(None)?,
-        ))
+    fn open(py: Python<'_>, location: &str) -> PyResult<Py<PyAny>> {
+        branch_to_py(py, breezy::branch::open(location)?)
+    }
+
+    /// Open the branch rooted at a transport.
+    ///
+    /// Only the transport's ``base`` URL is used; a new transport is opened
+    /// for it.
+    ///
+    /// Args:
+    ///     transport: A transport pointing at the branch's location.
+    ///     name: Name of a colocated branch, or None for the default branch.
+    ///
+    /// Returns:
+    ///     The branch. A branch backed by a Python branch object is returned
+    ///     as that object.
+    ///
+    /// Raises:
+    ///     NotBranchError: If there is no branch at the location.
+    #[staticmethod]
+    #[pyo3(signature = (transport, name=None))]
+    fn open_from_transport(
+        py: Python<'_>,
+        transport: &Bound<'_, PyAny>,
+        name: Option<&str>,
+    ) -> PyResult<Py<PyAny>> {
+        let base: String = transport.getattr("base")?.extract()?;
+        let transport = breezy::controldir::get_transport(&base)?;
+        branch_to_py(py, breezy::branch::open_from_transport(transport, name)?)
+    }
+
+    /// Open an existing branch which contains a location.
+    ///
+    /// This probes for a branch at the location, and searches upwards from
+    /// there until a control directory is found or the root is reached.
+    ///
+    /// Args:
+    ///     location: The URL or local path to start searching from.
+    ///
+    /// Returns:
+    ///     A tuple ``(branch, relpath)``, where ``relpath`` is the unused
+    ///     portion of the location below the branch root. A branch backed by a
+    ///     Python branch object is returned as that object.
+    ///
+    /// Raises:
+    ///     NotBranchError: If no containing branch is found.
+    ///     UnknownFormatError: If the control directory format is not
+    ///         recognised.
+    #[staticmethod]
+    fn open_containing(py: Python<'_>, location: &str) -> PyResult<(Py<PyAny>, String)> {
+        let (branch, relpath) = breezy::branch::open_containing(location)?;
+        Ok((branch_to_py(py, branch)?, relpath))
     }
 
     /// The name of this branch, or the empty string for the default branch.
@@ -109,6 +182,36 @@ impl Branch {
         self.0.user_transport().map_err(err_to_py)
     }
 
+    /// The URL of the branch.
+    #[getter]
+    fn base(&self) -> PyResult<String> {
+        self.0.base().map_err(err_to_py)
+    }
+
+    /// The URL of the directory holding the branch, as the user sees it.
+    #[getter]
+    fn user_url(&self) -> PyResult<String> {
+        self.0.user_url().map_err(err_to_py)
+    }
+
+    /// The URL of the branch's own control files.
+    #[getter]
+    fn control_url(&self) -> PyResult<String> {
+        self.0.control_url().map_err(err_to_py)
+    }
+
+    /// The repository holding this branch's revisions.
+    #[getter]
+    fn repository(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        crate::repository::repository_to_py(py, self.0.repository().map_err(err_to_py)?)
+    }
+
+    /// The control directory this branch lives in.
+    #[getter]
+    fn controldir(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        crate::controldir::controldir_to_py(py, self.0.controldir().map_err(err_to_py)?)
+    }
+
     /// Return the branch's tags.
     ///
     /// This is the equivalent of ``branch.tags.get_tag_dict()``.
@@ -120,7 +223,8 @@ impl Branch {
         py: Python<'py>,
     ) -> PyResult<pyo3::Bound<'py, pyo3::types::PyDict>> {
         let dict = pyo3::types::PyDict::new(py);
-        for (name, revid) in self.0.tags().get_tag_dict() {
+        let tags = self.0.tags().map_err(err_to_py)?;
+        for (name, revid) in tags.get_tag_dict().map_err(tags_err_to_py)? {
             dict.set_item(name, PyBytes::new(py, revid.as_bytes()))?;
         }
         Ok(dict)
@@ -151,8 +255,8 @@ impl Branch {
     ///
     /// Uses the UI factory to ask for confirmation if the lock may be from an
     /// active process. This also probes the repository for its lock.
-    fn break_lock(&mut self) -> PyResult<()> {
-        self.0.break_lock().map_err(err_to_py)
+    fn break_lock(&self) -> PyResult<()> {
+        Ok(self.0.break_lock()?)
     }
 
     /// Return True if this branch is locked.
@@ -174,8 +278,16 @@ impl Branch {
     ///     LockContention: If the lock is held by someone else.
     ///     TokenMismatch: If ``token`` does not match the held lock.
     #[pyo3(signature = (token=None))]
-    fn lock_write(&mut self, token: Option<&str>) -> PyResult<Py<PyAny>> {
-        self.0.lock_write(token).map_err(err_to_py)
+    fn lock_write(slf: &Bound<'_, Self>, token: Option<Vec<u8>>) -> PyResult<Py<PyAny>> {
+        let lock = slf.borrow().0.lock_write(token.as_deref())?;
+        let token = lock.token().map(<[u8]>::to_vec);
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.branch", "BranchWriteLockResult"),
+            Some(token.as_deref()),
+        )
     }
 
     /// Lock the branch for read operations.
@@ -183,16 +295,23 @@ impl Branch {
     /// Returns:
     ///     A ``breezy.lock.LogicalLockResult``, which can be used as a context
     ///     manager and whose ``unlock`` releases the lock.
-    fn lock_read(&self) -> PyResult<Py<PyAny>> {
-        self.0.lock_read().map_err(err_to_py)
+    fn lock_read(slf: &Bound<'_, Self>) -> PyResult<Py<PyAny>> {
+        let lock = slf.borrow().0.lock_read()?;
+        crate::lock::lock_result_to_py(
+            slf.py(),
+            lock,
+            slf.as_any(),
+            ("breezy.lock", "LogicalLockResult"),
+            None,
+        )
     }
 
     /// Release the lock on this branch.
     ///
     /// Raises:
     ///     LockNotHeld: If the branch is not locked.
-    fn unlock(&mut self) -> PyResult<()> {
-        self.0.unlock().map_err(err_to_py)
+    fn unlock(&self) -> PyResult<()> {
+        Ok(self.0.unlock()?)
     }
 
     /// Return the lock mode of the branch: ``'r'``, ``'w'`` or None.
@@ -201,8 +320,8 @@ impl Branch {
     }
 
     /// Return whether the physical lock on the branch is held, by anyone.
-    fn get_physical_lock_status(&self) -> PyResult<Py<PyAny>> {
-        self.0.get_physical_lock_status().map_err(err_to_py)
+    fn get_physical_lock_status(&self) -> PyResult<bool> {
+        Ok(self.0.get_physical_lock_status()?)
     }
 
     /// Do not release the physical lock when this branch object is unlocked.
@@ -210,8 +329,8 @@ impl Branch {
     /// Raises:
     ///     NotImplementedError: If the branch format does not support lock
     ///         tokens, i.e. ``lock_write`` does not return a token.
-    fn leave_lock_in_place(&mut self) -> PyResult<()> {
-        self.0.leave_lock_in_place().map_err(err_to_py)
+    fn leave_lock_in_place(&self) -> PyResult<()> {
+        Ok(self.0.leave_lock_in_place()?)
     }
 
     /// Release the physical lock when this branch object is unlocked.
@@ -221,8 +340,8 @@ impl Branch {
     /// Raises:
     ///     NotImplementedError: If the branch format does not support lock
     ///         tokens, i.e. ``lock_write`` does not return a token.
-    fn dont_leave_lock_in_place(&mut self) -> PyResult<()> {
-        self.0.dont_leave_lock_in_place().map_err(err_to_py)
+    fn dont_leave_lock_in_place(&self) -> PyResult<()> {
+        Ok(self.0.dont_leave_lock_in_place()?)
     }
 
     /// Return the revision id of the branch tip.
@@ -670,10 +789,8 @@ impl Branch {
     }
 
     /// Return True if this branch supports tags.
-    ///
-    /// An error while checking is not raised; False is returned instead.
-    fn supports_tags(&self) -> bool {
-        self.0.supports_tags()
+    fn supports_tags(&self) -> PyResult<bool> {
+        self.0.supports_tags().map_err(err_to_py)
     }
 
     /// Try to automatically determine a tag name for a revision.

@@ -14,18 +14,17 @@ pub struct PyTags(pub(crate) Py<PyAny>);
 import_exception!(breezy.errors, NoSuchTag);
 
 impl Tags for PyTags {
-    fn get_tag_dict(&self) -> std::collections::HashMap<String, RevisionId> {
-        Python::attach(|py| {
-            let dict = self.0.call_method0(py, "get_tag_dict").unwrap();
-            let dict = dict.cast_bound::<PyDict>(py).unwrap();
+    fn get_tag_dict(&self) -> Result<std::collections::HashMap<String, RevisionId>, Error> {
+        Python::attach(|py| -> PyResult<_> {
+            let dict = self.0.call_method0(py, "get_tag_dict")?;
+            let dict = dict.cast_bound::<PyDict>(py)?;
             let mut map = std::collections::HashMap::new();
             for (key, value) in dict.iter() {
-                let key = key.extract::<String>().unwrap();
-                let value = value.extract::<Vec<u8>>().unwrap();
-                map.insert(key, RevisionId::from(value));
+                map.insert(key.extract::<String>()?, value.extract::<RevisionId>()?);
             }
-            map
+            Ok(map)
         })
+        .map_err(Error::Python)
     }
 
     fn delete_tag(&mut self, tag: &str) -> Result<(), Error> {
@@ -34,7 +33,7 @@ impl Tags for PyTags {
                 if e.is_instance_of::<NoSuchTag>(py) {
                     Error::NoSuchTag(tag.to_string())
                 } else {
-                    panic!("unexpected exception: {:?}", e);
+                    Error::Python(e)
                 }
             })
         })?;

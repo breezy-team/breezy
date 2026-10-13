@@ -46,6 +46,8 @@ pub mod help;
 pub mod hooks;
 /// Location parsing and conversion utilities.
 pub mod location;
+/// Locks on branches, repositories and trees.
+pub mod lock;
 /// Lock directory management.
 pub mod lockdir;
 /// Progress reporting utilities.
@@ -81,6 +83,9 @@ pub mod treebuilder;
 
 /// Command trait and infrastructure.
 pub mod command;
+
+/// Native implementations of commands from ``breezy.builtins``.
+pub mod builtins;
 
 /// Command-line option parsing.
 pub mod optparse;
@@ -146,6 +151,10 @@ pub mod pytags;
 #[cfg(feature = "pyo3")]
 /// Python bindings for ControlDir.
 pub mod pycontroldir;
+
+#[cfg(feature = "pyo3")]
+/// Python lock results as implementations of the lock traits.
+pub mod pylock;
 
 /// Uncommit functionality.
 pub mod uncommit;

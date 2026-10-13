@@ -30,11 +30,37 @@ pub enum Error {
     UnsupportedOperation(String),
     /// A generic error occurred.
     Other(String),
+    /// A Python exception raised by a Python-backed implementation, kept so
+    /// it reaches Python again with its type.
+    #[cfg(feature = "pyo3")]
+    Python(pyo3::PyErr),
+}
+
+#[cfg(feature = "pyo3")]
+mod py_exceptions {
+    pyo3::import_exception!(breezy.errors, NoSuchRevision);
+}
+
+impl Error {
+    /// Whether the revision asked for does not exist, as Rust's
+    /// [`Error::NoSuchRevision`] or Python's ``NoSuchRevision``.
+    pub fn is_no_such_revision(&self) -> bool {
+        match self {
+            Error::NoSuchRevision(_) => true,
+            #[cfg(feature = "pyo3")]
+            Error::Python(e) => {
+                pyo3::Python::attach(|py| e.is_instance_of::<py_exceptions::NoSuchRevision>(py))
+            }
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            #[cfg(feature = "pyo3")]
+            Error::Python(e) => write!(f, "{e}"),
             Error::NoSuchRevision(revid) => write!(f, "No such revision: {}", revid),
             Error::NotStacked => write!(f, "Branch is not stacked"),
             Error::UpgradeRequired => write!(f, "Upgrade required"),
@@ -53,10 +79,33 @@ impl std::error::Error for Error {}
 /// rich Python-only domain objects use [`PyObject`]; methods with a trivial
 /// constant default in Python are given a Rust default.
 pub trait Branch {
+    /// The Python branch this one wraps, if it wraps one.
+    ///
+    /// Bindings use this to hand a Python-backed branch back to Python as the
+    /// original object rather than as a Rust object proxying to it.
+    fn python_object(&self) -> Option<&PyObject> {
+        None
+    }
+
     // Properties and identity
 
     /// The name of this branch (the empty string for the default branch).
     fn name(&self) -> Result<String, Error>;
+
+    /// The URL of the branch, as the user refers to it.
+    fn base(&self) -> Result<String, Error>;
+
+    /// The URL of the directory holding the branch's control directory.
+    fn user_url(&self) -> Result<String, Error>;
+
+    /// The URL of the branch's own control files.
+    fn control_url(&self) -> Result<String, Error>;
+
+    /// The repository holding the branch's revisions.
+    fn repository(&self) -> Result<crate::controldir::RepositoryRef, Error>;
+
+    /// The control directory the branch lives in.
+    fn controldir(&self) -> Result<Box<dyn crate::controldir::ControlDir>, Error>;
 
     /// The transport for user files in the branch's control directory.
     ///
@@ -72,37 +121,35 @@ pub trait Branch {
     // Locking
 
     /// Break a lock held by another instance.
-    fn break_lock(&mut self) -> Result<(), Error>;
+    fn break_lock(&self) -> Result<(), crate::lock::Error>;
 
     /// Whether the branch is locked.
     fn is_locked(&self) -> Result<bool, Error>;
 
-    /// Lock the branch for writing.
-    ///
-    /// Returns a Python `BranchWriteLockResult`.
-    fn lock_write(&mut self, token: Option<&str>) -> Result<PyObject, Error>;
+    /// Lock the branch, and its repository, for writing; with `token`,
+    /// take over the physical lock it names.
+    fn lock_write(
+        &self,
+        token: Option<&[u8]>,
+    ) -> Result<crate::lock::WriteLockRef, crate::lock::Error>;
 
-    /// Lock the branch for reading.
-    ///
-    /// Returns a Python `LogicalLockResult`.
-    fn lock_read(&self) -> Result<PyObject, Error>;
+    /// Lock the branch, and its repository, for reading.
+    fn lock_read(&self) -> Result<crate::lock::ReadLockRef, crate::lock::Error>;
 
-    /// Release the lock.
-    fn unlock(&mut self) -> Result<(), Error>;
+    /// Release one lock on the branch.
+    fn unlock(&self) -> Result<(), crate::lock::Error>;
 
     /// Return the current lock mode: `"r"`, `"w"`, or `None`.
     fn peek_lock_mode(&self) -> Result<Option<String>, Error>;
 
-    /// Return the physical lock status.
-    ///
-    /// Returns a Python object describing the lock status.
-    fn get_physical_lock_status(&self) -> Result<PyObject, Error>;
+    /// Whether the physical lock is held, by anyone.
+    fn get_physical_lock_status(&self) -> Result<bool, crate::lock::Error>;
 
     /// Keep the physical lock in place on unlock.
-    fn leave_lock_in_place(&mut self) -> Result<(), Error>;
+    fn leave_lock_in_place(&self) -> Result<(), crate::lock::Error>;
 
     /// Release the physical lock on unlock.
-    fn dont_leave_lock_in_place(&mut self) -> Result<(), Error>;
+    fn dont_leave_lock_in_place(&self) -> Result<(), crate::lock::Error>;
 
     // Revision history
 
@@ -253,10 +300,10 @@ pub trait Branch {
     // Tags
 
     /// Return the tags associated with the branch.
-    fn tags(&self) -> Box<dyn Tags>;
+    fn tags(&self) -> Result<Box<dyn Tags>, Error>;
 
     /// Whether the branch supports tags.
-    fn supports_tags(&self) -> bool;
+    fn supports_tags(&self) -> Result<bool, Error>;
 
     /// Automatically determine a tag name for `revision_id`, if any.
     fn automatic_tag_name(&self, revision_id: &RevisionId) -> Result<Option<String>, Error>;
@@ -399,4 +446,38 @@ pub trait Branch {
     ///
     /// Returns a Python `Unshelver`.
     fn get_unshelver(&self, tree: &PyObject) -> Result<PyObject, Error>;
+}
+
+/// Open the branch at `location`, as ``Branch.open`` does.
+pub fn open(location: &str) -> Result<crate::controldir::BranchRef, crate::controldir::Error> {
+    crate::controldir::open(location)?.open_branch(None)
+}
+
+/// Open the branch `name` at `transport`, as ``Branch.open_from_transport``
+/// does.
+pub fn open_from_transport(
+    transport: crate::controldir::TransportRef,
+    name: Option<&str>,
+) -> Result<crate::controldir::BranchRef, crate::controldir::Error> {
+    crate::controldir::open_from_transport(transport)?.open_branch(name)
+}
+
+/// Open the branch containing `location`, as ``Branch.open_containing``
+/// does, with the part of `location` below it.
+pub fn open_containing(
+    location: &str,
+) -> Result<(crate::controldir::BranchRef, String), crate::controldir::Error> {
+    let (dir, relpath) = crate::controldir::open_containing(location)?;
+    Ok((dir.open_branch(None)?, relpath))
+}
+
+impl From<crate::lock::Error> for Error {
+    fn from(err: crate::lock::Error) -> Self {
+        match err {
+            crate::lock::Error::UnsupportedOperation(msg) => Error::UnsupportedOperation(msg),
+            #[cfg(feature = "pyo3")]
+            crate::lock::Error::Python(e) => Error::Python(e),
+            other => Error::Other(other.to_string()),
+        }
+    }
 }
