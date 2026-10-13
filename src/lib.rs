@@ -111,6 +111,10 @@ pub mod pytree;
 pub mod pybranch;
 
 #[cfg(feature = "pyo3")]
+/// Python bindings for Repository.
+pub mod pyrepository;
+
+#[cfg(feature = "pyo3")]
 /// Python bindings for Command.
 pub mod pycommand;
 
