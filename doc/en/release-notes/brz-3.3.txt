@@ -5,6 +5,14 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.24
+##########
+
+ * Copy the remaining stat fields in ``breezy.filters.FilteredStat``, so
+   committing a content filtered working tree file no longer raises
+   ``AttributeError: 'FilteredStat' object has no attribute 'st_dev'``.
+   (Zainab Mehmut)
+
 brz 3.3.23
 ##########
 
