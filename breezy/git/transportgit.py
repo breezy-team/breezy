@@ -71,7 +71,9 @@ from ..trace import warning
 from ..transport import FileExists, NoSuchFile
 
 
-class _RemoteGitFile:
+class _TransportGitFile:
+    """Git file that is written to a transport on close, without a lock file."""
+
     def __init__(self, transport, filename, mode, bufsize, mask):
         self.transport = transport
         self.filename = filename
@@ -110,12 +112,21 @@ class _RemoteGitFile:
             return
         self._file.flush()
         self._file.seek(0)
-        self.transport.put_file(self.filename, self._file)
+        self.transport.put_file(self.filename, self._file, mode=self.mask)
         self._file.close()
         self._closed = True
 
 
-def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=0o644):
+def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=None, lock=True):
+    """Open a file on a transport.
+
+    On a local transport a write takes ``<filename>.lock``. Pass
+    ``lock=False`` for callers that already hold it.
+
+    ``mask`` is the mode of the new file. With ``lock=True`` the umask
+    still applies on a local transport, and ``mask`` is ignored on a
+    non-local one. None means the default.
+    """
     if "a" in mode:
         raise OSError("append mode not supported for Git files")
     if "+" in mode:
@@ -123,10 +134,18 @@ def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=0o644):
     if "b" not in mode:
         raise OSError("text mode not supported for Git files")
     if "w" in mode:
-        try:
-            return _GitFile(transport.local_abspath(filename), mode, bufsize, mask)
-        except NotLocalUrl:
-            return _RemoteGitFile(transport, filename, mode, bufsize, mask)
+        if lock:
+            try:
+                return _GitFile(
+                    transport.local_abspath(filename),
+                    mode,
+                    bufsize,
+                    0o644 if mask is None else mask,
+                )
+            except NotLocalUrl:
+                # Non-local writes with a lock keep the default mode.
+                mask = None
+        return _TransportGitFile(transport, filename, mode, bufsize, mask)
     else:
         return transport.get(filename)
 
