@@ -18,12 +18,18 @@
 """Test the GitDir class."""
 
 import os
+from io import BytesIO
 
 from dulwich.repo import Repo as GitRepo
+from dulwich.server import update_server_info
 
 from ... import controldir, errors, urlutils
+from ...branch import Branch
+from ...tests.http_utils import TestCaseWithWebserver
 from ...transport import get_transport
-from .. import dir, tests, workingtree
+from .. import RemoteGitProber, dir, tests, workingtree
+from ..mapping import default_mapping
+from ..remote import RemoteGitControlDirFormat
 
 
 class TestGitDir(tests.TestCaseInTempDir):
@@ -112,3 +118,135 @@ class TestGitDirFormat(tests.TestCase):
         self.assertEqual(self.format, self.format)
         bzr_format = controldir.format_registry.make_controldir("default")
         self.assertNotEqual(self.format, bzr_format)
+
+
+class RemoteGitProberInfoRefsTests(tests.TestCase):
+    """Telling smart, dumb and no git at all from the info/refs answer."""
+
+    REFS = b"2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee\trefs/heads/master\n"
+    # An annotated tag also gets a peeled ``^{}`` line.
+    TAG_REFS = (
+        b"0729ab4a7e204353df507e300f72fcda1defb34a\trefs/tags/v1\n"
+        b"d0724583ca78e4d47a504ce5b6f26fcd75dc1413\trefs/tags/v1^{}\n"
+    )
+    HTML = b"<!DOCTYPE html>\n<html><body>\thello</body></html>\n"
+
+    def _probe(self, content_type, body):
+        class Response:
+            status = 200
+            reason = "OK"
+            _body = BytesIO(body)
+
+            def getheader(self, name):
+                return content_type
+
+            def read(self, amt=None):
+                self.read_sizes.append(amt)
+                return self._body.read(amt)
+
+        self.read_sizes = Response.read_sizes = []
+
+        class Transport:
+            base = "http://example.invalid/"
+
+            def external_url(self):
+                return self.base
+
+            def request(self, method, url, headers=None):
+                return Response()
+
+        return RemoteGitProber().probe_transport(Transport())
+
+    def test_smart(self):
+        format = self._probe(
+            "application/x-git-upload-pack-advertisement",
+            b"001e# service=git-upload-pack\n0000",
+        )
+        self.assertIsInstance(format, RemoteGitControlDirFormat)
+
+    def test_dumb_without_content_type(self):
+        format = self._probe(None, self.REFS)
+        self.assertIsInstance(format, dir.BareLocalGitControlDirFormat)
+        self.assertEqual(self.REFS, format._refs_text)
+
+    def test_dumb_with_content_type(self):
+        refs = self.REFS + self.TAG_REFS
+        for content_type in ("text/plain", "application/octet-stream"):
+            format = self._probe(content_type, refs)
+            self.assertIsInstance(format, dir.BareLocalGitControlDirFormat)
+            self.assertEqual(refs, format._refs_text)
+
+    def test_dumb_sha256(self):
+        refs = (
+            b"1bcefd3b1e4bb81bbe69ee05d18ea2424429764af11e5fbe32cfb6cb33131d9f"
+            b"\trefs/heads/master\n"
+        )
+        format = self._probe("text/plain", refs)
+        self.assertIsInstance(format, dir.BareLocalGitControlDirFormat)
+
+    def test_page_is_not_a_branch(self):
+        self.assertRaises(errors.NotBranchError, self._probe, "text/html", self.HTML)
+        self.assertRaises(errors.NotBranchError, self._probe, None, self.HTML)
+
+    def test_page_is_not_read_whole(self):
+        page = self.HTML + b"x" * 1000
+        self.assertRaises(errors.NotBranchError, self._probe, "text/html", page)
+        self.assertEqual([65], self.read_sizes)
+
+    def test_empty_without_content_type(self):
+        format = self._probe(None, b"")
+        self.assertIsInstance(format, dir.BareLocalGitControlDirFormat)
+        self.assertEqual(b"", format._refs_text)
+
+    def test_typed_empty_is_not_a_branch(self):
+        self.assertRaises(errors.NotBranchError, self._probe, "text/plain", b"")
+
+    def test_smart_body_with_other_type_is_not_a_branch(self):
+        self.assertRaises(
+            errors.NotBranchError,
+            self._probe,
+            "text/plain",
+            b"001e# service=git-upload-pack\n0000",
+        )
+
+    def test_bad_refs_line_is_not_a_branch(self):
+        for body in (
+            self.REFS + b"hello\n",
+            b"2001b954\trefs/heads/master\n",
+            b"2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee refs/heads/master\n",
+        ):
+            self.assertRaises(errors.NotBranchError, self._probe, "text/plain", body)
+
+
+class DumbHttpTests(TestCaseWithWebserver):
+    """A repository served as static files, with a Content-Type."""
+
+    def setUp(self):
+        super().setUp()
+        self.git_repo = GitRepo.init("repo", mkdir=True)
+        self.commit = self.git_repo.get_worktree().commit(
+            message=b"message",
+            committer=b"committer <committer@example.com>",
+            author=b"author <author@example.com>",
+        )
+        update_server_info(self.git_repo)
+
+    def test_content_type_is_sent(self):
+        t = self.get_readonly_transport("repo/.git")
+        resp = t.request("GET", t.abspath("info/refs"))
+        self.assertEqual("application/octet-stream", resp.getheader("Content-Type"))
+
+    def test_open_branch(self):
+        branch = Branch.open(self.get_readonly_url("repo/.git"))
+        self.assertEqual(
+            default_mapping.revision_id_foreign_to_bzr(self.commit),
+            branch.last_revision(),
+        )
+
+    def test_sprout(self):
+        remote = controldir.ControlDir.open(self.get_readonly_url("repo/.git"))
+        local = remote.sprout("local")
+        self.assertEqual(
+            default_mapping.revision_id_foreign_to_bzr(self.commit),
+            local.open_branch().last_revision(),
+        )
