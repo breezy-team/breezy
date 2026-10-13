@@ -54,6 +54,7 @@ from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
 from .dir import BareLocalGitControlDirFormat, LocalGitDir
 from .mapping import decode_git_path, encode_git_path, mode_kind
+from .transportgit import TransportGitFile
 from .tree import MutableGitIndexTree
 
 CONFLICT_SUFFIXES = [".BASE", ".OTHER", ".THIS"]
@@ -790,10 +791,16 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def flush(self):
         if self._lock_mode != "w":
             raise errors.NotWriteLocked(self)
-        # TODO(jelmer): This shouldn't be writing in-place, but index.lock is
-        # already in use and GitFile doesn't allow overriding the lock file
-        # name :(
-        f = open(self.control_transport.local_abspath("index"), "wb")
+        try:
+            st = self.control_transport.stat("index")
+        except _mod_transport.NoSuchFile:
+            mask = None
+        else:
+            mask = stat.S_IMODE(st.st_mode) if stat.S_ISREG(st.st_mode) else None
+        # index.lock is held by the tree write lock.
+        f = TransportGitFile(
+            self.control_transport, "index", "wb", mask=mask, lock=False
+        )
         # Note that _flush will close the file
         self._flush(f)
 
