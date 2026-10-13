@@ -1006,6 +1006,10 @@ impl WorkingTree for PyTree {
         call0(&self.0, "get_config_stack")
     }
 
+    fn basedir(&self) -> Result<std::path::PathBuf, Error> {
+        getattr_extract(&self.0, "basedir")
+    }
+
     fn abspath(&self, path: &str) -> Result<std::path::PathBuf, Error> {
         call1_extract(&self.0, "abspath", (path,))
     }

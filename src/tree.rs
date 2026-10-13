@@ -537,6 +537,9 @@ pub trait RevisionTree: Tree {
 /// including both versioned and unversioned files. It mirrors the Python
 /// `breezy.workingtree.WorkingTree` class.
 pub trait WorkingTree: MutableTree {
+    /// The absolute path of the tree's root directory (the Python ``basedir``).
+    fn basedir(&self) -> Result<std::path::PathBuf, Error>;
+
     /// Whether the tree supports storing merge-modified information.
     fn supports_merge_modified(&self) -> Result<bool, Error>;
 

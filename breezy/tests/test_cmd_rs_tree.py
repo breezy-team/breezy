@@ -69,6 +69,11 @@ class TestRustTreeBinding(TestCaseWithTransport):
             sorted(wrapped.all_versioned_paths()),
         )
 
+    def test_working_tree_basedir(self):
+        tree = self.make_branch_and_tree("tree")
+        wrapped = _cmd_rs.WorkingTree(tree)
+        self.assertEqual(tree.basedir, wrapped.basedir)
+
     def test_inherited_tree_methods_on_working_tree(self):
         tree = self.make_tree()
         wt = _cmd_rs.WorkingTree(tree)

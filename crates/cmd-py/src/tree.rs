@@ -1332,6 +1332,26 @@ impl WorkingTree {
             .add_subclass(WorkingTree)
     }
 
+    /// Open the working tree at ``location``.
+    ///
+    /// Args:
+    ///     location: A path or URL.
+    ///
+    /// Returns:
+    ///     The working tree.
+    ///
+    /// Raises:
+    ///     NotBranchError: If there is no control directory at ``location``.
+    ///     NoWorkingTree: If the control directory has no working tree.
+    #[staticmethod]
+    fn open(py: Python<'_>, location: &str) -> PyResult<Py<Self>> {
+        let tree = breezy::workingtree::open(location)?;
+        let init = PyClassInitializer::from(Tree(AnyTree::Working(tree)))
+            .add_subclass(MutableTree)
+            .add_subclass(WorkingTree);
+        Py::new(py, init)
+    }
+
     /// Return True if this tree can store merge-modified hashes.
     fn supports_merge_modified(self_: PyRef<'_, Self>) -> PyResult<bool> {
         base(&self_)?.supports_merge_modified().map_err(err_to_py)
@@ -1378,6 +1398,14 @@ impl WorkingTree {
         base(&self_)?.get_config_stack().map_err(err_to_py)
     }
 
+    /// The absolute path of the root of this working tree, as a str.
+    // Paths are returned as OsString so they reach Python as str, like the
+    // Python tree's, rather than as pathlib.Path.
+    #[getter]
+    fn basedir(self_: PyRef<'_, Self>) -> PyResult<std::ffi::OsString> {
+        Ok(base(&self_)?.basedir().map_err(err_to_py)?.into_os_string())
+    }
+
     /// Return the absolute path of ``path`` in this working tree.
     ///
     /// Args:
@@ -1385,8 +1413,11 @@ impl WorkingTree {
     ///
     /// Returns:
     ///     The absolute path as a str.
-    fn abspath(self_: PyRef<'_, Self>, path: &str) -> PyResult<std::path::PathBuf> {
-        base(&self_)?.abspath(path).map_err(err_to_py)
+    fn abspath(self_: PyRef<'_, Self>, path: &str) -> PyResult<std::ffi::OsString> {
+        Ok(base(&self_)?
+            .abspath(path)
+            .map_err(err_to_py)?
+            .into_os_string())
     }
 
     /// Return ``path`` relative to the root of this working tree.

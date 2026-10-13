@@ -57,6 +57,26 @@ impl Repository {
         Repository(Box::new(PyRepository::new(repository)))
     }
 
+    /// Open the repository at a location.
+    ///
+    /// Args:
+    ///     location: URL or local path of the control directory that holds
+    ///         the repository.
+    ///
+    /// Returns:
+    ///     The repository. A repository backed by a breezy repository object
+    ///     is returned as that object rather than as a ``Repository`` wrapper.
+    ///
+    /// Raises:
+    ///     NotBranchError: If there is no control directory at ``location``.
+    ///     NoRepositoryPresent: If the control directory has no repository.
+    #[staticmethod]
+    fn open(location: &str) -> PyResult<Self> {
+        Ok(Repository(
+            breezy::controldir::open(location)?.open_repository()?,
+        ))
+    }
+
     /// The transport for user-visible data.
     #[getter]
     fn user_transport(&self) -> PyResult<Py<PyAny>> {

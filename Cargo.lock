@@ -240,6 +240,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_yaml",
+ "tempfile",
  "textwrap",
  "unicode-general-category",
  "url",

@@ -21,6 +21,9 @@ version = "3.4.0"
 
 [lib]
 
+[dev-dependencies]
+tempfile = "3"
+
 [features]
 default = ["i18n", "pyo3"]
 i18n = ["dep:gettext"]

@@ -56,6 +56,8 @@ pub mod repository;
 pub mod tags;
 /// Tracing and logging utilities.
 pub mod trace;
+/// Opening working trees.
+pub mod workingtree;
 
 /// Debugging utilities.
 pub mod debug;

@@ -47,7 +47,7 @@ import contextlib
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 
-from . import errors, hooks, registry, trace
+from . import _cmd_rs, errors, hooks, registry, trace
 from . import revision as _mod_revision
 from . import transport as _mod_transport
 
@@ -1346,11 +1346,13 @@ class ControlDirFormat:
     def register_prober(klass, prober: type["Prober"]):
         """Register a prober that can look for a control dir."""
         klass._probers.append(prober)
+        _cmd_rs.register_prober(prober)
 
     @classmethod
     def unregister_prober(klass, prober: type["Prober"]):
         """Unregister a prober."""
         klass._probers.remove(prober)
+        _cmd_rs.unregister_prober(prober)
 
     def __str__(self):
         """Return string representation of the format.
