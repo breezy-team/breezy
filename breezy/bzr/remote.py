@@ -5093,7 +5093,6 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             if not self._real_branch:
                 raise AssertionError
             self._format._network_name = self._real_branch._format.network_name()
-        self.tags = self._format.make_tags(self)
         # The base class init is not called, so we duplicate this:
         hooks = branch.Branch.hooks["open"]
         for hook in hooks:
