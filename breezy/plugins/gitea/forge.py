@@ -31,6 +31,7 @@ from ...forge import (
     MergeProposalBuilder,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
+    UnparseableForgeConfig,
     UnsupportedForge,
     determine_title,
 )
@@ -128,7 +129,10 @@ def iter_tokens():
     import configparser
 
     config = configparser.ConfigParser()
-    config.read([os.path.join(bedding.config_dir(), "gitea.conf")])
+    try:
+        config.read([os.path.join(bedding.config_dir(), "gitea.conf")])
+    except configparser.Error as e:
+        raise UnparseableForgeConfig(str(e)) from e
     for name, creds in config.items():
         if "url" not in creds:
             continue
