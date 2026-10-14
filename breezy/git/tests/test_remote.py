@@ -34,9 +34,11 @@ from ...branch import Branch
 from ...controldir import ControlDir
 from ...errors import (
     DivergedBranches,
+    FetchDepthUnsupported,
     NoSuchTag,
     NotBranchError,
 )
+from ...repository import InterRepository
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature
 from ...urlutils import join as urljoin
@@ -537,6 +539,18 @@ class FetchFromRemoteTestBase:
 
 class FetchFromRemoteToBzrTests(FetchFromRemoteTestBase, TestCaseWithTransport):
     _to_format = "2a"
+
+    def test_fetch_depth_unsupported(self):
+        self.remote_real.get_worktree().commit(
+            message=b"message",
+            committer=b"committer <committer@example.com>",
+            author=b"author <author@example.com>",
+        )
+        inter = InterRepository.get(
+            ControlDir.open(self.remote_url).open_repository(),
+            self.make_repository("local", format=self._to_format),
+        )
+        self.assertRaises(FetchDepthUnsupported, inter.fetch, depth=1)
 
 
 class FetchFromRemoteToGitTests(FetchFromRemoteTestBase, TestCaseWithTransport):
