@@ -442,12 +442,10 @@ class InterFromGitRepository(InterRepository):
                     if sha == ZERO_SHA:
                         continue
                     potential.add(sha)
-            have = self._target_has_shas(potential)
-            if depth is not None:
-                # Commits present only as a shallow boundary must stay in the
-                # wants so the fetch can deepen past them.
-                have -= self._target_shallow()
-            return list(potential - have)
+            if depth is not None and self._target_shallow():
+                # A present head may still sit above the shallow boundary.
+                return list(potential)
+            return list(potential - self._target_has_shas(potential))
 
         return determine_wants
 

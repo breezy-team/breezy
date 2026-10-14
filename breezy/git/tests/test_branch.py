@@ -206,6 +206,27 @@ class BranchTests(tests.TestCaseInTempDir):
         self.assertEqual({"lala": revid}, newbranch.tags.get_tag_dict())
         self.assertEqual([revid], newbranch.repository.all_revision_ids())
 
+    def test_fetch_deepens_twice(self):
+        os.mkdir("d")
+        os.chdir("d")
+        GitRepo.init(".")
+        bb = tests.GitBranchBuilder()
+        bb.set_file("foobar", b"foo\n", False)
+        for i in range(3):
+            bb.commit(b"Somebody <somebody@someorg.org>", b"rev %d" % i)
+        bb.finish()
+        os.chdir("..")
+        source = Branch.open("d")
+        target = source.controldir.sprout(
+            "e", source_branch=source, depth=1
+        ).open_branch()
+        target.fetch(source, depth=2)
+        target.fetch(source, depth=10)
+        r = GitRepo("e")
+        self.addCleanup(r.close)
+        self.assertEqual(set(), r.get_shallow())
+        self.assertEqual(3, len(target.repository.all_revision_ids()))
+
     def test_sprouted_ghost_tags(self):
         path, gitsha = self.make_onerev_branch()
         r = GitRepo(path)
