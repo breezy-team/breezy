@@ -22,6 +22,10 @@ brz 3.3.23
    after the date, ``date:`` reported no such revision.
    (Jelmer Vernooĳ)
 
+ * Fix opening a colocated branch whose name holds ``/``. The
+   ``user_url`` of such a branch could not be opened. ``brz info``
+   shows such a name decoded. (Zainab Mehmut)
+
  * git: Free a dropped repository or branch at once, so its ``.pack``
    and ``.idx`` files are closed without waiting for Python's cycle
    collector.

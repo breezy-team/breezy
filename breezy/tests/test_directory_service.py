@@ -163,6 +163,15 @@ class TestColocatedDirectory(TestCaseWithTransport):
             directories.dereference("co:"),
         )
 
+    def test_lookup_name_with_slash(self):
+        default = self.make_branch(".")
+        with_slash = default.controldir.create_branch(name="foo/bar")
+        self.assertEqual(with_slash.base, directories.dereference("co:foo/bar"))
+        self.assertEqual(
+            (default.controldir.user_url, {"branch": "foo%2Fbar"}),
+            urlutils.split_segment_parameters(directories.dereference("co:foo/bar")),
+        )
+
     def test_no_such_branch(self):
         # No error is raised in this case, that is up to the code that actually
         # opens the branch.

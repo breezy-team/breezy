@@ -99,10 +99,12 @@ def gather_location_info(repository=None, branch=None, working=None, control=Non
         if working_path != master_path:
             (master_path_base, params) = urlutils.split_segment_parameters(master_path)
             if working_path == master_path_base:
-                locs["checkout of co-located branch"] = params["branch"]
+                locs["checkout of co-located branch"] = urlutils.unescape(
+                    params["branch"]
+                )
             elif "branch" in params:
                 locs["checkout of branch"] = "{}, branch {}".format(
-                    master_path_base, params["branch"]
+                    master_path_base, urlutils.unescape(params["branch"])
                 )
             else:
                 locs["checkout of branch"] = master_path
