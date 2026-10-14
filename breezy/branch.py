@@ -56,7 +56,7 @@ from .trace import is_quiet, mutter, mutter_callsite, note, warning
 from .transport import Transport, get_transport
 
 if TYPE_CHECKING:
-    from .tag import TagConflict, TagUpdates
+    from .tag import TagConflict, Tags, TagUpdates
 
 
 class UnstackableBranchFormat(errors.BzrError):
@@ -107,8 +107,20 @@ class Branch(ControlComponent):
     def user_transport(self) -> Transport:
         return self.controldir.user_transport
 
+    @property
+    def tags(self) -> "Tags":
+        """The tags of this branch."""
+        # Made on demand: stored tags would point back at this branch.
+        try:
+            return self._tags
+        except AttributeError:
+            return self._format.make_tags(self)
+
+    @tags.setter
+    def tags(self, value: "Tags") -> None:
+        self._tags = value
+
     def __init__(self, possible_transports: list[Transport] | None = None) -> None:
-        self.tags = self._format.make_tags(self)
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
         self._partial_revision_id_to_revno_cache: dict[RevisionID, int] = {}

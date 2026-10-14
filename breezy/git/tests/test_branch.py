@@ -18,7 +18,9 @@
 
 """Tests for interfacing with a Git Branch."""
 
+import gc
 import os
+import weakref
 
 import dulwich
 from dulwich.objects import Commit, Tag
@@ -124,6 +126,19 @@ class TestGitBranch(tests.TestCaseInTempDir):
             {"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
             thebranch.tags.get_tag_dict(),
         )
+
+    def test_freed_without_cycle_collector(self):
+        reva = self.simple_commit_a()
+        r = GitRepo(".")
+        self.addCleanup(r.close)
+        r.refs[b"refs/tags/foo"] = reva
+        thebranch = Branch.open(".")
+        thebranch.tags.get_tag_dict()
+        ref = weakref.ref(thebranch)
+        gc.disable()
+        self.addCleanup(gc.enable)
+        del thebranch
+        self.assertIsNone(ref())
 
 
 class TestWithGitBranch(tests.TestCaseWithTransport):
