@@ -155,6 +155,7 @@ class GitDir(ControlDir):
         stacked=False,
         source_branch=None,
         create_tree_if_local=True,
+        depth=None,
     ):
         from ..repository import InterRepository
         from ..transport import get_transport
@@ -186,7 +187,9 @@ class GitDir(ControlDir):
         else:
             determine_wants = interrepo.determine_wants_all
         interrepo.fetch_objects(
-            determine_wants=determine_wants, mapping=source_branch.mapping
+            determine_wants=determine_wants,
+            mapping=source_branch.mapping,
+            depth=depth,
         )
         result_branch = source_branch.sprout(
             result, revision_id=revision_id, repository=result_repo

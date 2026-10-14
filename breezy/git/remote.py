@@ -442,7 +442,9 @@ class RemoteGitDir(GitDir):
             if pb is not None:
                 pb.finished()
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+    def fetch_pack(
+        self, determine_wants, graph_walker, pack_data, progress=None, depth=None
+    ):
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
             progress = DefaultProgressReporter(pb).progress
@@ -450,7 +452,12 @@ class RemoteGitDir(GitDir):
             pb = None
         try:
             result = self._client.fetch_pack(
-                self._client_path, determine_wants, graph_walker, pack_data, progress
+                self._client_path,
+                determine_wants,
+                graph_walker,
+                pack_data,
+                progress,
+                depth=depth,
             )
             if result.refs is None:
                 result.refs = {}
@@ -613,6 +620,7 @@ class RemoteGitDir(GitDir):
             None,
             lambda x: None,
             lambda x: trace.mutter("git: {}".format(x)),
+            depth=None,
         )
         self._refs = remote_refs_dict_to_container(result.refs, result.symrefs)
         return self._refs
@@ -1033,23 +1041,29 @@ class RemoteGitRepository(GitRepository):
     def archive(self, *args, **kwargs):
         return self.controldir.archive(*args, **kwargs)
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+    def fetch_pack(
+        self, determine_wants, graph_walker, pack_data, progress=None, depth=None
+    ):
         return self.controldir.fetch_pack(
-            determine_wants, graph_walker, pack_data, progress
+            determine_wants, graph_walker, pack_data, progress, depth=depth
         )
 
     def send_pack(self, get_changed_refs, generate_pack_data):
         return self.controldir.send_pack(get_changed_refs, generate_pack_data)
 
     def fetch_objects(
-        self, determine_wants, graph_walker, resolve_ext_ref, progress=None
+        self, determine_wants, graph_walker, resolve_ext_ref, progress=None, depth=None
     ):
         import tempfile
 
         fd, path = tempfile.mkstemp(suffix=".pack")
         try:
             result = self.fetch_pack(
-                determine_wants, graph_walker, lambda x: os.write(fd, x), progress
+                determine_wants,
+                graph_walker,
+                lambda x: os.write(fd, x),
+                progress,
+                depth=depth,
             )
         finally:
             os.close(fd)

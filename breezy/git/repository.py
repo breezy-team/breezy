@@ -94,6 +94,7 @@ class GitRepository(ForeignRepository):
 
     vcs = foreign_vcs_git
     chk_bytes = None
+    supports_fetch_depth = True
 
     def __init__(self, gitdir):
         self._transport = gitdir.root_transport

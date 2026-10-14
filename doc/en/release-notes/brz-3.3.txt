@@ -22,6 +22,11 @@ brz 3.3.23
    after the date, ``date:`` reported no such revision.
    (Jelmer Vernooĳ)
 
+ * Add a ``depth`` argument to ``ControlDir.sprout`` and
+   ``Branch.fetch``, for shallow git clones and fetches. Backport of
+   https://github.com/breezy-team/breezy/pull/472 from 3.4.
+   (Jelmer Vernooĳ)
+
 brz 3.3.22
 ##########
 
