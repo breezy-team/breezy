@@ -223,18 +223,24 @@ class InterToLocalGitRepository(InterToGitRepository):
                     raise AssertionError
                 stop_revids.append((revid, 1))
         missing = set()
+        seen = set()
+        # A present commit can still lead to the boundary, so walk through it.
+        deepen = depth is not None and bool(self.target._git.get_shallow())
         graph = self.source.get_graph()
         with ui.ui_factory.nested_progress_bar() as pb:
             while stop_revids:
                 new_stop_revids = {}
                 for revid, revid_depth in stop_revids:
+                    if revid in seen:
+                        continue
+                    seen.add(revid)
                     sha1 = revid_sha_map.get(revid)
-                    if revid not in missing and self._revision_needs_fetching(
-                        sha1, revid
-                    ):
+                    if self._revision_needs_fetching(sha1, revid):
                         missing.add(revid)
-                        if depth is None or revid_depth < depth:
-                            new_stop_revids[revid] = revid_depth
+                    elif not deepen or revid == NULL_REVISION:
+                        continue
+                    if depth is None or revid_depth < depth:
+                        new_stop_revids[revid] = revid_depth
                 stop_revids = set()
                 parent_map = graph.get_parent_map(new_stop_revids.keys())
                 for revid, parent_revids in parent_map.items():
@@ -357,7 +363,20 @@ class InterToLocalGitRepository(InterToGitRepository):
                             self.mapping.revision_id_bzr_to_foreign(old_revid)
                     revidmap[old_revid] = (git_sha, new_revid)
                 self.target_store.add_objects(object_generator)
+                if depth is not None:
+                    self._update_shallow(sha for sha, _revid in revidmap.values())
                 return revidmap
+
+    def _update_shallow(self, fetched):
+        """Mark as shallow each commit whose parents are not all present."""
+        old = self.target._git.get_shallow()
+        new = set()
+        store = self.target_store
+        for sha in old.union(fetched):
+            if sha not in store or any(p not in store for p in store[sha].parents):
+                new.add(sha)
+        if new != old:
+            self.target._git.update_shallow(new - old, old - new)
 
     def fetch(
         self,
@@ -495,6 +514,13 @@ class InterFromGitRepository(InterRepository):
         """Return the set of SHA1s that form the target's shallow boundary."""
         return set()
 
+    def _missing_wants(self, potential, depth):
+        """Reduce potential wants to those the target still needs."""
+        if depth is not None and self._target_shallow():
+            # Like git fetch-pack, leave it to the source to send what is missing.
+            return list(potential)
+        return list(potential - self._target_has_shas(potential))
+
     def get_determine_wants_heads(self, wants, include_tags=False, tag_selector=None):
         """Get a determine_wants function for specific heads.
 
@@ -527,12 +553,7 @@ class InterFromGitRepository(InterRepository):
                     if sha == ZERO_SHA:
                         continue
                     potential.add(sha)
-            have = self._target_has_shas(potential)
-            if depth is not None:
-                # Commits present only as a shallow boundary must stay in the
-                # wants so the fetch can deepen past them.
-                have -= self._target_shallow()
-            return list(potential - have)
+            return self._missing_wants(potential, depth)
 
         return determine_wants
 
@@ -628,7 +649,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             if v == ZERO_SHA:
                 continue
             potential.add(self.source.controldir.get_peeled(k) or v)
-        return list(potential - self._target_has_shas(potential))
+        return self._missing_wants(potential, depth)
 
     def _warn_slow(self):
         if not config.GlobalConfig().suppress_warning("slow_intervcs_push"):
@@ -748,6 +769,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         self, determine_wants, mapping, limit=None, lossy=False, depth=None
     ):
         """See `InterGitNonGitRepository`."""
+        if depth is not None:
+            raise FetchDepthUnsupported(self)
         self._warn_slow()
         store = get_object_store(self.target, mapping)
         with store.lock_write():
@@ -1025,7 +1048,7 @@ class InterGitGitRepository(InterFromGitRepository):
             for k, v in refs.items()
             if v != ZERO_SHA and not k.endswith(PEELED_TAG_SUFFIX)
         }
-        return list(potential - self._target_has_shas(potential))
+        return self._missing_wants(potential, depth)
 
 
 class InterLocalGitLocalGitRepository(InterGitGitRepository):
