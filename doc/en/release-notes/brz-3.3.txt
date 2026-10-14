@@ -22,6 +22,11 @@ brz 3.3.23
    after the date, ``date:`` reported no such revision.
    (Jelmer Vernooĳ)
 
+ * git: Free a dropped repository or branch at once, so its ``.pack``
+   and ``.idx`` files are closed without waiting for Python's cycle
+   collector.
+   (Zainab Mehmut)
+
 brz 3.3.22
 ##########
 
