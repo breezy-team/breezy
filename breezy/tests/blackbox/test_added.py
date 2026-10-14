@@ -25,6 +25,15 @@ class TestAdded(TestCaseWithTransport):
         """Test that 'added' command reports added files."""
         self._test_added("a", "a\n")
 
+    def test_added_sorted(self):
+        tree = self.make_branch_and_tree(".")
+        names = ["c", "a", "e", "b", "d"]
+        self.build_tree(names)
+        tree.add(names)
+        out, err = self.run_bzr("added")
+        self.assertEqual("a\nb\nc\nd\ne\n", out)
+        self.assertEqual("", err)
+
     def test_added_with_spaces(self):
         """Test that 'added' command reports added files with spaces in their names quoted."""
         self._test_added("a filename with spaces", '"a filename with spaces"\n')
