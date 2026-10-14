@@ -377,10 +377,6 @@ class GitBranchFormat(branch.BranchFormat):
         return ForeignTestsBranchFactory()
 
     def make_tags(self, branch):
-        try:
-            return branch.tags
-        except AttributeError:
-            pass
         if getattr(branch.repository, "_git", None) is None:
             from .remote import RemoteGitTagDict
 
