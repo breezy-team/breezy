@@ -31,6 +31,8 @@ from ... import workingtree as _mod_workingtree
 from ...bzr.inventorytree import InventoryTreeChange as TreeChange
 from ...delta import TreeDelta
 from ...tests import TestCase, TestCaseWithTransport
+from ...tests.features import SymlinkFeature
+from .. import workingtree as _mod_git_workingtree
 from ..mapping import default_mapping
 from ..tree import tree_delta_from_git_changes
 
@@ -117,6 +119,64 @@ class GitWorkingTreeTests(TestCaseWithTransport):
             entry = self.tree.index[b"asub"]
             self.assertEqual(entry.mode, S_IFGITLINK)
         self.assertEqual([], list(subtree.unknowns()))
+
+    def _break_index_writes(self):
+        def fail(*args, **kwargs):
+            raise RuntimeError("index write failed")
+
+        self.overrideAttr(_mod_git_workingtree, "write_index_dict", fail)
+
+    def test_flush_reports_the_write_error(self):
+        self._break_index_writes()
+        with self.tree.lock_write():
+            self.assertRaises(RuntimeError, self.tree.flush)
+
+    def test_flush_keeps_the_index_on_a_write_error(self):
+        self.build_tree(["a"])
+        self.tree.add(["a"])
+        index = self.tree.control_transport.get_bytes("index")
+        self._break_index_writes()
+        with self.tree.lock_write():
+            self.assertRaises(RuntimeError, self.tree.flush)
+        self.assertEqual(index, self.tree.control_transport.get_bytes("index"))
+
+    def test_flush_leaves_the_tree_lock_alone(self):
+        self.build_tree(["a"])
+        with self.tree.lock_write():
+            self.tree.add(["a"])
+            self.tree.flush()
+            control = self.tree.control_transport
+            self.assertTrue(control.has("index.lock"))
+            self.assertEqual(
+                [], [n for n in control.list_dir(".") if n.endswith(".tmp")]
+            )
+        self.assertFalse(self.tree.control_transport.has("index.lock"))
+
+    def test_flush_keeps_the_index_mode(self):
+        self.addCleanup(os.umask, os.umask(0o022))
+        self.build_tree(["a"])
+        self.tree.add(["a"])
+        control = self.tree.control_transport
+        os.chmod(control.local_abspath("index"), 0o600)
+        with self.tree.lock_write():
+            self.tree.flush()
+            self.assertTransportMode(control, "index", 0o600)
+
+    def test_flush_does_not_copy_a_symlink_mode(self):
+        self.requireFeature(SymlinkFeature(self.test_dir))
+        self.addCleanup(os.umask, os.umask(0o022))
+        control = self.tree.control_transport
+        index = control.local_abspath("index")
+        os.rename(index, index + ".real")
+        os.symlink("index.real", index)
+        with self.tree.lock_write():
+            self.tree.flush()
+            self.assertTransportMode(control, "index", 0o644)
+
+    def test_index_file_flush_reports_the_write_error(self):
+        self._break_index_writes()
+        with self.tree.lock_write():
+            self.assertRaises(RuntimeError, self.tree._flush, self.tree._index_file)
 
 
 class GitWorkingTreeFileTests(TestCaseWithTransport):
