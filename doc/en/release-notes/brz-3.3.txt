@@ -31,6 +31,10 @@ brz 3.3.23
    collector.
    (Zainab Mehmut)
 
+ * gitlab: Accept a numeric project id. ``_get_project`` raised ``TypeError``
+   from the redirect lookup, and ``delete_project`` and ``fork_project`` put
+   the integer into the error they raise. (Zainab Mehmut)
+
 brz 3.3.22
 ##########
 
