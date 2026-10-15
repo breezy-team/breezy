@@ -22,8 +22,10 @@ from ..forge import (
     Forge,
     MergeProposal,
     UnsupportedForge,
+    UnsupportedForgeHostname,
     determine_title,
     get_forge,
+    get_forge_by_hostname,
     get_proposal_by_url,
 )
 
@@ -96,6 +98,23 @@ class TestGetProposal(SampleForgeTestCase):
             os.path.join(self.test_dir, "hosted", "proposal")
         )
         self.assertIsInstance(get_proposal_by_url(url), MergeProposal)
+
+
+class GetForgeByHostnameTests(tests.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.overrideAttr(_mod_forge, "forges", registry.Registry())
+
+    def test_unknown_hostname(self):
+        e = self.assertRaises(
+            UnsupportedForgeHostname, get_forge_by_hostname, "example.invalid"
+        )
+        self.assertEqual("example.invalid", e.hostname)
+        self.assertEqual("example.invalid", e.branch)
+        self.assertEqual("No supported forge for hostname example.invalid.", str(e))
+
+    def test_unknown_hostname_is_unsupported_forge(self):
+        self.assertRaises(UnsupportedForge, get_forge_by_hostname, "example.invalid")
 
 
 class DetermineTitleTests(tests.TestCase):
