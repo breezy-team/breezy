@@ -39,6 +39,7 @@ from ...errors import (
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature
 from ...urlutils import join as urljoin
+from .. import RemoteGitProber
 from ..mapping import default_mapping
 from ..remote import (
     GitRemoteRevisionTree,
@@ -985,3 +986,43 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
 
         self.overrideAttr(t._repository.controldir._client, "archive", raise_unsupp)
         self.assertRaises(GitSmartRemoteNotSupported, t.archive, "tgz", "foo.tar.gz")
+
+
+class RemoteGitProberHttpStatusTests(TestCase):
+    """A server that rejects the refs path is not a git branch."""
+
+    def _probe(self, status, reason="Error"):
+        class Response:
+            def __init__(self):
+                self.status = status
+                self.reason = reason
+
+            def getheaders(self):
+                return []
+
+        class Transport:
+            base = "http://example.invalid/"
+
+            def external_url(self):
+                return self.base
+
+            def request(self, method, url, headers=None):
+                return Response()
+
+        return RemoteGitProber().probe_transport(Transport())
+
+    def test_hgweb_phrase_is_not_a_branch(self):
+        self.assertRaises(NotBranchError, self._probe, 400, "method not found")
+
+    def test_older_hgweb_phrase_is_not_a_branch(self):
+        self.assertRaises(NotBranchError, self._probe, 400, "no such method: info")
+
+    def test_other_400_reason_is_not_swallowed(self):
+        self.assertRaises(UnexpectedHttpStatus, self._probe, 400, "Bad Request")
+
+    def test_404_and_405_are_not_a_branch(self):
+        self.assertRaises(NotBranchError, self._probe, 404)
+        self.assertRaises(NotBranchError, self._probe, 405)
+
+    def test_other_errors_are_not_swallowed(self):
+        self.assertRaises(UnexpectedHttpStatus, self._probe, 500)
