@@ -22,7 +22,7 @@ from collections.abc import Callable
 
 from dulwich.errors import NotCommitError
 from dulwich.object_store import ObjectStoreGraphWalker
-from dulwich.objects import ObjectID
+from dulwich.objects import Commit, ObjectID, Tag
 from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
 from dulwich.protocol import CAPABILITY_THIN_PACK, PEELED_TAG_SUFFIX, ZERO_SHA
 from dulwich.refs import SYMREF
@@ -495,6 +495,22 @@ class InterFromGitRepository(InterRepository):
         """Return the set of SHA1s that form the target's shallow boundary."""
         return set()
 
+    def _needs_deepening(self, shas):
+        """Return the SHA1s of `shas` whose target history stops at the boundary.
+
+        A target without a shallow boundary never truncates history, so the
+        base implementation has nothing to report.
+        """
+        return set()
+
+    def _missing_wants(self, potential, depth):
+        """Reduce potential wants to those the target still needs."""
+        have = self._target_has_shas(potential)
+        if depth is not None:
+            # Wants still bounded by the shallow boundary have to be re-asked.
+            have -= self._needs_deepening(have)
+        return list(potential - have)
+
     def get_determine_wants_heads(self, wants, include_tags=False, tag_selector=None):
         """Get a determine_wants function for specific heads.
 
@@ -527,12 +543,7 @@ class InterFromGitRepository(InterRepository):
                     if sha == ZERO_SHA:
                         continue
                     potential.add(sha)
-            have = self._target_has_shas(potential)
-            if depth is not None:
-                # Commits present only as a shallow boundary must stay in the
-                # wants so the fetch can deepen past them.
-                have -= self._target_shallow()
-            return list(potential - have)
+            return self._missing_wants(potential, depth)
 
         return determine_wants
 
@@ -628,7 +639,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             if v == ZERO_SHA:
                 continue
             potential.add(self.source.controldir.get_peeled(k) or v)
-        return list(potential - self._target_has_shas(potential))
+        return self._missing_wants(potential, depth)
 
     def _warn_slow(self):
         if not config.GlobalConfig().suppress_warning("slow_intervcs_push"):
@@ -910,6 +921,74 @@ class InterGitGitRepository(InterFromGitRepository):
     def _target_shallow(self):
         return set(self.target._git.get_shallow())
 
+    def _needs_deepening(self, shas):
+        """See `InterFromGitRepository._needs_deepening`."""
+        shallow = self._target_shallow()
+        if not shallow:
+            return set()
+        store = self.target._git.object_store
+        parents = {}
+
+        def commit_at(sha):
+            """Return the commit `sha` names, through any tags, or None."""
+            try:
+                obj = store[sha]
+            except KeyError:
+                return None
+            while isinstance(obj, Tag):
+                try:
+                    obj = store[obj.object[1]]
+                except KeyError:
+                    return None
+            return obj if isinstance(obj, Commit) else None
+
+        def parents_of(sha):
+            try:
+                return parents[sha]
+            except KeyError:
+                commit = commit_at(sha)
+                ret = () if commit is None else tuple(commit.parents)
+                parents[sha] = ret
+                return ret
+
+        # Both answers are memoised, so each commit is read once however many
+        # wants share it.
+        reaches = {}
+
+        def resolve(start):
+            todo = [(start, False)]
+            while todo:
+                sha, expanded = todo.pop()
+                if sha in reaches:
+                    continue
+                if sha in shallow:
+                    reaches[sha] = True
+                    continue
+                ancestors = parents_of(sha)
+                if not ancestors:
+                    reaches[sha] = False
+                elif expanded:
+                    reaches[sha] = any(reaches.get(p, False) for p in ancestors)
+                else:
+                    todo.append((sha, True))
+                    todo.extend((p, False) for p in ancestors)
+            return reaches[start]
+
+        ret = set()
+        for want in shas:
+            if want in reaches:
+                # Already settled as the ancestor of an earlier want.
+                commit_id = want
+            else:
+                commit = commit_at(want)
+                if commit is None:
+                    continue
+                parents.setdefault(commit.id, tuple(commit.parents))
+                commit_id = commit.id
+            if resolve(commit_id):
+                ret.add(want)
+        return ret
+
     def fetch(
         self,
         revision_id=None,
@@ -1025,7 +1104,7 @@ class InterGitGitRepository(InterFromGitRepository):
             for k, v in refs.items()
             if v != ZERO_SHA and not k.endswith(PEELED_TAG_SUFFIX)
         }
-        return list(potential - self._target_has_shas(potential))
+        return self._missing_wants(potential, depth)
 
 
 class InterLocalGitLocalGitRepository(InterGitGitRepository):
