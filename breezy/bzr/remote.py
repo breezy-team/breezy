@@ -4313,6 +4313,18 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 missing_parent = parent_map[missing_parent]
             raise errors.NoSuchRevision(self, missing_parent)
 
+    def get_rev_id_from_tip(self, distance: int) -> _mod_revision.RevisionID | None:
+        """See Branch.get_rev_id_from_tip()."""
+        with self.lock_read():
+            last_revno, last_revid = self.last_revision_info()
+            if last_revno is None:
+                return super().get_rev_id_from_tip(distance)
+            if distance >= last_revno:
+                return None
+            if distance == 0:
+                return last_revid
+            return self.get_rev_id(last_revno - distance)
+
     def _read_last_revision_info(self):
         response = self._call(b"Branch.last_revision_info", self._remote_path())
         if response[0] != b"ok":

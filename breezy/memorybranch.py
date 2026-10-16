@@ -84,10 +84,10 @@ class MemoryBranch(Branch, _RelockDebugMixin):
             else:
                 if revno <= 0 or revno > last_revno:
                     raise errors.NoSuchRevision(self, revno)
-                distance_from_last = last_revno - revno
-                if len(self._partial_revision_history_cache) <= distance_from_last:
-                    self._extend_partial_history(distance_from_last)
-                return self._partial_revision_history_cache[distance_from_last]
+                revision_id = self.get_rev_id_from_tip(last_revno - revno)
+                if revision_id is None:
+                    raise errors.NoSuchRevision(self, revno)
+                return revision_id
 
     def get_config_stack(self):
         """Get a breezy.config.BranchStack for this Branch.
