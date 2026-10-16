@@ -554,6 +554,50 @@ class ShallowTests(ExternalBase):
             "  message\n",
         )
 
+    def test_log_last_revision(self):
+        expected = (
+            "------------------------------------------------------------\n"
+            "revision-id: git-v1:" + self.repo.head().decode("ascii") + "\n"
+            "git commit: " + self.repo.head().decode("ascii") + "\n"
+            "committer: Somebody <user@example.com>\n"
+            "timestamp: Mon 2018-05-14 20:36:05 +0000\n"
+            "message:\n"
+            "  message\n"
+        )
+        for spec in ["-1", "last:1", "last:"]:
+            output, error = self.run_bzr(["log", "-r", spec, "gitr"])
+            self.assertEqual(error, "")
+            self.assertEqual(output, expected)
+
+    def test_log_revision_not_in_shallow_history(self):
+        for spec in ["-2", "last:2", "1", "-1000000"]:
+            _output, error = self.run_bzr(["log", "-r", spec, "gitr"], retcode=3)
+            self.assertContainsRe(
+                error, "Requested revision: '" + spec + "' does not exist in branch"
+            )
+
+    def test_switch(self):
+        output, error = self.run_bzr(["switch", "-b", "other", "-d", "gitr"])
+        self.assertEqual(output, "")
+        self.assertEqual(error, "Tree is up to date.\nSwitched to branch other\n")
+
+    def test_uncommit_revision(self):
+        self.run_bzr_error(
+            ["Cannot uncommit: no revno for the requested revision"],
+            ["uncommit", "-r", "-1", "--dry-run", "--force", "gitr"],
+        )
+
+    def test_revision_info(self):
+        output, error = self.run_bzr(["revision-info", "-r", "-1", "-d", "gitr"])
+        self.assertStartsWith(output, "??? ")
+        self.assertEqual(error, "")
+
+    def test_annotate_modified(self):
+        self.build_tree_contents([("gitr/foo", b"hello from git\nand more\n")])
+        output, error = self.run_bzr(["annotate", "foo"], working_dir="gitr")
+        self.assertEqual(error, "")
+        self.assertStartsWith(output, "?? ")
+
     def test_version_info_rio(self):
         output, error = self.run_bzr(["version-info", "--rio", "gitr"])
         self.assertEqual(error, "")
