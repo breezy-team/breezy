@@ -189,6 +189,30 @@ class Branch(ControlComponent):
         if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
             self._partial_revision_history_cache.pop()
 
+    def _revision_id_from_last(self, distance_from_last: int) -> RevisionID | None:
+        """Find the revision id that many steps back along the left-hand history.
+
+        Args:
+          distance_from_last: Steps back from the tip, 0 being the tip.
+
+        Returns: The revision id, or None if history ends before that point.
+
+        Raises:
+          GhostRevisionsHaveNoRevno: History ends in a ghost first, so
+            whether the revision exists cannot be known.
+        """
+        with self.lock_read():
+            try:
+                self._extend_partial_history(stop_index=distance_from_last)
+            except vcsgraph.errors.RevisionNotPresent as exc:
+                if len(self._partial_revision_history_cache) <= distance_from_last:
+                    raise errors.GhostRevisionsHaveNoRevno(
+                        self.last_revision(), exc.revision_id
+                    ) from exc
+            if len(self._partial_revision_history_cache) <= distance_from_last:
+                return None
+            return self._partial_revision_history_cache[distance_from_last]
+
     def _get_check_refs(self):
         """Get the references needed for check().
 
@@ -1004,7 +1028,7 @@ class Branch(ControlComponent):
             last_revno, last_revid = self.last_revision_info()
             if revno == last_revno:
                 return last_revid
-            if revno <= 0 or revno > last_revno:
+            if revno <= 0 or last_revno is None or revno > last_revno:
                 raise errors.NoSuchRevision(self, revno)
             distance_from_last = last_revno - revno
             if len(self._partial_revision_history_cache) <= distance_from_last:
@@ -1179,7 +1203,8 @@ class Branch(ControlComponent):
         Check whether a revno corresponds to a real revision.
         Zero (the NULL revision) is considered invalid.
         """
-        if revno < 1 or revno > self.revno():
+        last_revno = self.revno()
+        if revno < 1 or last_revno is None or revno > last_revno:
             raise errors.InvalidRevisionNumber(revno)
 
     def clone(
