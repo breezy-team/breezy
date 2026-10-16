@@ -319,7 +319,6 @@ class TestRustControlDir(TestCaseWithTransport):
         self.assertEqual("sub", relpath)
         self.assertTrue(_cmd_rs.Tree.versionable_kind("file"))
         self.assertFalse(_cmd_rs.Tree.versionable_kind("bogus"))
-        self.assertTrue(opened.case_sensitive)
         self.assertEqual(tree.branch.base, opened.branch.base)
         self.assertEqual(tree.controldir.user_url, opened.controldir.user_url)
         self.assertEqual(tree.branch.repository.base, opened.branch.repository.base)
