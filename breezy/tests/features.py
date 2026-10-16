@@ -356,7 +356,7 @@ class _CaseSensitiveFilesystemFeature(Feature):
     def _probe(self):
         if CaseInsCasePresFilenameFeature.available():
             return False
-        return CaseInsensitiveFilesystemFeature.available()
+        return not CaseInsensitiveFilesystemFeature.available()
 
     def feature_name(self):
         return "case-sensitive filesystem"
