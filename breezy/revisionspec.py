@@ -68,7 +68,11 @@ class RevisionInfo:
         if not self._has_revno and self.rev_id is not None:
             try:
                 self._revno = self.branch.revision_id_to_revno(self.rev_id)
-            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
+            except (
+                errors.NoSuchRevision,
+                errors.RevnoOutOfBounds,
+                errors.GhostRevisionsHaveNoRevno,
+            ):
                 self._revno = None
             self._has_revno = True
         return self._revno
@@ -414,12 +418,18 @@ class RevisionSpec_revno(RevisionSpec):
         else:
             last_revno, _last_revision_id = branch.last_revision_info()
             if revno < 0:
-                # if get_rev_id supported negative revnos, there would not be a
-                # need for this special case.
-                if (-revno) >= last_revno:
-                    revno = 1
-                else:
-                    revno = last_revno + revno + 1
+                try:
+                    revision_id = branch.get_rev_id_from_tip(-revno - 1)
+                except errors.GhostRevisionsHaveNoRevno:
+                    raise InvalidRevisionSpec(self.user_spec, branch)
+                if revision_id is not None:
+                    if last_revno is not None:
+                        revno = last_revno + revno + 1
+                    else:
+                        revno = None
+                    return branch, revno, revision_id
+                # Counted past the start, so the first revision.
+                revno = 1
             try:
                 revision_id = branch.get_rev_id(revno)
             except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
@@ -498,7 +508,7 @@ class RevisionSpec_last(RevisionSpec):
         last_revno, last_revision_id = context_branch.last_revision_info()
 
         if self.spec == "":
-            if not last_revno:
+            if last_revision_id == _mod_revision.NULL_REVISION:
                 raise errors.NoCommits(context_branch)
             return last_revno, last_revision_id
 
@@ -512,6 +522,17 @@ class RevisionSpec_last(RevisionSpec):
                 self.user_spec, context_branch, "you must supply a positive value"
             )
 
+        try:
+            revision_id = context_branch.get_rev_id_from_tip(offset - 1)
+        except errors.GhostRevisionsHaveNoRevno:
+            raise InvalidRevisionSpec(self.user_spec, context_branch)
+        if revision_id is not None:
+            if last_revno is None:
+                return None, revision_id
+            return last_revno - offset + 1, revision_id
+        if last_revno is None:
+            raise InvalidRevisionSpec(self.user_spec, context_branch)
+        # One step too far still answers with the null revision.
         revno = last_revno - offset + 1
         try:
             revision_id = context_branch.get_rev_id(revno)
