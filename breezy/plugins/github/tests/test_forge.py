@@ -18,7 +18,8 @@
 
 from datetime import datetime
 
-from ....tests import TestCase
+from ....config import AuthenticationConfig
+from ....tests import TestCase, TestCaseInTempDir
 from ..forge import parse_timestring
 
 
@@ -26,4 +27,19 @@ class ParseTimestringTests(TestCase):
     def test_simple(self):
         self.assertEqual(
             datetime(2011, 1, 26, 19, 1, 12), parse_timestring("2011-01-26T19:01:12Z")
+        )
+
+
+class GitHubLoginTests(TestCaseInTempDir):
+    def test_stores_token(self):
+        self.run_bzr("github-login", stdin="mytoken\n")
+        self.assertEqual(
+            {
+                "scheme": "https",
+                "url": "https://api.github.com",
+                "host": "github.com",
+                "token": "mytoken",
+                "private_token": "mytoken",
+            },
+            dict(AuthenticationConfig()._get_config()["Github"]),
         )
