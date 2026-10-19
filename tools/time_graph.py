@@ -4,6 +4,8 @@ import random
 import sys
 
 import vcsgraph.graph as graph
+from vcsgraph import KnownGraph
+from vcsgraph import known_graph as _known_graph_mod
 
 from breezy import (
     branch,
@@ -13,8 +15,6 @@ from breezy import (
     ui,
 )
 from breezy.ui import text
-from vcsgraph import KnownGraph
-from vcsgraph import known_graph as _known_graph_mod
 
 p = optparse.OptionParser()
 p.add_option("--quick", default=False, action="store_true")

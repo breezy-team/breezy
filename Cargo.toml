@@ -1,7 +1,10 @@
 [package]
 name = "breezy"
 version = { workspace = true }
-authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
+authors = [
+	"Martin Packman <gzlist@googlemail.com>",
+	"Jelmer Vernooij <jelmer@jelmer.uk>",
+]
 edition = "2018"
 publish = false
 default-run = "brz"
@@ -25,4 +28,4 @@ path = "breezy/main.rs"
 pyo3 = { workspace = true }
 
 [workspace.dependencies]
-pyo3 = ">=0.26,<0.29"
+pyo3 = ">=0.26,<0.31"
