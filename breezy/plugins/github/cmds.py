@@ -24,51 +24,32 @@ class cmd_github_login(Command):
     """Log into GitHub.
 
     When communicating with GitHub, some commands need to authenticate to
-    GitHub.
+    GitHub. This command asks for a personal access token and stores it.
     """
 
     __doc__ = """Log into GitHub.
 
     When communicating with GitHub, some commands need to authenticate to
-    GitHub.
+    GitHub. This command asks for a personal access token, which can be
+    created at https://github.com/settings/tokens, and stores it. The token
+    needs the repo scope, and delete_repo to remove forks.
     """
 
-    takes_args = ["username?"]
-
-    def run(self, username=None):
+    def run(self):
         """Execute the github-login command.
 
-        Args:
-            username: Optional GitHub username to log in with.
-
         Raises:
-            CommandError: If authentication fails or token already exists.
+            CommandError: If no token is given.
         """
-        from github import Github, GithubException
-
-        from ...config import AuthenticationConfig
-
-        authconfig = AuthenticationConfig()
-        if username is None:
-            username = authconfig.get_user(
-                "https", "github.com", prompt="GitHub username", ask=True
-            )
-        password = authconfig.get_password("https", "github.com", username)
-        client = Github(username, password)
-        user = client.get_user()
-        try:
-            authorization = user.create_authorization(
-                scopes=["user", "repo", "delete_repo"],
-                note="Breezy",
-                note_url="https://github.com/breezy-team/breezy",
-            )
-        except GithubException as e:
-            errs = e.data.get("errors", [])
-            if errs:
-                err_code = errs[0].get("code")
-                if err_code == "already_exists":
-                    raise errors.CommandError("token already exists") from e
-            raise errors.CommandError(e.data["message"]) from e
+        from ... import ui
+        from ...trace import note
         from .forge import store_github_token
 
-        store_github_token(token=authorization.token)
+        note(
+            "Please visit https://github.com/settings/tokens to create a token"
+            " with the repo scope."
+        )
+        token = ui.ui_factory.get_password("GitHub personal access token")
+        if not token:
+            raise errors.CommandError("no token given")
+        store_github_token(token=token)
