@@ -18,8 +18,9 @@
 
 from datetime import datetime
 
+from ....config import AuthenticationConfig
 from ....errors import UnexpectedHttpStatus
-from ....tests import TestCase, http_server
+from ....tests import TestCase, TestCaseInTempDir, http_server
 from ....transport import get_transport
 from ..forge import GitHub, parse_timestring
 
@@ -43,3 +44,18 @@ class UnexpectedStatusTests(TestCase):
         e = self.assertRaises(UnexpectedHttpStatus, gh._get_repo, "owner", "repo")
         self.assertEqual(server.get_url() + "repos/owner/repo", e.path)
         self.assertEqual(403, e.code)
+
+
+class GitHubLoginTests(TestCaseInTempDir):
+    def test_stores_token(self):
+        self.run_bzr("github-login", stdin="mytoken\n")
+        self.assertEqual(
+            {
+                "scheme": "https",
+                "url": "https://api.github.com",
+                "host": "github.com",
+                "token": "mytoken",
+                "private_token": "mytoken",
+            },
+            dict(AuthenticationConfig()._get_config()["Github"]),
+        )
