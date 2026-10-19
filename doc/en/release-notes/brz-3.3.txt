@@ -26,6 +26,11 @@ brz 3.3.25
    file that the first try used up. A push sent an empty pack instead.
    (Zainab Mehmut)
 
+ * github: ``brz github-login`` now asks for a personal access token and
+   stores it, and no longer takes a user name. It asked for a password and
+   called the OAuth authorizations API, which GitHub removed in 2020.
+   (Zainab Mehmut)
+
 brz 3.3.24
 ##########
 
