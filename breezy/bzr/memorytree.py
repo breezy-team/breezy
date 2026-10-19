@@ -25,10 +25,10 @@ import stat
 from .. import errors, lock
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from .inventory import Inventory
-from .inventorytree import MutableInventoryTree
 from ..osutils import sha_file
 from ..transport.memory import MemoryTransport
+from .inventory import Inventory
+from .inventorytree import MutableInventoryTree
 
 
 class MemoryTree(MutableInventoryTree):

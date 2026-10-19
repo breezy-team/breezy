@@ -909,8 +909,6 @@ class CannotReverseCherrypick(BzrError):
     _fmt = "Selected merge cannot perform reverse cherrypicks.  Try merge3 or diff3."
 
 
-
-
 class NoCommonRoot(BzrError):
     _fmt = (
         "Revisions are not derived from the same root: %(revision_a)s %(revision_b)s."
@@ -1207,8 +1205,6 @@ class WorkingTreeNotRevision(BzrError):
 
     def __init__(self, tree):
         BzrError.__init__(self, basedir=tree.basedir)
-
-
 
 
 class WritingCompleted(InternalBzrError):
@@ -1668,9 +1664,6 @@ class SSHVendorNotFound(BzrError):
         "Don't know how to handle SSH connections."
         " Please set BRZ_SSH environment variable."
     )
-
-
-
 
 
 class GhostRevisionsHaveNoRevno(BzrError):

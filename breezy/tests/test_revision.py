@@ -219,9 +219,7 @@ class TestCommonAncestor(TestCaseWithTransport):
         repo = tree.branch.repository
         self.assertEqual([None, b"1"], revision.get_history(repo, b"1"))
         self.assertEqual([None, b"1", b"2"], revision.get_history(repo, b"2"))
-        self.assertEqual(
-            [None, b"1", b"2", b"3"], revision.get_history(repo, b"3")
-        )
+        self.assertEqual([None, b"1", b"2", b"3"], revision.get_history(repo, b"3"))
 
 
 class TestReservedId(TestCase):

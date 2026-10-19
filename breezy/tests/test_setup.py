@@ -16,7 +16,6 @@
 
 """Test for setup.py build process."""
 
-
 from packaging.version import Version
 
 from .. import tests

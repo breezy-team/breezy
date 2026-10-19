@@ -1142,7 +1142,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         )
 
     def _make_parents_provider_unstacked(self):
-        return _mod_vcsgraph.CallableToParentsProviderAdapter(self._get_parent_map_no_fallbacks)
+        return _mod_vcsgraph.CallableToParentsProviderAdapter(
+            self._get_parent_map_no_fallbacks
+        )
 
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors."""
