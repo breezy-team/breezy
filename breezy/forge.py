@@ -112,6 +112,13 @@ class SourceNotDerivedFromTarget(errors.BzrError):
         )
 
 
+MERGE_METHOD_MERGE = "merge"
+MERGE_METHOD_REBASE = "rebase"
+MERGE_METHOD_SQUASH = "squash"
+
+MERGE_METHODS = [MERGE_METHOD_MERGE, MERGE_METHOD_REBASE, MERGE_METHOD_SQUASH]
+
+
 class MergeProposal:
     """A merge proposal.
 
@@ -193,7 +200,9 @@ class MergeProposal:
         """
         raise NotImplementedError(self.is_closed)
 
-    def merge(self, commit_message=None, auto=False):
+    def merge(
+            self, commit_message=None, auto=False, method=MERGE_METHOD_MERGE,
+            remove_source_branch: bool = False):
         """Merge this merge proposal."""
         raise NotImplementedError(self.merge)
 

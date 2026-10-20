@@ -34,6 +34,8 @@ from ...forge import (
     PrerequisiteBranchUnsupported,
     SourceNotDerivedFromTarget,
     UnsupportedForge,
+    MERGE_METHOD_MERGE,
+    MERGE_METHOD_SQUASH,
     determine_title,
 )
 from ...git.urls import git_url_to_bzr_url
@@ -361,7 +363,14 @@ class GitLabMergeProposal(MergeProposal):
     def close(self):
         self._update(state_event="close")
 
-    def merge(self, commit_message=None, auto=False):
+    def merge(self, commit_message=None, auto=False, method=MERGE_METHOD_MERGE,
+              remove_source_branch=False):
+        if method == MERGE_METHOD_MERGE:
+            squash = False
+        elif method == MERGE_METHOD_SQUASH:
+            squash = True
+        else:
+            raise NotImplementedError(self.merge)
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
         ret = self.gl._merge_mr(
             self._mr["project_id"],
@@ -369,6 +378,8 @@ class GitLabMergeProposal(MergeProposal):
             kwargs={
                 "merge_commit_message": commit_message,
                 "merge_when_pipeline_succeeds": auto,
+                "squash": squash,
+                "should_remove_source_branch": remove_source_branch,
             },
         )
         self._mr.update(ret)
