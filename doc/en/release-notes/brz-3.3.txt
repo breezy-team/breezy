@@ -37,6 +37,10 @@ brz 3.3.23
    over HTTPS.
    (Zainab Mehmut)
 
+ * Do not send a request again when its body came from an iterator or a
+   file that the first try used up. A push sent an empty pack instead.
+   (Zainab Mehmut)
+
 brz 3.3.22
 ##########
 
