@@ -202,9 +202,11 @@ class Response(http.client.HTTPResponse):
             # Make sure nothing was left to be read on the socket
             pending = 0
             data = True
-            while data and self.length:
+            bufsize = self._discarded_buf_size
+            # A chunked response has no length: read up to its last chunk
+            while data and (self.length or (self.chunked and self.length is None)):
                 # read() will update self.length
-                data = self.read(min(self.length, self._discarded_buf_size))
+                data = self.read(min(self.length or bufsize, bufsize))
                 pending += len(data)
             if pending:
                 trace.mutter("%s bytes left on the HTTP socket", pending)
