@@ -22,6 +22,7 @@ There are separate implementation modules for each http client implementation.
 DEBUG = 0
 
 import base64
+import collections.abc
 import errno
 import http.client
 import os
@@ -610,7 +611,8 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
             # implementation.
             raise exc_val.with_traceback(exc_tb)
         else:
-            if first_try:
+            # A body from an iterator or a file was used up by the first try
+            if first_try and not isinstance(request.data, collections.abc.Iterator):
                 if self._debuglevel >= 2:
                     print("Received exception: [{!r}]".format(exc_val))
                     print("  On connection: [{!r}]".format(request.connection))
