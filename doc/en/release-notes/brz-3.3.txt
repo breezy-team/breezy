@@ -8,6 +8,8 @@ Breezy Release Notes
 brz 3.3.23
 ##########
 
+ * Add Python 3.15 support. (Jelmer Vernooĳ)
+
  * launchpad: Fix authorization engine creation against newer
    launchpadlib, which made ``Launchpad.authorization_engine_factory``
    take keyword arguments only. Enumerating forges raised ``TypeError``
