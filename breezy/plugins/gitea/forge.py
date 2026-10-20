@@ -524,7 +524,8 @@ class Gitea(Forge):
         """Fork a repository, returning the metadata for the new fork."""
         path = f"repos/{full_name}/forks"
         data = {}
-        if owner is not None:
+        # Gitea takes the organization field as an organization name only.
+        if owner is not None and owner.lower() != self.get_current_user().lower():
             data["organization"] = owner
         response = self._api_json_request("POST", path, data)
         if response.status == 403:
