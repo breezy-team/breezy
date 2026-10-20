@@ -57,6 +57,13 @@ class ReadSocket:
         return self.readfile
 
 
+class NonClosingBytesIO(BytesIO):
+    """Stay readable when a response closes it, like a socket file."""
+
+    def close(self):
+        pass
+
+
 class FakeHTTPConnection(urllib.HTTPConnection):
     def __init__(self, sock):
         urllib.HTTPConnection.__init__(self, "localhost")
@@ -103,6 +110,49 @@ garbage""")
         conn._range_warning_thresold = 6  # There are 7 bytes pending
         conn.cleanup_pipe()
         self.assertContainsRe(self.get_log(), "Got a 200 response when asking")
+
+    def test_cleanup_pipe_chunked(self):
+        sock = ReadSocket(b"")
+        sock.readfile = NonClosingBytesIO(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Transfer-Encoding: chunked\r\n"
+            b"\r\n"
+            b"5\r\nhello\r\n0\r\n\r\n"
+            b"HTTP/1.1 204 No Content\r\n"
+            b"\r\n"
+        )
+        conn = FakeHTTPConnection(sock)
+        conn.putrequest("GET", "http://localhost/chunked")
+        conn.endheaders()
+        resp = conn.getresponse()
+        # The caller stops after the data and leaves the last chunk unread
+        self.assertEqual(b"hello", resp.read(5))
+        conn.cleanup_pipe()
+        conn.putrequest("GET", "http://localhost/chunked")
+        conn.endheaders()
+        self.assertEqual(204, conn.getresponse().status)
+
+    def test_cleanup_pipe_chunked_no_body(self):
+        for status in (b"204 No Content", b"304 Not Modified"):
+            sock = ReadSocket(b"")
+            sock.readfile = NonClosingBytesIO(
+                b"HTTP/1.1 " + status + b"\r\n"
+                b"Transfer-Encoding: chunked\r\n"
+                b"\r\n"
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Length: 2\r\n"
+                b"\r\n"
+                b"ok"
+            )
+            conn = FakeHTTPConnection(sock)
+            conn.putrequest("GET", "http://localhost/chunked")
+            conn.endheaders()
+            conn.getresponse()
+            # These have no body, so the next bytes are the next response
+            conn.cleanup_pipe()
+            conn.putrequest("GET", "http://localhost/chunked")
+            conn.endheaders()
+            self.assertEqual(b"ok", conn.getresponse().read())
 
 
 class TestRangeFileMixin:
