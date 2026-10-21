@@ -8,6 +8,8 @@ Breezy Release Notes
 brz 3.3.23
 ##########
 
+:3.3.23: 2026-10-21
+
  * Add Python 3.15 support. (Jelmer Vernooĳ)
 
  * launchpad: Fix authorization engine creation against newer
