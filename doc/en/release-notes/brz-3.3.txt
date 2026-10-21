@@ -33,6 +33,11 @@ brz 3.3.23
    collector.
    (Zainab Mehmut)
 
+ * git: Do not take the peeled ``^{}`` lines of ``info/refs`` for refs
+   when a repository is opened over dumb HTTP. Branching a repository
+   with an annotated tag failed with ``RefFormatError``.
+   (Zainab Mehmut)
+
 brz 3.3.22
 ##########
 
