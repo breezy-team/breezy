@@ -33,6 +33,14 @@ brz 3.3.23
    collector.
    (Zainab Mehmut)
 
+ * Cope with a branch that has no revision count, as happens with a
+   shallow git clone. ``-r -N``, ``-r last:N``, ``brz uncommit -r`` and
+   ``brz annotate`` on a modified file raised ``TypeError``,
+   ``-r last:`` reported no commits, ``brz switch`` could not print its
+   note, and ``brz revision-info`` could not report a revno.
+   The new ``Branch.get_rev_id_from_tip`` finds a revision by its
+   distance from the tip, so it needs no count. (Zainab Mehmut)
+
 brz 3.3.22
 ##########
 
