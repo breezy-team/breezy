@@ -21,7 +21,7 @@ from datetime import datetime
 from dromedary import errors as transport_errors
 
 from breezy import bedding
-from breezy.forge import NoSuchProject, UnsupportedForge
+from breezy.forge import NoSuchProject, UnparseableForgeConfig, UnsupportedForge
 from breezy.tests import TestCase, TestCaseInTempDir
 
 from ..forge import (
@@ -330,3 +330,8 @@ class IterTokensTests(GiteaConfigTestCase):
             UnsupportedForge, Gitea.probe_from_hostname, "gitea.example.com"
         )
         self.assertEqual([], list(iter_tokens()))
+
+    def test_unparseable_file_is_a_user_error(self):
+        self.write_config("gitea.conf", "url = https://codeberg.org/\n")
+        e = self.assertRaises(UnparseableForgeConfig, list, iter_tokens())
+        self.assertContainsRe(str(e), r"gitea\.conf")

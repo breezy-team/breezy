@@ -177,6 +177,21 @@ class SourceNotDerivedFromTarget(errors.BzrError):
         )
 
 
+class UnparseableForgeConfig(errors.BzrError):
+    """A forge configuration file could not be parsed."""
+
+    _fmt = "Unable to parse forge configuration: %(error)s"
+
+    def __init__(self, error):
+        """Initialize the exception.
+
+        Args:
+            error: Description of the parse failure, naming the file.
+        """
+        errors.BzrError.__init__(self)
+        self.error = error
+
+
 class MergeProposal:
     """A merge proposal.
 
