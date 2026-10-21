@@ -17,7 +17,7 @@
 """Tests for url handling."""
 
 from ...tests import TestCase
-from ..urls import git_url_to_bzr_url
+from ..urls import bzr_url_to_git_url, git_url_to_bzr_url
 
 
 class TestConvertURL(TestCase):
@@ -66,4 +66,38 @@ class TestConvertURL(TestCase):
         self.assertEqual(
             git_url_to_bzr_url("foo:bar/path", branch="blah"),
             "git+ssh://foo/bar/path,branch=blah",
+        )
+
+
+class TestBzrURLToGitURL(TestCase):
+    def test_plain(self):
+        self.assertEqual(
+            bzr_url_to_git_url("git+ssh://foo/bar/path"),
+            ("git+ssh://foo/bar/path", None, None),
+        )
+
+    def test_branch(self):
+        self.assertEqual(
+            bzr_url_to_git_url("git+ssh://foo/bar/path,branch=foo%2Fblah"),
+            ("git+ssh://foo/bar/path", "foo%2Fblah", None),
+        )
+
+    def test_ref(self):
+        self.assertEqual(
+            bzr_url_to_git_url("git+ssh://foo/bar/path,ref=refs%2Ftags%2Fblah"),
+            ("git+ssh://foo/bar/path", None, "refs%2Ftags%2Fblah"),
+        )
+
+    def test_branch_and_ref(self):
+        self.assertEqual(
+            bzr_url_to_git_url(
+                "git+ssh://foo/bar/path,branch=blah,ref=refs%2Ftags%2Fblah"
+            ),
+            ("git+ssh://foo/bar/path", "blah", "refs%2Ftags%2Fblah"),
+        )
+
+    def test_revno_is_not_ref(self):
+        self.assertEqual(
+            bzr_url_to_git_url("git+ssh://foo/bar/path,revno=3"),
+            ("git+ssh://foo/bar/path", None, None),
         )
