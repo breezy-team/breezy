@@ -91,11 +91,6 @@ jobs:
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
             rustup show
-          CIBW_BEFORE_BUILD_LINUX: >
-            pip install -U setuptools-rust &&
-            yum install libatomic -y &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
-            rustup show
           CIBW_BEFORE_BUILD_MACOS: >
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
