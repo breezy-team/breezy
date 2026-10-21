@@ -121,9 +121,11 @@ class FakeTransport:
     def __init__(self, responses):
         self.responses = responses
         self.requests = []
+        self.bodies = []
 
     def request(self, method, url, headers=None, fields=None, body=None):
         self.requests.append((method, url, headers["Authorization"]))
+        self.bodies.append(body)
         return self.responses[(method, url[len(self.base + "api/v1/") :])]
 
 
@@ -225,6 +227,29 @@ class IterMyForksTests(TestCase):
         self.assertRaises(
             transport_errors.PermissionDenied, list, gitea.iter_my_forks()
         )
+
+
+class ForkRepoTests(TestCase):
+    def fork(self, owner):
+        transport = FakeTransport(
+            {
+                USER: ME,
+                ("POST", "repos/other/repo/forks"): FakeResponse(
+                    202, repo("me/repo", True)
+                ),
+            }
+        )
+        Gitea(transport, "secret").fork_repo("other/repo", owner=owner)
+        return json.loads(transport.bodies[-1])
+
+    def test_current_user(self):
+        self.assertEqual({}, self.fork("me"))
+
+    def test_current_user_case(self):
+        self.assertEqual({}, self.fork("Me"))
+
+    def test_organization(self):
+        self.assertEqual({"organization": "team"}, self.fork("team"))
 
 
 class DeleteProjectTests(TestCase):
