@@ -33,6 +33,11 @@ brz 3.3.23
    collector.
    (Zainab Mehmut)
 
+ * Add ``urlutils.join_segment_parameters_encoded`` and
+   ``urlutils.split_segment_parameters_decoded``, which encode and decode
+   segment parameter values, so a value may hold ``/`` or ``,``. Only the
+   values are encoded. The existing pair is unchanged. (Zainab Mehmut)
+
 brz 3.3.22
 ##########
 
