@@ -19,6 +19,11 @@ brz 3.3.23
    not exist. ``NoSuchProject`` carried ``None`` instead.
    (Zainab Mehmut)
 
+ * gitlab: Keep a URL on ``MergeProposalExists`` when updating a merge
+   request runs into an existing one. The source branch URL can be
+   ``None`` when the source fork is gone, so the error read "A merge
+   proposal already exists: None." (Zainab Mehmut)
+
  * Let ``-r date:`` select the newest revision in a branch. The bisect
    stopped one short of the tip, so when only the newest revision came
    after the date, ``date:`` reported no such revision.
