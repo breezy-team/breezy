@@ -307,6 +307,10 @@ class MergeProposal:
         """If this proposal was merged, when it was merged."""
         raise NotImplementedError(self.get_merged_at)
 
+    def get_author(self):
+        """Return the username of who created this proposal, or None."""
+        raise NotImplementedError(self.get_author)
+
     def post_comment(self, body):
         """Post a comment on the merge proposal.
 

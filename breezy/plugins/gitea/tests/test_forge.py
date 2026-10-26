@@ -27,6 +27,7 @@ from breezy.tests import TestCase, TestCaseInTempDir
 from ..forge import (
     DEFAULT_PAGE_SIZE,
     Gitea,
+    GiteaMergeProposal,
     NotGiteaUrl,
     NotMergeRequestUrl,
     iter_tokens,
@@ -330,3 +331,13 @@ class IterTokensTests(GiteaConfigTestCase):
             UnsupportedForge, Gitea.probe_from_hostname, "gitea.example.com"
         )
         self.assertEqual([], list(iter_tokens()))
+
+
+class GetAuthorTests(TestCase):
+    def test_author(self):
+        mp = GiteaMergeProposal(None, {"user": {"login": "jelmer"}})
+        self.assertEqual("jelmer", mp.get_author())
+
+    def test_no_user(self):
+        mp = GiteaMergeProposal(None, {"user": None})
+        self.assertIsNone(mp.get_author())
