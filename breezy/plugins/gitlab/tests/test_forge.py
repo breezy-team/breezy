@@ -23,6 +23,7 @@ from breezy.tests import TestCase
 
 from ..forge import (
     GitLab,
+    GitLabMergeProposal,
     NotGitLabUrl,
     NotMergeRequestUrl,
     parse_gitlab_merge_request_url,
@@ -155,3 +156,13 @@ class GetProjectTests(TestCase):
             ],
             transport.calls,
         )
+
+
+class GetAuthorTests(TestCase):
+    def test_author(self):
+        mp = GitLabMergeProposal(None, {"author": {"username": "jelmer"}})
+        self.assertEqual("jelmer", mp.get_author())
+
+    def test_no_author(self):
+        mp = GitLabMergeProposal(None, {"author": None})
+        self.assertIsNone(mp.get_author())

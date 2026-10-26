@@ -351,6 +351,13 @@ class GiteaMergeProposal(MergeProposal):
         """Return whether the pull request can currently be merged."""
         return self._pr.get("mergeable")
 
+    def get_author(self):
+        """Return the login of who opened the pull request, or None."""
+        user = self._pr.get("user")
+        if user is None:
+            return None
+        return user["login"]
+
     def get_merged_by(self):
         """Return the username that merged the pull request, or None."""
         user = self._pr.get("merged_by")

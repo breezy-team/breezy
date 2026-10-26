@@ -486,6 +486,13 @@ mutation ($pullRequestId: ID!) {
                     self._pr["url"], response.status, headers=response.getheaders()
                 )
 
+    def get_author(self):
+        """Return the login of who opened this pull request, or None."""
+        user = self._pr.get("user")
+        if user is None:
+            return None
+        return user["login"]
+
     def get_merged_by(self):
         """Get the username who merged this pull request.
 

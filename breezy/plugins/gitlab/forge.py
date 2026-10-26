@@ -802,6 +802,13 @@ class GitLabMergeProposal(MergeProposal):
         else:
             raise ValueError(self._mr["merge_status"])
 
+    def get_author(self):
+        """Return the username of who opened this merge request, or None."""
+        user = self._mr.get("author")
+        if user is None:
+            return None
+        return user["username"]
+
     def get_merged_by(self):
         """Get the username of who merged this merge request.
 

@@ -344,6 +344,10 @@ class LaunchpadMergeProposal(MergeProposal):
             return True
         return not bool(self._mp.preview_diff.conflicts)
 
+    def get_author(self):
+        """Return the name of who registered this merge proposal."""
+        return self._mp.registrant.name
+
     def get_merged_by(self):
         """Get the name of who merged this merge proposal.
 
