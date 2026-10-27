@@ -638,6 +638,49 @@ class SwitchTests(ExternalBase):
         self.assertTreesEqual(orig, target)
         self.assertTreesEqual(subtree, target_subtree)
 
+    def test_branch_with_nested_tree_scp_url(self):
+        import dulwich.client
+
+        from ... import errors
+
+        calls = []
+
+        class RecordingVendor(dulwich.client.SSHVendor):
+            def run_command(self, host, command, username=None, port=None, **kwargs):
+                calls.append((username, host, command))
+                raise errors.ConnectionError("no network in tests")
+
+        self.overrideAttr(dulwich.client, "get_ssh_vendor", RecordingVendor)
+        orig = self.make_branch_and_tree("source", format="git")
+        subtree = self.make_branch_and_tree("source/subtree", format="git")
+        subtree.commit("subtree", allow_pointless=True)
+        self.build_tree_contents(
+            [
+                (
+                    "source/.gitmodules",
+                    """\
+[submodule "subtree"]
+    path = subtree
+    url = git@example.com:team/subtree.git
+""",
+                )
+            ]
+        )
+        orig.add_reference(subtree)
+        orig.add([".gitmodules"])
+        orig.commit("add subtree")
+        basis = orig.basis_tree()
+        with basis.lock_read():
+            self.assertEqual(
+                subtree.last_revision(), basis.get_reference_revision("subtree")
+            )
+
+        self.permit_url("git+ssh://git@example.com/team/")
+        self.run_bzr("branch source target", retcode=3)
+        self.assertEqual(
+            [("git", "example.com", b"git-upload-pack '/team/subtree.git'")], calls
+        )
+
 
 class SwitchScriptTests(TestCaseWithTransportAndScript):
     def test_switch_preserves(self):

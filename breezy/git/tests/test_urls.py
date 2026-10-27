@@ -42,6 +42,9 @@ class TestConvertURL(TestCase):
     def test_path(self):
         self.assertEqual(git_url_to_bzr_url("/bar/path"), ("/bar/path"))
 
+    def test_file(self):
+        self.assertEqual(git_url_to_bzr_url("file:///bar/path"), "file:///bar/path")
+
     def test_with_ref(self):
         self.assertEqual(
             git_url_to_bzr_url("foo:bar/path", ref=b"HEAD"), "git+ssh://foo/bar/path"

@@ -41,6 +41,7 @@ from ..transport import (
 from .mapping import decode_git_path, encode_git_path
 from .push import GitPushResult
 from .transportgit import OBJECTDIR, TransportObjectStore
+from .urls import git_url_to_bzr_url
 
 
 class GitDirConfig:
@@ -224,7 +225,9 @@ class GitDir(ControlDir):
                     if sublocation is None:
                         trace.warning("Unable to find submodule info for %s", path)
                         continue
-                    remote_url = urlutils.join(self.user_url, sublocation)
+                    remote_url = urlutils.join(
+                        self.user_url, git_url_to_bzr_url(sublocation)
+                    )
                     try:
                         subbranch = _mod_branch.Branch.open(
                             remote_url, possible_transports=possible_transports
