@@ -244,7 +244,7 @@ class ColocatedDirectory(Directory):
         """
         dir = _mod_controldir.ControlDir.open_containing(".")[0]
         return urlutils.join_segment_parameters(
-            dir.user_url, {"branch": urlutils.escape(name)}
+            dir.user_url, {"branch": urlutils.escape(name, safe="")}
         )
 
 

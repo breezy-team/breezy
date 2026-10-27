@@ -93,6 +93,34 @@ class TestInfo(tests.TestCaseWithTransport):
         )
         self.assertEqual(err, "")
 
+    def test_info_colocated_name_with_slash(self):
+        br = self.make_branch_and_tree("target", format="development-colo")
+        target = br.controldir.create_branch(name="foo/bar")
+        br.controldir.set_branch_reference(target)
+        out, err = self.run_bzr("info target")
+        self.assertEqual(
+            out,
+            "Standalone tree (format: development-colo)\n"
+            "Location:\n"
+            "            light checkout root: target\n"
+            "  checkout of co-located branch: foo/bar\n",
+        )
+        self.assertEqual(err, "")
+
+    def test_info_checkout_of_colocated_name_with_slash(self):
+        br = self.make_branch("target", format="development-colo")
+        target = br.controldir.create_branch(name="foo/bar")
+        target.create_checkout("from", lightweight=True)
+        out, err = self.run_bzr("info from")
+        self.assertEqual(
+            out,
+            "Lightweight checkout (format: development-colo)\n"
+            "Location:\n"
+            "  light checkout root: from\n"
+            "   checkout of branch: target/, branch foo/bar\n",
+        )
+        self.assertEqual(err, "")
+
     def test_info_standalone(self):
         self.get_transport()
 

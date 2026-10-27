@@ -17,7 +17,9 @@
 
 """Tests for interfacing with a Git Repository."""
 
+import gc
 import os
+import weakref
 
 import dulwich
 from dulwich.repo import Repo as GitRepo
@@ -114,6 +116,17 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
             repo.all_revision_ids()
             self.assertGreater(len(repo._git.object_store._pack_cache), 0)
         self.assertEqual(len(repo._git.object_store._pack_cache), 0)
+
+    def test_freed_without_cycle_collector(self):
+        self.simple_commit()
+        repo = Repository.open(".")
+        repo.pack()
+        repo.all_revision_ids()
+        ref = weakref.ref(repo)
+        gc.disable()
+        self.addCleanup(gc.enable)
+        del repo
+        self.assertIsNone(ref())
 
     def test_revision_tree(self):
         commit_id = self.simple_commit()

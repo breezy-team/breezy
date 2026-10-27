@@ -596,10 +596,6 @@ class GitBranchFormat(branch.BranchFormat):
         Returns:
             Tags: A tags object appropriate for the branch type (local or remote).
         """
-        try:
-            return branch.tags
-        except AttributeError:
-            pass
         if getattr(branch.repository, "_git", None) is None:
             from .remote import RemoteGitTagDict
 

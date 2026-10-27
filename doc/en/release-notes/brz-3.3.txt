@@ -8,6 +8,10 @@ Breezy Release Notes
 brz 3.3.23
 ##########
 
+:3.3.23: 2026-10-21
+
+ * Add Python 3.15 support. (Jelmer Vernooĳ)
+
  * launchpad: Fix authorization engine creation against newer
    launchpadlib, which made ``Launchpad.authorization_engine_factory``
    take keyword arguments only. Enumerating forges raised ``TypeError``
@@ -15,6 +19,20 @@ brz 3.3.23
 
  * gitlab: Report the name of the project that was asked for when it does
    not exist. ``NoSuchProject`` carried ``None`` instead.
+   (Zainab Mehmut)
+
+ * Let ``-r date:`` select the newest revision in a branch. The bisect
+   stopped one short of the tip, so when only the newest revision came
+   after the date, ``date:`` reported no such revision.
+   (Jelmer Vernooĳ)
+
+ * Fix opening a colocated branch whose name holds ``/``. The
+   ``user_url`` of such a branch could not be opened. ``brz info``
+   shows such a name decoded. (Zainab Mehmut)
+
+ * git: Free a dropped repository or branch at once, so its ``.pack``
+   and ``.idx`` files are closed without waiting for Python's cycle
+   collector.
    (Zainab Mehmut)
 
 brz 3.3.22
