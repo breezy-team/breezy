@@ -55,10 +55,13 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         bzrdir = branch.controldir
         try:
             colo = self.create_branch(bzrdir, "foo/bar")
-        except (errors.UninitializableFormat, errors.TransportNotPossible):
+        except (
+            errors.UninitializableFormat,
+            transport_errors.TransportNotPossible,
+        ) as e:
             raise tests.TestNotApplicable(
                 "Control dir does not support creating new branches."
-            )
+            ) from e
         self.assertEqual("foo/bar", colo.name)
         reopened = Branch.open(colo.user_url)
         self.assertEqual("foo/bar", reopened.name)
@@ -68,10 +71,13 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         bzrdir = branch.controldir
         try:
             colo = self.create_branch(bzrdir, "a%2Fb")
-        except (errors.UninitializableFormat, errors.TransportNotPossible):
+        except (
+            errors.UninitializableFormat,
+            transport_errors.TransportNotPossible,
+        ) as e:
             raise tests.TestNotApplicable(
                 "Control dir does not support creating new branches."
-            )
+            ) from e
         self.assertEqual("a%2Fb", colo.name)
         reopened = Branch.open(colo.user_url)
         self.assertEqual("a%2Fb", reopened.name)
