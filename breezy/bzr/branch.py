@@ -103,7 +103,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self.controldir = a_controldir
         self._user_transport = self.controldir.transport.clone("..")
         if name != "":
-            self._user_transport.set_segment_parameter("branch", urlutils.escape(name))
+            self._user_transport.set_segment_parameter(
+                "branch", urlutils.escape(name, safe="")
+            )
         self._base = self._user_transport.base
         self.name = name
         self._format = _format

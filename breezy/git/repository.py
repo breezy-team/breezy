@@ -342,8 +342,12 @@ class LocalGitRepository(GitRepository):
         """
         GitRepository.__init__(self, gitdir)
         self._git = gitdir._git
-        self._file_change_scanner = GitFileLastChangeScanner(self)
         self._transaction = None
+
+    @property
+    def _file_change_scanner(self):
+        # Made on demand: a stored scanner would point back at this repository.
+        return GitFileLastChangeScanner(self)
 
     def get_commit_builder(
         self,

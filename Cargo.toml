@@ -62,7 +62,7 @@ base64 = "0.22"
 nix = ">=0.26"
 patchkit = "0.3.8"
 patiencediff = { version = "0.3", default-features = false }
-pyo3 = ">=0.28,<0.30"
+pyo3 = ">=0.28,<0.31"
 pyo3-filelike = "0.5.2"
 pyo3-log = "0.13"
 chrono = { version = "0.4", default-features = false, features = [

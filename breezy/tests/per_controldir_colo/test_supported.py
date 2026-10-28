@@ -50,6 +50,38 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
             ) from e
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch, "colo")
 
+    def test_user_url_of_name_with_slash(self):
+        branch = self.make_branch("branch")
+        bzrdir = branch.controldir
+        try:
+            colo = self.create_branch(bzrdir, "foo/bar")
+        except (
+            errors.UninitializableFormat,
+            transport_errors.TransportNotPossible,
+        ) as e:
+            raise tests.TestNotApplicable(
+                "Control dir does not support creating new branches."
+            ) from e
+        self.assertEqual("foo/bar", colo.name)
+        reopened = Branch.open(colo.user_url)
+        self.assertEqual("foo/bar", reopened.name)
+
+    def test_user_url_of_name_with_percent(self):
+        branch = self.make_branch("branch")
+        bzrdir = branch.controldir
+        try:
+            colo = self.create_branch(bzrdir, "a%2Fb")
+        except (
+            errors.UninitializableFormat,
+            transport_errors.TransportNotPossible,
+        ) as e:
+            raise tests.TestNotApplicable(
+                "Control dir does not support creating new branches."
+            ) from e
+        self.assertEqual("a%2Fb", colo.name)
+        reopened = Branch.open(colo.user_url)
+        self.assertEqual("a%2Fb", reopened.name)
+
     def test_create_colo_branch(self):
         # a bzrdir can construct a branch and repository for itself.
         if not self.bzrdir_format.is_supported():
