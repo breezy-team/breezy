@@ -127,6 +127,22 @@ class GetProjectTests(TestCase):
         self.assertEqual("foo/bar", e.project)
         self.assertEqual("Project does not exist: foo/bar.", str(e))
 
+    def test_missing_numeric_id(self):
+        # GitLab takes a numeric id too; breezy passes one in _get_project_name.
+        transport = FakeTransport(
+            {
+                "https://gitlab.example.com/api/v4/projects/123": FakeResponse(404),
+            }
+        )
+        gl = GitLab(transport, "token")
+        e = self.assertRaises(NoSuchProject, gl._get_project, 123)
+        self.assertEqual("123", e.project)
+        self.assertEqual("Project does not exist: 123.", str(e))
+        self.assertEqual(
+            [("GET", "https://gitlab.example.com/api/v4/projects/123")],
+            transport.calls,
+        )
+
     def test_redirect_followed(self):
         transport = FakeTransport(
             {
@@ -155,3 +171,15 @@ class GetProjectTests(TestCase):
             ],
             transport.calls,
         )
+
+
+class DeleteProjectTests(TestCase):
+    def test_missing_numeric_id(self):
+        transport = FakeTransport(
+            {
+                "https://gitlab.example.com/api/v4/projects/123": FakeResponse(404),
+            }
+        )
+        gl = GitLab(transport, "token")
+        e = self.assertRaises(NoSuchProject, gl.delete_project, 123)
+        self.assertEqual("123", e.project)
