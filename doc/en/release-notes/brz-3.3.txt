@@ -5,6 +5,14 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.24
+##########
+
+ * gitlab: Keep a URL on ``MergeProposalExists`` when updating a merge
+   request runs into an existing one. The source branch URL can be
+   ``None`` when the source fork is gone, so the error read "A merge
+   proposal already exists: None." (Zainab Mehmut)
+
 brz 3.3.23
 ##########
 
