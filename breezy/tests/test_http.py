@@ -597,6 +597,40 @@ class TestWallServer(TestSpecificRequestHandler):
         )
 
 
+class RecordBodyThenCloseRequestHandler(http_server.TestingHTTPRequestHandler):
+    """Record the body of a chunked POST, then close without a response."""
+
+    def do_POST(self):
+        body = b""
+        size = int(self.rfile.readline(), 16)
+        while size:
+            body += self.rfile.read(size)
+            self.rfile.readline()
+            size = int(self.rfile.readline(), 16)
+        self.rfile.readline()
+        self.server.test_case_server.post_bodies.append(body)
+        self.close_connection = 1
+
+
+class TestPostBodyNotResent(TestSpecificRequestHandler):
+    """A body that can be read only once is not sent again on a retry."""
+
+    _req_handler_class = RecordBodyThenCloseRequestHandler
+
+    def test_post_iterator(self):
+        server = self.get_readonly_server()
+        server.post_bodies = []
+        t = self.get_readonly_transport()
+        self.assertRaises(
+            errors.ConnectionError,
+            t.request,
+            "POST",
+            t.abspath("foo"),
+            body=iter([b"pack", b"data"]),
+        )
+        self.assertEqual([b"packdata"], server.post_bodies)
+
+
 class BadStatusRequestHandler(http_server.TestingHTTPRequestHandler):
     """Whatever request comes in, returns a bad status."""
 

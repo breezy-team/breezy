@@ -22,6 +22,7 @@ There are separate implementation modules for each http client implementation.
 DEBUG = 0
 
 import base64
+import collections.abc
 import errno
 import http.client
 import os
@@ -202,9 +203,11 @@ class Response(http.client.HTTPResponse):
             # Make sure nothing was left to be read on the socket
             pending = 0
             data = True
-            while data and self.length:
+            bufsize = self._discarded_buf_size
+            # A chunked response has no length: read up to its last chunk
+            while data and (self.length or (self.chunked and self.length is None)):
                 # read() will update self.length
-                data = self.read(min(self.length, self._discarded_buf_size))
+                data = self.read(min(self.length or bufsize, bufsize))
                 pending += len(data)
             if pending:
                 trace.mutter("%s bytes left on the HTTP socket", pending)
@@ -608,7 +611,8 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
             # implementation.
             raise exc_val.with_traceback(exc_tb)
         else:
-            if first_try:
+            # A body from an iterator or a file was used up by the first try
+            if first_try and not isinstance(request.data, collections.abc.Iterator):
                 if self._debuglevel >= 2:
                     print("Received exception: [{!r}]".format(exc_val))
                     print("  On connection: [{!r}]".format(request.connection))
