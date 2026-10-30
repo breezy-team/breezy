@@ -822,13 +822,10 @@ class BzrBranch8(BzrBranch):
             if history is not None:
                 return history[revno - 1]
 
-            index = last_revno - revno
-            if len(self._partial_revision_history_cache) <= index:
-                self._extend_partial_history(stop_index=index)
-            if len(self._partial_revision_history_cache) > index:
-                return self._partial_revision_history_cache[index]
-            else:
+            revision_id = self.get_rev_id_from_tip(last_revno - revno)
+            if revision_id is None:
                 raise errors.NoSuchRevision(self, revno)
+            return revision_id
 
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno."""
