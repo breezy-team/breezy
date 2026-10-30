@@ -71,6 +71,7 @@ from .mapping import (
     mode_is_executable,
     mode_kind,
 )
+from .urls import git_url_to_bzr_url
 
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):
@@ -396,7 +397,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             )
             if not nested_repo_transport.has("."):
                 nested_url = urlutils.join(
-                    self._repository.controldir.user_url, decode_git_path(url)
+                    self._repository.controldir.user_url,
+                    git_url_to_bzr_url(decode_git_path(url)),
                 )
                 nested_repo_transport = get_transport(nested_url)
         if nested_repo_transport is None:

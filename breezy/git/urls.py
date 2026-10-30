@@ -21,7 +21,7 @@ from dulwich.client import parse_rsync_url
 from .. import urlutils
 from .refs import ref_to_branch_name
 
-KNOWN_GIT_SCHEMES = ["git+ssh", "git", "http", "https", "ftp", "ssh"]
+KNOWN_GIT_SCHEMES = ["git+ssh", "git", "http", "https", "ftp", "ssh", "file"]
 SCHEME_REPLACEMENT = {
     "ssh": "git+ssh",
 }

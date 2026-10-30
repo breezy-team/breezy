@@ -5,6 +5,15 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.24
+##########
+
+ * git: Clone a submodule whose URL is scp-like, such as
+   ``git@example.com:team/lib.git``, or starts with ``ssh://``.
+   Breezy opened such a URL as ``ssh://``, which it refuses for git;
+   it now uses ``git+ssh``.
+   (Zainab Mehmut)
+
 brz 3.3.23
 ##########
 
