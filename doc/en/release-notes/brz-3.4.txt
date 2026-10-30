@@ -69,6 +69,13 @@ Bug Fixes
    take keyword arguments only. Enumerating forges raised ``TypeError``
    before this. (Zainab Mehmut)
 
+ * git: A ``fetch`` with a larger ``depth`` now deepens a shallow
+   repository whose head is already present; it fetched nothing before.
+   A ``fetch`` with a ``depth`` from Bazaar into Git now records the
+   shallow boundary, and can deepen it too. From a remote Git repository
+   into Bazaar it now raises ``FetchDepthUnsupported`` instead of
+   crashing. (Zainab Mehmut)
+
  * ``brz help topics`` now lists its topics in a stable order; previously the
    order varied between invocations. (Jelmer Vernooĳ)
 
