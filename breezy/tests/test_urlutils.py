@@ -366,6 +366,34 @@ class TestUrlToPath(TestCase):
             TypeError, join_segment_parameters, "/,key1=val1", {"foo": 42}
         )
 
+    def test_join_segment_parameters_encoded(self):
+        join = urlutils.join_segment_parameters_encoded
+        self.assertEqual("/somedir/path", join("/somedir/path", {}))
+        self.assertEqual(
+            "/somedir/path,key1=val1", join("/somedir/path", {"key1": "val1"})
+        )
+        self.assertEqual(
+            "/somedir/path,branch=foo%2Fbar",
+            join("/somedir/path", {"branch": "foo/bar"}),
+        )
+        self.assertEqual(
+            "/somedir/path,branch=brr%2Cbrr",
+            join("/somedir/path", {"branch": "brr,brr"}),
+        )
+        self.assertEqual(
+            "/somedir/path,branch=a%3Db", join("/somedir/path", {"branch": "a=b"})
+        )
+        self.assertRaises(
+            urlutils.InvalidURLJoin, join, "/somedir/path", {"key1=val1": "val2"}
+        )
+        self.assertRaises(TypeError, join, "/somedir/path", {"branch": b"bytes"})
+        self.assertEqual(
+            "/somedir/path,key1=val1,key2=val2",
+            join("/somedir/path,key1=val1", {"key2": "val2"}),
+        )
+        # An encoded parameter already in the URL is not encoded again.
+        self.assertEqual("/p,a=x%2Fy,k=v%2Fw", join("/p,a=x%2Fy", {"k": "v/w"}))
+
     def test_function_type(self):
         if sys.platform == "win32":
             self.assertEqual(
@@ -659,6 +687,47 @@ class TestUrlToPath(TestCase):
             urlutils.InvalidURL, split_segment_parameters, "foo/base,key1"
         )
         # TODO: Check full URLs as well as relative references
+
+    def test_split_segment_parameters_decoded(self):
+        split = urlutils.split_segment_parameters_decoded
+        self.assertEqual(("/some/path", {}), split("/some/path"))
+        self.assertEqual(
+            ("/some/path", {"branch": "tip"}), split("/some/path,branch=tip")
+        )
+        self.assertEqual(
+            ("/some/path", {"branch": "foo/bar"}), split("/some/path,branch=foo%2Fbar")
+        )
+        self.assertEqual(
+            ("/some/path", {"branch": "brr,brr"}), split("/some/path,branch=brr%2Cbrr")
+        )
+        self.assertEqual(
+            ("/somedir/path", {"ref": "heads/tip"}),
+            split("/somedir/path,ref=heads%2Ftip"),
+        )
+        # Keys are not decoded.
+        self.assertEqual(("/p", {"a%3Db": "c"}), split("/p,a%3Db=c"))
+        self.assertRaises(urlutils.InvalidURL, split, "foo/base,key1")
+
+    def test_segment_parameters_encoded_roundtrip(self):
+        for value in [
+            "foo/bar",
+            "brr,brr",
+            "a=b",
+            "tip",
+            "",
+            "sp ace",
+            "col\u00e9/bar",
+            "a%2Fb",
+            "100%",
+            "a+b",
+        ]:
+            url = urlutils.join_segment_parameters_encoded(
+                "/somedir/path", {"branch": value}
+            )
+            self.assertEqual(
+                ("/somedir/path", {"branch": value}),
+                urlutils.split_segment_parameters_decoded(url),
+            )
 
     def test_win32_strip_local_trailing_slash(self):
         strip = urlutils._win32_strip_local_trailing_slash
