@@ -5,6 +5,15 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.24
+##########
+
+:3.3.24: 2026-10-31
+
+ * Ship Windows and arm64 macOS wheels and an sdist again. Without
+   them pip on those platforms fell back to building an older
+   release. (Jelmer Vernooĳ)
+
 brz 3.3.23
 ##########
 
