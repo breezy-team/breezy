@@ -18,8 +18,9 @@
 
 from datetime import datetime
 
+from ....forge import UnsupportedForgeHostname
 from ....tests import TestCase
-from ..forge import parse_timestring
+from ..forge import GitHub, parse_timestring
 
 
 class ParseTimestringTests(TestCase):
@@ -27,3 +28,11 @@ class ParseTimestringTests(TestCase):
         self.assertEqual(
             datetime(2011, 1, 26, 19, 1, 12), parse_timestring("2011-01-26T19:01:12Z")
         )
+
+
+class ProbeFromHostnameTests(TestCase):
+    def test_other_host(self):
+        e = self.assertRaises(
+            UnsupportedForgeHostname, GitHub.probe_from_hostname, "example.invalid"
+        )
+        self.assertEqual("example.invalid", e.hostname)
