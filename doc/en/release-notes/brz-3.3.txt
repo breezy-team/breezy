@@ -10,6 +10,12 @@ brz 3.3.25
 
 :3.3.25: UNRELEASED
 
+ * git: Clone a submodule whose URL is scp-like, such as
+   ``git@example.com:team/lib.git``, or starts with ``ssh://``.
+   Breezy opened such a URL as ``ssh://``, which it refuses for git;
+   it now uses ``git+ssh``.
+   (Zainab Mehmut)
+
  * Read a chunked HTTP response to its end before the connection is used
    again. The rest of it could be read as the status line of the next
    response, so ``brz push`` of a large git branch failed, most often
