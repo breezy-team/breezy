@@ -189,6 +189,34 @@ class Branch(ControlComponent):
         if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
             self._partial_revision_history_cache.pop()
 
+    def get_rev_id_from_tip(self, distance: int) -> RevisionID | None:
+        """Find the revision id that many steps back along the left-hand history.
+
+        This works without a revno, so also in a shallow history.
+
+        Args:
+          distance: Steps back from the tip, 0 being the tip.
+
+        Returns: The revision id, or None if history ends before that point.
+
+        Raises:
+          GhostRevisionsHaveNoRevno: History ends in a ghost before that point.
+        """
+        with self.lock_read():
+            last_revno = self.last_revision_info()[0]
+            if last_revno is not None and distance >= last_revno:
+                return None
+            try:
+                self._extend_partial_history(stop_index=distance)
+            except vcsgraph.errors.RevisionNotPresent as exc:
+                if len(self._partial_revision_history_cache) <= distance:
+                    raise errors.GhostRevisionsHaveNoRevno(
+                        self.last_revision(), exc.revision_id
+                    ) from exc
+            if len(self._partial_revision_history_cache) <= distance:
+                return None
+            return self._partial_revision_history_cache[distance]
+
     def _get_check_refs(self):
         """Get the references needed for check().
 
@@ -934,11 +962,12 @@ class Branch(ControlComponent):
             self._cache_revision_history(history)
         return list(history)
 
-    def revno(self):
+    def revno(self) -> int | None:
         """Return current revision number for this branch.
 
         That is equivalent to the number of revisions committed to
-        this branch.
+        this branch. It is None when that is not known, as in a shallow
+        history.
         """
         return self.last_revision_info()[0]
 
@@ -950,10 +979,11 @@ class Branch(ControlComponent):
         """Return last revision id, or NULL_REVISION."""
         return self.last_revision_info()[1]
 
-    def last_revision_info(self) -> tuple[int, RevisionID]:
+    def last_revision_info(self) -> tuple[int | None, RevisionID]:
         """Return information about the last revision.
 
-        Returns: A tuple (revno, revision_id).
+        Returns: A tuple (revno, revision_id). The revno is None when it
+            is not known, as in a shallow history.
         """
         with self.lock_read():
             if self._last_revision_info_cache is None:
@@ -1004,12 +1034,12 @@ class Branch(ControlComponent):
             last_revno, last_revid = self.last_revision_info()
             if revno == last_revno:
                 return last_revid
-            if revno <= 0 or revno > last_revno:
+            if revno <= 0 or last_revno is None or revno > last_revno:
                 raise errors.NoSuchRevision(self, revno)
-            distance_from_last = last_revno - revno
-            if len(self._partial_revision_history_cache) <= distance_from_last:
-                self._extend_partial_history(distance_from_last)
-            return self._partial_revision_history_cache[distance_from_last]
+            revision_id = self.get_rev_id_from_tip(last_revno - revno)
+            if revision_id is None:
+                raise errors.NoSuchRevision(self, revno)
+            return revision_id
 
     def pull(
         self,
@@ -1179,7 +1209,8 @@ class Branch(ControlComponent):
         Check whether a revno corresponds to a real revision.
         Zero (the NULL revision) is considered invalid.
         """
-        if revno < 1 or revno > self.revno():
+        last_revno = self.revno()
+        if revno < 1 or last_revno is None or revno > last_revno:
             raise errors.InvalidRevisionNumber(revno)
 
     def clone(

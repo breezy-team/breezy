@@ -107,14 +107,22 @@ def switch(
             revision_id = to_branch.last_revision()
         if base_revision_id == revision_id:
             if not quiet:
-                note(gettext("Tree is up to date at revision %d."), to_branch.revno())
+                revno = to_branch.revno()
+                if revno is None:
+                    note(gettext("Tree is up to date."))
+                else:
+                    note(gettext("Tree is up to date at revision %d."), revno)
         else:
             base_tree = source_repository.revision_tree(base_revision_id)
             target_tree = to_branch.repository.revision_tree(revision_id)
             merge.Merge3Merger(tree, tree, base_tree, target_tree)
             tree.set_last_revision(revision_id)
             if not quiet:
-                note(gettext("Updated to revision %d.") % to_branch.revno())
+                revno = to_branch.revno()
+                if revno is None:
+                    note(gettext("Updated to the branch tip."))
+                else:
+                    note(gettext("Updated to revision %d.") % revno)
         if store_uncommitted:
             tree.restore_uncommitted()
         _run_post_switch_hooks(control_dir, to_branch, force, revision_id)

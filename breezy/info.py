@@ -324,7 +324,10 @@ def _show_branch_stats(branch, verbose, outfile):
         return {}
     outfile.write("\n")
     outfile.write("Branch history:\n")
-    outfile.write("  %8d revision%s\n" % (revno, plural(revno)))
+    if revno is None:
+        outfile.write("         ? revisions\n")
+    else:
+        outfile.write("  %8d revision%s\n" % (revno, plural(revno)))
     stats = branch.repository.gather_stats(head, committers=verbose)
     if verbose:
         committers = stats["committers"]
