@@ -5,8 +5,10 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
-brz 3.3.24
+brz 3.3.25
 ##########
+
+:3.3.25: UNRELEASED
 
  * Read a chunked HTTP response to its end before the connection is used
    again. The rest of it could be read as the status line of the next
@@ -17,6 +19,15 @@ brz 3.3.24
  * Do not send a request again when its body came from an iterator or a
    file that the first try used up. A push sent an empty pack instead.
    (Zainab Mehmut)
+
+brz 3.3.24
+##########
+
+:3.3.24: 2026-10-31
+
+ * Ship Windows and arm64 macOS wheels and an sdist again. Without
+   them pip on those platforms fell back to building an older
+   release. (Jelmer Vernooĳ)
 
 brz 3.3.23
 ##########
