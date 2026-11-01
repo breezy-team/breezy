@@ -26,6 +26,13 @@ brz 3.3.25
    file that the first try used up. A push sent an empty pack instead.
    (Zainab Mehmut)
 
+ * git: Open a repository served as static files over HTTP also when
+   the server sends a ``Content-Type`` for ``info/refs``. Only an answer
+   without one was taken as a dumb repository, and any other type gave
+   ``Not a branch``. An HTML page served without a type was opened as a
+   repository before, and now gives ``Not a branch``.
+   (Zainab Mehmut)
+
 brz 3.3.24
 ##########
 

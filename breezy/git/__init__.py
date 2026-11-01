@@ -23,6 +23,7 @@
 """A GIT branch and repository format implementation for bzr."""
 
 import os
+import re
 import sys
 
 dulwich_minimum_version = (0, 19, 11)
@@ -140,6 +141,15 @@ def is_github_url(url):
     return host in ("github.com", "gopkg.in")
 
 
+_INFO_REFS_SHA_RE = re.compile(rb"[0-9a-f]{40}(?:[0-9a-f]{24})?\t")
+_INFO_REFS_LINE_RE = re.compile(_INFO_REFS_SHA_RE.pattern + rb"\S+")
+
+
+def _is_info_refs(text):
+    """Tell whether text is a git info/refs file: sha, tab, name lines."""
+    return all(_INFO_REFS_LINE_RE.fullmatch(line) for line in text.splitlines())
+
+
 class RemoteGitProber(Prober):
     @classmethod
     def priority(klass, transport):
@@ -183,13 +193,22 @@ class RemoteGitProber(Prober):
             from .remote import RemoteGitControlDirFormat
 
             return RemoteGitControlDirFormat()
-        elif not ct:
-            from .dir import BareLocalGitControlDirFormat
+        # Like git, anything but the smart type is a dumb server.
+        refs_text = resp.read(65)
+        if not refs_text and ct:
+            # A typed empty answer is how some servers report a missing
+            # path, so taking it as a repository hides anything else here.
+            raise brz_errors.NotBranchError(transport.base)
+        if refs_text and not _INFO_REFS_SHA_RE.match(refs_text):
+            raise brz_errors.NotBranchError(transport.base)
+        refs_text += resp.read()
+        if not _is_info_refs(refs_text):
+            raise brz_errors.NotBranchError(transport.base)
+        from .dir import BareLocalGitControlDirFormat
 
-            ret = BareLocalGitControlDirFormat()
-            ret._refs_text = resp.read()
-            return ret
-        raise brz_errors.NotBranchError(transport.base)
+        ret = BareLocalGitControlDirFormat()
+        ret._refs_text = refs_text
+        return ret
 
     def probe_transport(self, transport):
         try:
