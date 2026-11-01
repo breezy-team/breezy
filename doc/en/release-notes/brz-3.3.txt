@@ -5,14 +5,25 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
-brz 3.3.24
+brz 3.3.25
 ##########
+
+:3.3.25: UNRELEASED
 
  * git: Clone a submodule whose URL is scp-like, such as
    ``git@example.com:team/lib.git``, or starts with ``ssh://``.
    Breezy opened such a URL as ``ssh://``, which it refuses for git;
    it now uses ``git+ssh``.
    (Zainab Mehmut)
+
+brz 3.3.24
+##########
+
+:3.3.24: 2026-10-31
+
+ * Ship Windows and arm64 macOS wheels and an sdist again. Without
+   them pip on those platforms fell back to building an older
+   release. (Jelmer Vernooĳ)
 
 brz 3.3.23
 ##########
