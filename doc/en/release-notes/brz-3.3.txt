@@ -16,6 +16,16 @@ brz 3.3.25
    it now uses ``git+ssh``.
    (Zainab Mehmut)
 
+ * Read a chunked HTTP response to its end before the connection is used
+   again. The rest of it could be read as the status line of the next
+   response, so ``brz push`` of a large git branch failed, most often
+   over HTTPS.
+   (Zainab Mehmut)
+
+ * Do not send a request again when its body came from an iterator or a
+   file that the first try used up. A push sent an empty pack instead.
+   (Zainab Mehmut)
+
 brz 3.3.24
 ##########
 
