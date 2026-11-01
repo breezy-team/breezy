@@ -26,6 +26,11 @@ brz 3.3.25
    file that the first try used up. A push sent an empty pack instead.
    (Zainab Mehmut)
 
+ * git: Write the working tree index through its transport when flushing a
+   write locked tree. A failed write truncated the index and reported
+   ``AttributeError`` rather than the write error.
+   (Zainab Mehmut)
+
 brz 3.3.24
 ##########
 
