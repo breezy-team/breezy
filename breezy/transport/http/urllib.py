@@ -611,7 +611,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
             # implementation.
             raise exc_val.with_traceback(exc_tb)
         else:
-            # A body from an iterator or a file was used up by the first try
+            # Files are iterators too, so this covers used-up iterator and file bodies
             if first_try and not isinstance(request.data, collections.abc.Iterator):
                 if self._debuglevel >= 2:
                     print("Received exception: [{!r}]".format(exc_val))
