@@ -15,6 +15,11 @@ brz 3.3.26
    segment parameter values, so a value may hold ``/`` or ``,``. Only the
    values are encoded. The existing pair is unchanged. (Zainab Mehmut)
 
+ * github, gitlab: Give the full URL in ``UnexpectedHttpStatus`` for an
+   API request. It held only the API path, such as
+   ``projects/group%2Fproj``.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 

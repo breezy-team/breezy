@@ -16,7 +16,7 @@
 
 from datetime import datetime
 
-from breezy.errors import RedirectRequested
+from breezy.errors import RedirectRequested, UnexpectedHttpStatus
 from breezy.forge import NoSuchProject
 from breezy.plugins.gitlab.forge import (
     GitLab,
@@ -25,7 +25,8 @@ from breezy.plugins.gitlab.forge import (
     parse_gitlab_merge_request_url,
     parse_timestring,
 )
-from breezy.tests import TestCase
+from breezy.tests import TestCase, http_server
+from breezy.transport import get_transport
 
 
 class ParseGitLabMergeRequestUrlTests(TestCase):
@@ -181,3 +182,28 @@ class DeleteProjectTests(TestCase):
         gl = GitLab(transport, "token")
         e = self.assertRaises(NoSuchProject, gl.delete_project, 123)
         self.assertEqual("123", e.project)
+
+
+class UnexpectedStatusTests(TestCase):
+    def _start_server(self, statuses):
+        class RequestHandler(http_server.TestingHTTPRequestHandler):
+            def do_GET(self):
+                self.send_error(statuses[self.path])
+
+        server = http_server.HttpServer(RequestHandler)
+        self.start_server(server)
+        return server.get_url()
+
+    def test_full_url(self):
+        url = self._start_server({"/api/v4/projects/foo%2Fbar": 403})
+        gl = GitLab(get_transport(url), "token")
+        e = self.assertRaises(UnexpectedHttpStatus, gl._get_project, "foo/bar")
+        self.assertEqual(url + "api/v4/projects/foo%2Fbar", e.path)
+        self.assertEqual(403, e.code)
+
+    def test_full_url_on_redirect_check(self):
+        url = self._start_server({"/api/v4/projects/foo%2Fbar": 404, "/foo/bar": 403})
+        gl = GitLab(get_transport(url), "token")
+        e = self.assertRaises(UnexpectedHttpStatus, gl._get_project, "foo/bar")
+        self.assertEqual(url + "foo/bar", e.path)
+        self.assertEqual(403, e.code)
