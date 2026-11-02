@@ -30,6 +30,11 @@ brz 3.3.26
    behind by an earlier fetch is now removed from the pack directory.
    (Zainab Mehmut)
 
+ * git: Free a dropped working tree, or a branch whose config stack was
+   used, at once, so its ``.pack`` and ``.idx`` files are closed without
+   waiting for Python's cycle collector.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 

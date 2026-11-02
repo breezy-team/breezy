@@ -288,10 +288,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._format = GitWorkingTreeFormat()
         self.index = None
         self._index_file = None
-        self.views = self._make_views()
         self._rules_searcher = None
         self._detect_case_handling()
         self._reset_data()
+
+    @property
+    def views(self):
+        # Made on demand: stored views would point back at this tree.
+        return self._make_views()
 
     def supports_tree_reference(self):
         return True
