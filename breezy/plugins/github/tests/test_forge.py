@@ -18,8 +18,9 @@
 
 from datetime import datetime
 
+from ....errors import UnexpectedHttpStatus
 from ....tests import TestCase
-from ..forge import parse_timestring
+from ..forge import GitHub, parse_timestring
 
 
 class ParseTimestringTests(TestCase):
@@ -27,3 +28,29 @@ class ParseTimestringTests(TestCase):
         self.assertEqual(
             datetime(2011, 1, 26, 19, 1, 12), parse_timestring("2011-01-26T19:01:12Z")
         )
+
+
+class FakeResponse:
+    def __init__(self, status):
+        self.status = status
+
+    def getheaders(self):
+        return []
+
+
+class FakeTransport:
+    base = "https://api.github.com/"
+
+    def __init__(self, status):
+        self.status = status
+
+    def request(self, method, url, headers=None, body=None, retries=0):
+        return FakeResponse(self.status)
+
+
+class UnexpectedStatusTests(TestCase):
+    def test_full_url(self):
+        gh = GitHub(FakeTransport(403))
+        e = self.assertRaises(UnexpectedHttpStatus, gh._get_repo, "owner", "repo")
+        self.assertEqual("https://api.github.com/repos/owner/repo", e.path)
+        self.assertEqual(403, e.code)

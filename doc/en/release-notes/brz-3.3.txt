@@ -26,6 +26,11 @@ brz 3.3.25
    file that the first try used up. A push sent an empty pack instead.
    (Zainab Mehmut)
 
+ * github, gitlab: Give the full URL in ``UnexpectedHttpStatus`` for an
+   API request. It held only the API path, such as
+   ``projects/group%2Fproj``.
+   (Zainab Mehmut)
+
 brz 3.3.24
 ##########
 

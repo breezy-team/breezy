@@ -16,7 +16,7 @@
 
 from datetime import datetime
 
-from breezy.errors import RedirectRequested
+from breezy.errors import RedirectRequested, UnexpectedHttpStatus
 from breezy.forge import NoSuchProject
 from breezy.plugins.gitlab.forge import (
     GitLab,
@@ -126,6 +126,33 @@ class GetProjectTests(TestCase):
         e = self.assertRaises(NoSuchProject, gl._get_project, "foo/bar")
         self.assertEqual("foo/bar", e.project)
         self.assertEqual("Project does not exist: foo/bar.", str(e))
+
+    def test_unexpected_status(self):
+        transport = FakeTransport(
+            {
+                "https://gitlab.example.com/api/v4/projects/foo%2Fbar": (
+                    FakeResponse(403)
+                ),
+            }
+        )
+        gl = GitLab(transport, "token")
+        e = self.assertRaises(UnexpectedHttpStatus, gl._get_project, "foo/bar")
+        self.assertEqual("https://gitlab.example.com/api/v4/projects/foo%2Fbar", e.path)
+        self.assertEqual(403, e.code)
+
+    def test_unexpected_status_on_redirect_check(self):
+        transport = FakeTransport(
+            {
+                "https://gitlab.example.com/api/v4/projects/foo%2Fbar": (
+                    FakeResponse(404)
+                ),
+                "https://gitlab.example.com/foo/bar": FakeResponse(403),
+            }
+        )
+        gl = GitLab(transport, "token")
+        e = self.assertRaises(UnexpectedHttpStatus, gl._get_project, "foo/bar")
+        self.assertEqual("https://gitlab.example.com/foo/bar", e.path)
+        self.assertEqual(403, e.code)
 
     def test_redirect_followed(self):
         transport = FakeTransport(
