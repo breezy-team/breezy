@@ -17,8 +17,10 @@
 
 """Tests for Git working trees."""
 
+import gc
 import os
 import stat
+import weakref
 
 from dulwich.diff_tree import RenameDetector, tree_changes
 from dulwich.diff_tree import TreeChange as DulwichTreeChange
@@ -94,6 +96,15 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.build_tree_contents([(".gitignore", "a/\n")])
         self.tree._ignoremanager = None
         self.assertTrue(self.tree.is_ignored("a"))
+
+    def test_freed_without_cycle_collector(self):
+        tree = _mod_workingtree.WorkingTree.open(".")
+        tree.branch.get_config_stack().get("append_revisions_only")
+        refs = [weakref.ref(tree), weakref.ref(tree.branch)]
+        gc.disable()
+        self.addCleanup(gc.enable)
+        del tree
+        self.assertEqual([None, None], [ref() for ref in refs])
 
     def test_add_submodule_dir(self):
         subtree = self.make_branch_and_tree("asub", format="git")
