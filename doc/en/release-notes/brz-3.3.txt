@@ -26,6 +26,11 @@ brz 3.3.25
    file that the first try used up. A push sent an empty pack instead.
    (Zainab Mehmut)
 
+ * On Windows, ``LocalTransport.get`` of a directory now returns a file
+   whose read raises ``ReadError``, as on other platforms. It raised
+   ``PermissionDenied``, so creating a git working tree failed.
+   (Zainab Mehmut)
+
 brz 3.3.24
 ##########
 

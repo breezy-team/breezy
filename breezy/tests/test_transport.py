@@ -850,6 +850,12 @@ class TestLocalTransportMutation(tests.TestCaseInTempDir):
         self.assertTrue(os.path.exists("test"))
         self.assertTrue(os.path.exists("test2"))
 
+    def test_local_transport_get_directory(self):
+        t = transport.get_transport(osutils.abspath("."))
+        t.mkdir("test")
+        f = t.get("test")
+        self.assertRaises(errors.ReadError, f.read)
+
 
 class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
     def test_local_fdatasync_calls_fdatasync(self):
