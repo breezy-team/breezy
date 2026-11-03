@@ -146,6 +146,13 @@ class LocalTransport(transport.Transport):
         except OSError as e:
             if e.errno == errno.EISDIR:
                 return transport.LateReadError(relpath)
+            # Windows gives EACCES rather than EISDIR for a directory.
+            if (
+                sys.platform == "win32"
+                and e.errno == errno.EACCES
+                and os.path.isdir(path)
+            ):
+                return transport.LateReadError(relpath)
             self._translate_error(e, path)
 
     def put_file(self, relpath, f, mode=None):

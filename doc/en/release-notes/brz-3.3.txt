@@ -26,6 +26,24 @@ brz 3.3.25
    file that the first try used up. A push sent an empty pack instead.
    (Zainab Mehmut)
 
+ * On Windows, ``LocalTransport.get`` of a directory now returns a file
+   whose read raises ``ReadError``, as on other platforms. It raised
+   ``PermissionDenied``, so creating a git working tree failed.
+   (Zainab Mehmut)
+
+ * git: Fetching into a local git repository on Windows no longer fails
+   with ``NameError: name 'suppress' is not defined``.
+   (Zainab Mehmut)
+
+ * git: Fetching into a local git repository on Windows no longer fails
+   with ``WinError 32`` when the new pack is moved into place. The pack
+   was still mapped for indexing.
+   (Zainab Mehmut)
+
+ * git: Unlocking a ref on Windows no longer fails with ``WinError 32``.
+   The lock file was removed while it was still open.
+   (Zainab Mehmut)
+
 brz 3.3.24
 ##########
 

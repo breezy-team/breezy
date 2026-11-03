@@ -16,6 +16,7 @@
 
 """A Git repository implementation that uses a Bazaar transport."""
 
+import contextlib
 import os
 import posixpath
 import sys
@@ -413,13 +414,11 @@ class TransportRefsContainer(RefsContainer):
             else:
 
                 def unlock():
-                    try:
-                        transport.delete(lockname)
-                    except NoSuchFile:
-                        raise LockBroken(lockname)
-                    # GitFile.abort doesn't care if the lock has already
-                    # disappeared
+                    broken = not transport.has(lockname)
+                    # Close the lock file before removing it, as Windows needs.
                     gf.abort()
+                    if broken:
+                        raise LockBroken(lockname)
 
                 return LogicalLockResult(unlock)
 
@@ -835,7 +834,16 @@ class TransportObjectStore(PackBasedObjectStore):
             pass
         return cls(transport)
 
-    def _complete_pack(self, f, path, num_objects, indexer, progress=None):
+    def _index_pack(self, indexer, num_objects, progress=None):
+        """Return the index entries and external refs of a pack."""
+        entries = []
+        for i, entry in enumerate(indexer):
+            if progress is not None:
+                progress(f"generating index: {i}/{num_objects}\r".encode("ascii"))
+            entries.append(entry)
+        return entries, indexer.ext_refs()
+
+    def _complete_pack(self, f, path, entries, ext_refs, progress=None):
         """Move a specific file containing a pack into the pack directory.
 
         Note: The file should be on the same file system as the
@@ -844,17 +852,12 @@ class TransportObjectStore(PackBasedObjectStore):
         Args:
           f: Open file object for the pack.
           path: Path to the pack file.
-          indexer: A PackIndexer for indexing the pack.
+          entries: Index entries for the objects in the pack.
+          ext_refs: Objects the pack refers to but does not contain.
         """
-        entries = []
-        for i, entry in enumerate(indexer):
-            if progress is not None:
-                progress(f"generating index: {i}/{num_objects}\r".encode("ascii"))
-            entries.append(entry)
-
         pack_sha, extra_entries = extend_pack(
             f,
-            indexer.ext_refs(),
+            ext_refs,
             self.get_raw,
             self.object_format,
             compression_level=self.pack_compression_level,
@@ -886,8 +889,8 @@ class TransportObjectStore(PackBasedObjectStore):
         if sys.platform == "win32":
             # Windows might have the target pack file lingering. Attempt
             # removal, silently passing if the target does not exist.
-            with suppress(NoSuchFile):
-                self.transport.remove(target_pack_name)
+            with contextlib.suppress(NoSuchFile):
+                self.pack_transport.delete(target_pack_name)
 
         if path:
             f.close()
@@ -963,7 +966,8 @@ class TransportObjectStore(PackBasedObjectStore):
             copier.verify(progress=progress)
             if f.name:
                 os.chmod(f.name, PACK_MODE)
-            return self._complete_pack(f, path, len(copier), indexer, progress=progress)
+            entries, ext_refs = self._index_pack(indexer, len(copier), progress)
+            return self._complete_pack(f, path, entries, ext_refs, progress=progress)
         except BaseException:
             f.close()
             if path:
@@ -991,11 +995,16 @@ class TransportObjectStore(PackBasedObjectStore):
         def commit():
             if f.tell() > 0:
                 f.seek(0)
-                with PackData(path, self.object_format, file=f) as pd:
+                # Windows cannot rename the pack while pd has it open or mapped.
+                with PackData(path, self.object_format, file=None if path else f) as pd:
                     indexer = PackIndexer.for_pack_data(
                         pd, resolve_ext_ref=self.get_raw
                     )
-                    return self._complete_pack(f, path, len(pd), indexer)
+                    entries, ext_refs = self._index_pack(indexer, len(pd))
+                    if not path:
+                        # pd reads from f here, and older dulwich closes f with pd.
+                        return self._complete_pack(f, path, entries, ext_refs)
+                return self._complete_pack(f, path, entries, ext_refs)
             else:
                 abort()
                 return None
