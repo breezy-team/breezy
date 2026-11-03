@@ -40,6 +40,10 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * git: Creating or opening a git working tree on Windows no longer
+   fails with ``PermissionDenied`` on the ``.git`` directory.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 

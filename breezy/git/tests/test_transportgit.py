@@ -22,11 +22,13 @@ from dulwich.objects import Blob
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests
 from dulwich.tests.utils import make_object
 
-from ...tests import TestCaseWithTransport
+from ... import osutils
+from ...tests import TestCaseWithTransport, features
 from ..transportgit import (
     TransportGitFile,
     TransportObjectStore,
     TransportRefsContainer,
+    TransportRepo,
 )
 
 
@@ -138,3 +140,14 @@ class TransportRefContainerTests(TestCaseWithTransport):
             {b"refs/heads/master": b"2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee"},
             self._refs.get_packed_refs(),
         )
+
+
+class TransportRepoTests(TestCaseWithTransport):
+    def test_open_unreadable_control_directory(self):
+        # Opening .git as a file then fails as on Windows, with EACCES.
+        self.requireFeature(features.not_running_as_root)
+        tree = self.make_branch_and_tree("t", format="git")
+        os.chmod("t/.git", 0o300)
+        self.addCleanup(os.chmod, "t/.git", 0o755)
+        repo = TransportRepo(tree.controldir.root_transport, bare=False)
+        self.assertEqual(osutils.abspath("t/.git"), repo.controldir())
