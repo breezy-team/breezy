@@ -280,7 +280,9 @@ class DeleteProjectTests(TestCase):
         self.assertRaises(transport_errors.PermissionDenied, self.delete, 403)
 
     def test_unexpected_status(self):
-        self.assertRaises(transport_errors.UnexpectedHttpStatus, self.delete, 500)
+        e = self.assertRaises(transport_errors.UnexpectedHttpStatus, self.delete, 500)
+        self.assertEqual("https://gitea.example.com/api/v1/repos/me/fork", e.path)
+        self.assertEqual(500, e.code)
 
 
 class GiteaConfigTestCase(TestCaseInTempDir):
