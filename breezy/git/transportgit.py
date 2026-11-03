@@ -414,13 +414,11 @@ class TransportRefsContainer(RefsContainer):
             else:
 
                 def unlock():
-                    try:
-                        transport.delete(lockname)
-                    except NoSuchFile:
-                        raise LockBroken(lockname)
-                    # GitFile.abort doesn't care if the lock has already
-                    # disappeared
+                    broken = not transport.has(lockname)
+                    # Close the lock file before removing it, as Windows needs.
                     gf.abort()
+                    if broken:
+                        raise LockBroken(lockname)
 
                 return LogicalLockResult(unlock)
 

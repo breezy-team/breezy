@@ -40,6 +40,10 @@ brz 3.3.25
    was still mapped for indexing.
    (Zainab Mehmut)
 
+ * git: Unlocking a ref on Windows no longer fails with ``WinError 32``.
+   The lock file was removed while it was still open.
+   (Zainab Mehmut)
+
 brz 3.3.24
 ##########
 
