@@ -31,6 +31,10 @@ brz 3.3.25
    ``PermissionDenied``, so creating a git working tree failed.
    (Zainab Mehmut)
 
+ * git: Fetching into a local git repository on Windows no longer fails
+   with ``NameError: name 'suppress' is not defined``.
+   (Zainab Mehmut)
+
 brz 3.3.24
 ##########
 

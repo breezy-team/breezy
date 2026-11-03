@@ -16,6 +16,7 @@
 
 """A Git repository implementation that uses a Bazaar transport."""
 
+import contextlib
 import os
 import posixpath
 import sys
@@ -886,8 +887,8 @@ class TransportObjectStore(PackBasedObjectStore):
         if sys.platform == "win32":
             # Windows might have the target pack file lingering. Attempt
             # removal, silently passing if the target does not exist.
-            with suppress(NoSuchFile):
-                self.transport.remove(target_pack_name)
+            with contextlib.suppress(NoSuchFile):
+                self.pack_transport.delete(target_pack_name)
 
         if path:
             f.close()
