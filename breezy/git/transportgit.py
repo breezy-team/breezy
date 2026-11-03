@@ -19,6 +19,7 @@
 import contextlib
 import os
 import posixpath
+import stat
 import sys
 
 from dulwich.errors import NoIndexPresent
@@ -65,6 +66,7 @@ from ..errors import (
     LockBroken,
     LockContention,
     NotLocalUrl,
+    PermissionDenied,
     ReadError,
     TransportNotPossible,
 )
@@ -449,7 +451,12 @@ class TransportRepo(BaseRepo):
         try:
             with transport.get(CONTROLDIR) as f:
                 path = read_gitfile(f)
-        except (ReadError, NoSuchFile):
+        except (ReadError, NoSuchFile, PermissionDenied) as e:
+            # Windows gives EACCES, not EISDIR, when opening a directory.
+            if isinstance(e, PermissionDenied) and not stat.S_ISDIR(
+                transport.stat(CONTROLDIR).st_mode
+            ):
+                raise
             if self.bare:
                 self._controltransport = self.transport
             else:

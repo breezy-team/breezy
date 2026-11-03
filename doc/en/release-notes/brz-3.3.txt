@@ -35,6 +35,10 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * git: Creating or opening a git working tree on Windows no longer
+   fails with ``PermissionDenied`` on the ``.git`` directory.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
