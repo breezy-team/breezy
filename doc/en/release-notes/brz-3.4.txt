@@ -64,6 +64,10 @@ Bug Fixes
    that user as the organization, which Gitea answered with 404, so
    ``brz propose`` could not create a fork. (Zainab Mehmut)
 
+ * gitea: Give the full URL in ``UnexpectedHttpStatus`` for an API
+   request. It held only the API path, such as ``repos/owner/repo/pulls``.
+   (Zainab Mehmut)
+
  * launchpad: Fix authorization engine creation against newer
    launchpadlib, which made ``Launchpad.authorization_engine_factory``
    take keyword arguments only. Enumerating forges raised ``TypeError``
