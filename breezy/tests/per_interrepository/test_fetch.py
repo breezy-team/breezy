@@ -73,6 +73,38 @@ class TestInterRepository(TestCaseWithInterRepository):
         repo_b = self.make_to_repository("b")
         check_push_rev1(repo_b)
 
+    def test_fetch_depth_deepens(self):
+        tree_a = self.make_branch_and_tree("a")
+        self.build_tree_contents([("a/foo", b"one")])
+        tree_a.add("foo")
+        rev1 = tree_a.commit("rev1")
+        self.build_tree_contents([("a/foo", b"two")])
+        rev2 = tree_a.commit("rev2")
+        self.build_tree_contents([("a/foo", b"three")])
+        rev3 = tree_a.commit("rev3")
+        repo_b = self.make_to_repository("b")
+        if not repo_b.supports_fetch_depth:
+            raise TestNotApplicable("repository does not support fetch depths")
+        inter = repository.InterRepository.get(tree_a.branch.repository, repo_b)
+        try:
+            inter.fetch(depth=1)
+        except errors.NoRoundtrippingSupport as err:
+            raise TestNotApplicable("roundtripping not supported") from err
+        except errors.FetchDepthUnsupported as err:
+            raise TestNotApplicable(
+                "interrepository does not support fetch depths"
+            ) from err
+        self.assertEqual({rev3}, repo_b.has_revisions([rev1, rev2, rev3]))
+
+        inter.fetch(depth=2)
+
+        self.assertEqual({rev2, rev3}, repo_b.has_revisions([rev1, rev2, rev3]))
+
+        # The tip is present already, so this only moves the boundary
+        inter.fetch(depth=3)
+
+        self.assertEqual({rev1, rev2, rev3}, repo_b.has_revisions([rev1, rev2, rev3]))
+
     def test_fetch_inconsistent_last_changed_entries(self):
         """If an inventory has odd data we should still get what it references.
 
