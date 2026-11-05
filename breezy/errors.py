@@ -33,9 +33,12 @@ The module includes exceptions for:
 - User interface errors (CommandError)
 """
 
+# Re-exported for plugins that still import them from here
+from dromedary.errors import NotADirectory, NotLocalUrl, PermissionDenied  # noqa: F401
 from vcsgraph.errors import (  # noqa: F401
     GraphCycleError,
     NoCommonAncestor,
+    RevisionNotPresent,
 )
 
 # TODO: is there any value in providing the .args field used by standard
@@ -1626,7 +1629,7 @@ class SocketConnectionError(ConnectionError):
         self.host = host
         port = "" if port is None else f":{port}"
         self.port = port
-        ConnectionError.__init__(self, f"{msg} {host}{port}{orig_error}")
+        super().__init__(f"{msg} {host}{port}{orig_error}")
 
 
 class ConnectionTimeout(ConnectionError):
@@ -1650,7 +1653,7 @@ class ConnectionTimeout(ConnectionError):
             orig_error = "; " + str(orig_error)
         if msg is None:
             msg = "Connection timed out"
-        ConnectionError.__init__(self, f"{msg}{orig_error}")
+        super().__init__(f"{msg}{orig_error}")
 
 
 from dromedary.errors import InvalidHttpResponse
@@ -3198,3 +3201,7 @@ class RevnoOutOfBounds(InternalBzrError):
         InternalBzrError.__init__(
             self, revno=revno, minimum=bounds[0], maximum=bounds[1]
         )
+
+
+# Imported last so the classes above keep the builtin ConnectionError as base
+from dromedary.errors import ConnectionError  # noqa: F401

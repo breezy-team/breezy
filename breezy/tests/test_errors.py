@@ -88,6 +88,36 @@ class TestErrors(tests.TestCase):
             "The transport 'fpp' is only accessible within this process.", str(error)
         )
 
+    def test_moved_names(self):
+        from bzrformats import generate_ids as bzrformats_generate_ids
+        from vcsgraph import errors as vcsgraph_errors
+
+        from .. import transport
+        from ..bzr import generate_ids
+
+        self.assertEqual(
+            [
+                vcsgraph_errors.RevisionNotPresent,
+                transport_errors.ConnectionError,
+                transport_errors.NotADirectory,
+                transport_errors.NotLocalUrl,
+                transport_errors.PermissionDenied,
+                transport_errors.UnsupportedProtocol,
+                transport_errors.UnusableRedirect,
+                bzrformats_generate_ids.gen_file_id,
+            ],
+            [
+                errors.RevisionNotPresent,
+                errors.ConnectionError,
+                errors.NotADirectory,
+                errors.NotLocalUrl,
+                errors.PermissionDenied,
+                transport.UnsupportedProtocol,
+                transport.UnusableRedirect,
+                generate_ids.gen_file_id,
+            ],
+        )
+
     def test_invalid_http_range(self):
         error = transport_errors.InvalidHttpRange(
             "path", "Content-Range: potatoes 0-00/o0oo0", "bad range"
