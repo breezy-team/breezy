@@ -26,6 +26,12 @@ brz 3.3.25
    file that the first try used up. A push sent an empty pack instead.
    (Zainab Mehmut)
 
+ * ``workspace.check_clean_tree`` no longer hashes the contents of files
+   inside ``.gitignore``'d directories on git working trees.  Callers
+   discard those entries anyway, and the walk could take minutes on
+   repositories with a large build output directory.
+   (Jelmer Vernooĳ)
+
 brz 3.3.24
 ##########
 
