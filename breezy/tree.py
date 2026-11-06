@@ -321,6 +321,7 @@ class Tree:
         extra_trees=None,
         require_versioned=True,
         want_unversioned=False,
+        **kwargs,
     ):
         """See InterTree.iter_changes."""
         intertree = InterTree.get(from_tree, self)
@@ -331,6 +332,7 @@ class Tree:
             extra_trees,
             require_versioned,
             want_unversioned=want_unversioned,
+            **kwargs,
         )
 
     def conflicts(self):
@@ -984,6 +986,7 @@ class InterTree(InterObject[Tree]):
         extra_trees: list[Tree] | None = None,
         require_versioned: bool = True,
         want_unversioned: bool = False,
+        **kwargs,
     ):
         """Generate an iterator of changes between trees.
 

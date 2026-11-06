@@ -1200,12 +1200,17 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return osutils.lexists(self.abspath(filename))
 
     def _iter_files_recursive(
-        self, from_dir=None, include_dirs=False, recurse_nested=False
+        self,
+        from_dir=None,
+        include_dirs=False,
+        recurse_nested=False,
+        skip_ignored=False,
     ):
         if from_dir is None:
             from_dir = ""
         if not isinstance(from_dir, str):
             raise TypeError(from_dir)
+        ignore_manager = self._get_ignore_manager() if skip_ignored else None
         encoded_from_dir = os.fsencode(self.abspath(from_dir))
         for dirpath, dirnames, filenames in os.walk(encoded_from_dir):
             dir_relpath = dirpath[len(self.basedir) :].strip(b"/")
@@ -1216,13 +1221,24 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     dirnames.remove(name)
                     continue
                 relpath = os.path.join(dir_relpath, name)
+                relpath_str = os.fsdecode(relpath)
                 if not recurse_nested and self._directory_is_tree_reference(
-                    os.fsdecode(relpath)
+                    relpath_str
                 ):
                     dirnames.remove(name)
+                if ignore_manager is not None and ignore_manager.may_prune_directory(
+                    relpath_str + "/"
+                ):
+                    # Named-exclusion directory with no re-including negation
+                    # inside; skip the whole subtree.
+                    try:
+                        dirnames.remove(name)
+                    except ValueError:
+                        pass
+                    continue
                 if include_dirs:
-                    yield os.fsdecode(relpath)
-                    if not self.is_versioned(os.fsdecode(os.fsdecode(relpath))):
+                    yield relpath_str
+                    if not self.is_versioned(relpath_str):
                         try:
                             dirnames.remove(name)
                         except ValueError:
@@ -1233,7 +1249,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 if self.controldir.is_control_filename(os.fsdecode(name)):
                     continue
                 yp = os.path.join(dir_relpath, name)
-                yield os.fsdecode(yp)
+                yp_str = os.fsdecode(yp)
+                if ignore_manager is not None and ignore_manager.is_ignored(yp_str):
+                    continue
+                yield yp_str
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree."""

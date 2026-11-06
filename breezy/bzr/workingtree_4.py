@@ -2661,6 +2661,7 @@ class InterDirStateTree(InterInventoryTree):
         extra_trees=None,
         require_versioned=True,
         want_unversioned=False,
+        **kwargs,
     ):
         """Return the changes from source to target.
 
