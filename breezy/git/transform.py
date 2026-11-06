@@ -1889,7 +1889,7 @@ class GitPreviewTree(PreviewTree, GitTree):
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
 
-    def git_snapshot(self, want_unversioned=False):
+    def git_snapshot(self, want_unversioned=False, include_ignored=True):
         extra = set()
         os = []
         for trans_id, path in self._list_files_by_dir():

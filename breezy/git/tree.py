@@ -286,7 +286,7 @@ class GitTree(_mod_tree.Tree):
     def supports_symlinks(self):
         return True
 
-    def git_snapshot(self, want_unversioned=False):
+    def git_snapshot(self, want_unversioned=False, include_ignored=True):
         """Snapshot a tree, and return tree object.
 
         :return: Tree sha and set of extras
@@ -381,7 +381,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 )
             self.tree = commit.tree
 
-    def git_snapshot(self, want_unversioned=False):
+    def git_snapshot(self, want_unversioned=False, include_ignored=True):
         return self.tree, set()
 
     def _get_submodule_repository(self, relpath):
@@ -1181,6 +1181,7 @@ class InterGitTrees(_mod_tree.InterTree):
         extra_trees=None,
         require_versioned=True,
         want_unversioned=False,
+        include_ignored=True,
     ):
         if extra_trees is None:
             extra_trees = []
@@ -1191,6 +1192,7 @@ class InterGitTrees(_mod_tree.InterTree):
                 specific_files=specific_files,
                 extra_trees=extra_trees,
                 want_unversioned=want_unversioned,
+                include_ignored=include_ignored,
             )
             return changes_from_git_changes(
                 changes,
@@ -1209,6 +1211,7 @@ class InterGitTrees(_mod_tree.InterTree):
         extra_trees=None,
         want_unversioned=False,
         include_trees=True,
+        include_ignored=True,
     ):
         trees = [self.source]
         if extra_trees is not None:
@@ -1220,10 +1223,12 @@ class InterGitTrees(_mod_tree.InterTree):
         # TODO(jelmer): Restrict to specific_files, for performance reasons.
         with self.lock_read():
             from_tree_sha, from_extras = self.source.git_snapshot(
-                want_unversioned=want_unversioned
+                want_unversioned=want_unversioned,
+                include_ignored=include_ignored,
             )
             to_tree_sha, to_extras = self.target.git_snapshot(
-                want_unversioned=want_unversioned
+                want_unversioned=want_unversioned,
+                include_ignored=include_ignored,
             )
             changes = tree_changes(
                 self.store,
@@ -1303,8 +1308,12 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         self._index_dirty = False
         self._submodules = None
 
-    def git_snapshot(self, want_unversioned=False):
-        return snapshot_workingtree(self, want_unversioned=want_unversioned)
+    def git_snapshot(self, want_unversioned=False, include_ignored=True):
+        return snapshot_workingtree(
+            self,
+            want_unversioned=want_unversioned,
+            include_ignored=include_ignored,
+        )
 
     def is_versioned(self, path):
         with self.lock_read():
@@ -1911,9 +1920,19 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
 
 def snapshot_workingtree(
-    target: MutableGitIndexTree, want_unversioned: bool = False
+    target: MutableGitIndexTree,
+    want_unversioned: bool = False,
+    include_ignored: bool = True,
 ) -> tuple[ObjectID, set[bytes]]:
-    """Snapshot a working tree into a tree object."""
+    """Snapshot a working tree into a Git tree object.
+
+    Args:
+        target: The mutable Git index tree to snapshot.
+        want_unversioned: Whether to include unversioned files in the snapshot.
+        include_ignored: Whether .gitignore-matched extras are included;
+            skipping them avoids hashing large ignored trees. No effect when
+            ``want_unversioned`` is False.
+    """
     extras = set()
     blobs = {}
     # Report dirified directories to commit_tree first, so that they can be
@@ -1961,7 +1980,11 @@ def snapshot_workingtree(
                         target.store.add_object(blob)
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
-        for extra in target._iter_files_recursive(include_dirs=False):  # type: ignore
+        iter_extras = target._iter_files_recursive(  # type: ignore
+            include_dirs=False,
+            skip_ignored=not include_ignored,
+        )
+        for extra in iter_extras:
             extra, _accessible = osutils.normalized_filename(extra)
             np = encode_git_path(extra)
             if np in blobs:
