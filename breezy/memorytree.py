@@ -652,6 +652,7 @@ class InterMemoryTree(tree_mod.InterTree):
         extra_trees=None,
         require_versioned=True,
         want_unversioned=False,
+        **kwargs,
     ):
         """Iterate over changes between the source and target trees."""
         if extra_trees is None:

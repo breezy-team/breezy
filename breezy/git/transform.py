@@ -2095,11 +2095,12 @@ class GitPreviewTree(PreviewTree, GitTree):
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
 
-    def git_snapshot(self, want_unversioned=False):
+    def git_snapshot(self, want_unversioned=False, include_ignored=True):
         """Create a Git snapshot of the current tree state.
 
         Args:
             want_unversioned: Whether to include unversioned files (optional).
+            include_ignored: Ignored; preview trees have no ignore info.
 
         Returns:
             tuple: (tree_id, extra_files) where tree_id is the Git tree ID

@@ -38,6 +38,12 @@ Improvements
 .. Improvements to existing commands, especially improved performance
    or memory usage, or better results.
 
+ * ``workspace.check_clean_tree`` no longer hashes the contents of files
+   inside ``.gitignore``'d directories on git working trees.  Callers
+   discard those entries anyway, and the walk could take minutes on
+   repositories with a large build output directory.
+   (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -54,6 +60,13 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    breezy.
+
+ * ``breezy.git.tree.snapshot_workingtree`` (and the ``git_snapshot``
+   methods on ``GitTree``/``InterGitTrees``) gained an
+   ``include_ignored`` keyword argument.  When set to ``False`` and
+   combined with ``want_unversioned=True``, files matched by
+   ``.gitignore`` are skipped instead of being hashed into the snapshot.
+   (Jelmer Vernooĳ)
 
 Internals
 *********
