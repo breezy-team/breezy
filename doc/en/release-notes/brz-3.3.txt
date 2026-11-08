@@ -30,6 +30,12 @@ brz 3.3.25
    from the redirect lookup, and ``delete_project`` and ``fork_project`` put
    the integer into the error they raise. (Zainab Mehmut)
 
+ * ``workspace.check_clean_tree`` no longer hashes the contents of files
+   inside ``.gitignore``'d directories on git working trees.  Callers
+   discard those entries anyway, and the walk could take minutes on
+   repositories with a large build output directory.
+   (Jelmer Vernooĳ)
+
 brz 3.3.24
 ##########
 

@@ -570,6 +570,7 @@ class InterMemoryTree(tree_mod.InterTree):
         extra_trees=None,
         require_versioned=True,
         want_unversioned=False,
+        **kwargs,
     ):
         if extra_trees is None:
             extra_trees = []

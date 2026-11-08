@@ -470,7 +470,7 @@ class GitHub(Forge):
             params["head"] = head
         if state is not None:
             params["state"] = state
-        path += ";".join(
+        path += "&".join(
             ["{}={}".format(k, urlutils.quote(v)) for k, v in params.items()]
         )
         response = self._api_request("GET", path)
@@ -568,7 +568,7 @@ class GitHub(Forge):
                 "GET",
                 path
                 + "?"
-                + ";".join(
+                + "&".join(
                     [
                         "{}={}".format(k, urlutils.quote(v))
                         for (k, v) in parameters.items()

@@ -83,6 +83,67 @@ Arch: all
         with tree.lock_write():
             check_clean_tree(tree)
 
+    def test_pending_changes_git_skips_ignored_file_contents(self):
+        # check_clean_tree must not read the contents of files inside an
+        # ignored directory - a build output tree can be many GB.
+        tree = self.make_test_tree(format="git")
+        self.build_tree_contents(
+            [
+                ("build/",),
+                ("build/output1", "x" * 1024),
+                ("build/output2", "y" * 1024),
+                (".gitignore", "build/\n"),
+            ]
+        )
+        tree.add(".gitignore")
+        tree.commit("add gitignore")
+        opened: list[str] = []
+        real_get_file = tree.get_file
+
+        def tracking_get_file(path, *args, **kwargs):
+            opened.append(path)
+            return real_get_file(path, *args, **kwargs)
+
+        tree.get_file = tracking_get_file
+        with tree.lock_write():
+            check_clean_tree(tree)
+        self.assertEqual([], [p for p in opened if p.startswith("build/")])
+
+    def test_pending_changes_git_nested_gitignore(self):
+        # A .gitignore inside a subdirectory should also drop its
+        # ignored files from the clean-tree check.
+        tree = self.make_test_tree(format="git")
+        self.build_tree_contents(
+            [
+                ("sub/",),
+                ("sub/.gitignore", "transient\n"),
+                ("sub/transient", "junk"),
+            ]
+        )
+        tree.add(["sub", "sub/.gitignore"])
+        tree.commit("add nested gitignore")
+        with tree.lock_write():
+            check_clean_tree(tree)
+
+    def test_pending_changes_git_negated_ignore_is_dirty(self):
+        # Even when a parent directory is ignored, .gitignore negation can
+        # re-include individual files. check_clean_tree must still notice
+        # the re-included one as unversioned, rather than pruning the
+        # entire directory.
+        tree = self.make_test_tree(format="git")
+        self.build_tree_contents(
+            [
+                ("build/",),
+                ("build/output", "junk"),
+                ("build/important", "keepme"),
+                (".gitignore", "build/*\n!build/important\n"),
+            ]
+        )
+        tree.add(".gitignore")
+        tree.commit("add gitignore with negation")
+        with tree.lock_write():
+            self.assertRaises(WorkspaceDirty, check_clean_tree, tree)
+
     def test_extra(self):
         tree = self.make_test_tree()
         self.build_tree_contents([("debian/foo", "blah")])
