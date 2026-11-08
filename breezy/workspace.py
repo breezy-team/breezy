@@ -116,13 +116,17 @@ def check_clean_tree(
         if basis_tree is None:
             es.enter_context(local_tree.lock_read())
             basis_tree = local_tree.basis_tree()
-        # Just check there are no changes to begin with
+        # Just check there are no changes to begin with. include_ignored=False
+        # tells the backend not to hash files inside .gitignore'd directories,
+        # which can be very expensive (e.g. a build output tree); the relevant
+        # filter below drops them anyway.
         changes = local_tree.iter_changes(
             basis_tree,
             include_unchanged=False,
             require_versioned=False,
             want_unversioned=True,
             specific_files=[subpath],
+            include_ignored=False,
         )
 
         def relevant(p, t):
