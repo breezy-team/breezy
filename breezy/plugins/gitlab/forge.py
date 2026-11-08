@@ -480,10 +480,12 @@ class GitLab(Forge):
         _unexpected_status(path, response)
 
     def _get_project(self, project_name, _redirect_checked=False):
-        path = "projects/{}".format(urlutils.quote(str(project_name), ""))
+        project_name = str(project_name)
+        path = "projects/{}".format(urlutils.quote(project_name, ""))
         response = self._api_request("GET", path)
         if response.status == 404:
-            if not _redirect_checked:
+            # A numeric id never moves, so there is no redirect to look up.
+            if not _redirect_checked and not project_name.isdigit():
                 redirected = self._find_correct_project_name(project_name)
                 if redirected is not None:
                     return self._get_project(redirected, _redirect_checked=True)
@@ -534,7 +536,8 @@ class GitLab(Forge):
         return project
 
     def fork_project(self, project_name, timeout=50, interval=5, owner=None):
-        path = "projects/{}/fork".format(urlutils.quote(str(project_name), ""))
+        project_name = str(project_name)
+        path = "projects/{}/fork".format(urlutils.quote(project_name, ""))
         fields = {}
         if owner is not None:
             fields["namespace"] = owner
@@ -944,7 +947,8 @@ class GitLab(Forge):
         return GitLabMergeProposal(self, mr)
 
     def delete_project(self, project):
-        path = "projects/{}".format(urlutils.quote(str(project), ""))
+        project = str(project)
+        path = "projects/{}".format(urlutils.quote(project, ""))
         response = self._api_request("DELETE", path)
         if response.status == 404:
             raise NoSuchProject(project)
