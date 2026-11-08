@@ -8,7 +8,7 @@ Breezy Release Notes
 brz 3.3.25
 ##########
 
-:3.3.25: UNRELEASED
+:3.3.25: 2026-11-08
 
  * git: Clone a submodule whose URL is scp-like, such as
    ``git@example.com:team/lib.git``, or starts with ``ssh://``.
