@@ -39,6 +39,7 @@ from dulwich.pack import (
     load_pack_index_file,
     write_pack_index,
 )
+from dulwich.protocol import split_peeled_refs
 from dulwich.refs import SymrefLoop
 from dulwich.repo import (
     BASE_DIRECTORIES,
@@ -485,6 +486,7 @@ class TransportRepo(BaseRepo):
                 if len(parts) == 2:
                     sha, refname = parts
                     refs_dict[refname] = sha
+            refs_dict, peeled = split_peeled_refs(refs_dict)
 
             # Try to get HEAD
             try:
@@ -496,6 +498,7 @@ class TransportRepo(BaseRepo):
                 pass
 
             refs_container = DictRefsContainer(refs_dict)
+            refs_container._peeled = peeled
         else:
             refs_container = TransportRefsContainer(
                 self._commontransport, self._controltransport
