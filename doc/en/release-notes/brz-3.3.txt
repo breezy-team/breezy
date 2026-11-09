@@ -25,6 +25,11 @@ brz 3.3.26
    ``AttributeError: 'FilteredStat' object has no attribute 'st_dev'``.
    (Zainab Mehmut)
 
+ * git: Fetching into a local git repository on Windows no longer fails
+   with ``NameError: name 'suppress' is not defined``. A pack file left
+   behind by an earlier fetch is now removed from the pack directory.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
