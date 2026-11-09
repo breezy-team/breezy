@@ -1,0 +1,55 @@
+/*
+ * :Author: James Westby
+ * :Contact: jw+debian@jameswestby.net
+ * :Copyright: This stylesheet has been placed in the public domain.
+ *
+ * Stylesheet for use with Docutils.
+ *
+ * With thanks to Robey Pointer for colour scheme from Loggerhead.
+ *
+ * */
+
+@import url(html4css1.css);
+
+h1, h2, h3, h4, h5 {
+  font-family: sans-serif;
+  background-color: #dee7ec;
+  color : #23335e;
+  border: 1px solid #8cacbb;
+  padding-left : 4px;
+}
+
+h1 a, h2 a, h3 a, h4 a, h5 a {
+  color : #23335e;
+}
+
+p {
+  font-family: sans-serif;
+}
+
+body {
+  background-color: #fcfcfc;
+}
+
+tt.docutils {
+  background-color: #f4f5f8;
+}
+
+pre.literal-block {
+  background-color: #f4f5f8;
+  margin-left: 4em;
+  margin-right: 16em;
+  border: 1px solid #8cacbb;
+  padding-left : 3px;
+}
+
+a {
+  text-decoration: none;
+  color: #000088;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: black;
+}
+

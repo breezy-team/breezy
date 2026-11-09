@@ -5,6 +5,10 @@ include BRANCH.TODO INSTALL Makefile MANIFEST.in NEWS profile_imports.py .rsynce
 # breezy/plugins/weave_fmt/tests/ breezy/store/revision/ doc/ja/_templates/ man1/ man1
 recursive-include tools/win32 *
 recursive-include breezy *.py *.txt *.rs
+recursive-include breezy/plugins/debian *.conf py.typed README.rst
+recursive-include breezy/plugins/debian/po *.po *.pot
+recursive-include breezy/plugins/debian/doc *
+recursive-include breezy/plugins/debian/specs *
 recursive-include tools *.py *.sh
 recursive-include apport *
 recursive-include contrib *

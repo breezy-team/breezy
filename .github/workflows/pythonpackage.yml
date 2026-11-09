@@ -27,7 +27,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies (apt)
         run: |
-          sudo apt install quilt
+          sudo apt install quilt libapt-pkg-dev dpkg-dev pristine-tar libalgorithm-merge-perl
         if: "matrix.os == 'ubuntu-latest'"
       - name: Install dependencies (brew)
         run: |
@@ -44,6 +44,10 @@ jobs:
           else
             python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport]";
           fi
+      - name: Install Debian plugin extras (linux)
+        run: |
+          python -m pip install ".[apt,udd]"
+        if: "matrix.os == 'ubuntu-latest'"
       - name: Install dependencies (linux/pip)
         run: |
           pip install pyinotify
