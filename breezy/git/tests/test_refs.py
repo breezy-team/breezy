@@ -178,3 +178,11 @@ class DumbHttpTagsTests(TestCaseWithWebserver):
             self.git_repo.refs[b"refs/tags/v1.0"], local_git.refs[b"refs/tags/v1.0"]
         )
         self.assertEqual(self.commit, local_git.refs[b"refs/tags/light"])
+
+
+class DumbHttpTagsContentTypeTests(DumbHttpTagsTests):
+    """The same, from a server that sends a Content-Type."""
+
+    create_transport_readonly_server = (
+        TestCaseWithWebserver.create_transport_readonly_server
+    )
