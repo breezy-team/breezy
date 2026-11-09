@@ -196,9 +196,9 @@ def parse_gitea_merge_request_url(url):
     return host, f"{parts[0]}/{parts[1]}", int(parts[3])
 
 
-def _unexpected_status(path, response):
+def _unexpected_status(url, response):
     raise transport_errors.UnexpectedHttpStatus(
-        path,
+        url,
         response.status,
         response.data.decode("utf-8", "replace"),
         headers=response.getheaders(),
@@ -408,10 +408,13 @@ class Gitea(Forge):
         self.headers = {"Authorization": f"token {private_token}"}
         self._current_user = None
 
+    def _api_url(self, path):
+        return urlutils.join(self.base_url, "api", "v1", path)
+
     def _api_request(self, method, path, fields=None, body=None):
         return self.transport.request(
             method,
-            urlutils.join(self.base_url, "api", "v1", path),
+            self._api_url(path),
             headers=self.headers,
             fields=fields,
             body=body,
@@ -422,7 +425,7 @@ class Gitea(Forge):
         headers["Content-Type"] = "application/json"
         return self.transport.request(
             method,
-            urlutils.join(self.base_url, "api", "v1", path),
+            self._api_url(path),
             headers=headers,
             body=json.dumps(data).encode("utf-8"),
         )
@@ -439,7 +442,7 @@ class Gitea(Forge):
             raise NoSuchProject(full_name)
         if response.status == 200:
             return json.loads(response.data)
-        _unexpected_status(path, response)
+        _unexpected_status(self._api_url(path), response)
 
     def _get_pull(self, full_name, index):
         path = f"repos/{full_name}/pulls/{index}"
@@ -447,7 +450,7 @@ class Gitea(Forge):
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
         if response.status != 200:
-            _unexpected_status(path, response)
+            _unexpected_status(self._api_url(path), response)
         return json.loads(response.data)
 
     def _patch_pull(self, full_name, index, data):
@@ -456,7 +459,7 @@ class Gitea(Forge):
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
         if response.status not in (200, 201):
-            _unexpected_status(path, response)
+            _unexpected_status(self._api_url(path), response)
         return json.loads(response.data)
 
     def _merge_pull(self, full_name, index, commit_message=None):
@@ -468,7 +471,7 @@ class Gitea(Forge):
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
         if response.status not in (200, 405):
-            _unexpected_status(path, response)
+            _unexpected_status(self._api_url(path), response)
 
     def _post_issue_comment(self, full_name, index, body):
         path = f"repos/{full_name}/issues/{index}/comments"
@@ -476,7 +479,7 @@ class Gitea(Forge):
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
         if response.status not in (200, 201):
-            _unexpected_status(path, response)
+            _unexpected_status(self._api_url(path), response)
 
     def _create_pull(
         self,
@@ -501,7 +504,7 @@ class Gitea(Forge):
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
         if response.status not in (200, 201):
-            _unexpected_status(path, response)
+            _unexpected_status(self._api_url(path), response)
         return json.loads(response.data)
 
     def _list_paged(self, path, parameters=None):
@@ -515,7 +518,7 @@ class Gitea(Forge):
             if response.status == 403:
                 raise transport_errors.PermissionDenied(response.text)
             if response.status != 200:
-                _unexpected_status(path, response)
+                _unexpected_status(self._api_url(path), response)
             batch = json.loads(response.data)
             # The pull request listing endpoint wraps results in an object.
             if isinstance(batch, dict):
@@ -538,7 +541,7 @@ class Gitea(Forge):
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
         if response.status not in (200, 201, 202):
-            _unexpected_status(path, response)
+            _unexpected_status(self._api_url(path), response)
         return json.loads(response.data)
 
     def _retrieve_user(self):
@@ -777,7 +780,7 @@ class Gitea(Forge):
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
         if response.status != 204:
-            _unexpected_status(path, response)
+            _unexpected_status(self._api_url(path), response)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
