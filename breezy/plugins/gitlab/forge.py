@@ -536,7 +536,7 @@ class GitLab(Forge):
                 raise errors.AlreadyControlDirError(project_name)
             raise
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise errors.PermissionDenied(url, response.text)
         if response.status not in (200, 201):
             _unexpected_status(url, response)
         project = json.loads(response.data)
@@ -608,7 +608,7 @@ class GitLab(Forge):
                 + "&".join(["{}={}".format(*item) for item in parameters.items()]),
             )
             if response.status == 403:
-                raise errors.PermissionDenied(response.text)
+                raise errors.PermissionDenied(url, response.text)
             if response.status != 200:
                 _unexpected_status(url, response)
             page = response.getheader("X-Next-Page")
@@ -634,7 +634,7 @@ class GitLab(Forge):
         url = self._api_url(path)
         response = self._api_request("GET", url)
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise errors.PermissionDenied(url, response.text)
         if response.status != 200:
             _unexpected_status(url, response)
         return json.loads(response.data)
@@ -655,7 +655,7 @@ class GitLab(Forge):
         if response.status == 409:
             raise GitLabConflict(json.loads(response.data).get("message"))
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise errors.PermissionDenied(url, response.text)
         _unexpected_status(url, response)
 
     def _merge_mr(self, project_id, iid, kwargs):
@@ -667,7 +667,7 @@ class GitLab(Forge):
         if response.status == 200:
             return json.loads(response.data)
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise errors.PermissionDenied(url, response.text)
         _unexpected_status(url, response)
 
     def _post_merge_request_note(self, project_id, iid, kwargs):
@@ -680,7 +680,7 @@ class GitLab(Forge):
             json.loads(response.data)
             return
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise errors.PermissionDenied(url, response.text)
         _unexpected_status(url, response)
 
     def _create_mergerequest(
@@ -711,7 +711,7 @@ class GitLab(Forge):
             data = json.loads(response.data)
             raise GitLabError(data.get("message"), response)
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise errors.PermissionDenied(url, response.text)
         if response.status == 409:
             raise GitLabConflict(json.loads(response.data).get("message"))
         if response.status == 422:
