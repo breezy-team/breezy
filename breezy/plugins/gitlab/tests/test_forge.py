@@ -16,7 +16,7 @@
 
 from datetime import datetime
 
-from breezy.errors import RedirectRequested, UnexpectedHttpStatus
+from breezy.errors import PermissionDenied, RedirectRequested, UnexpectedHttpStatus
 from breezy.forge import NoSuchProject
 from breezy.plugins.gitlab.forge import (
     GitLab,
@@ -207,3 +207,38 @@ class UnexpectedStatusTests(TestCase):
         e = self.assertRaises(UnexpectedHttpStatus, gl._get_project, "foo/bar")
         self.assertEqual(url + "foo/bar", e.path)
         self.assertEqual(403, e.code)
+
+
+class PermissionDeniedTests(TestCase):
+    def setUp(self):
+        super().setUp()
+
+        class RequestHandler(http_server.TestingHTTPRequestHandler):
+            def do_GET(self):
+                body = b'{"message": "403 Forbidden"}'
+                self.send_response(403)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        server = http_server.HttpServer(RequestHandler)
+        self.start_server(server)
+        self.url = server.get_url()
+        self.gl = GitLab(get_transport(self.url), "token")
+
+    def test_get_merge_request(self):
+        e = self.assertRaises(
+            PermissionDenied, self.gl._get_merge_request, "foo/bar", 1
+        )
+        self.assertEqual(
+            self.url + "api/v4/projects/foo%2Fbar/merge_requests/1", e.path
+        )
+        self.assertEqual(': {"message": "403 Forbidden"}', e.extra)
+
+    def test_list_merge_requests(self):
+        e = self.assertRaises(
+            PermissionDenied, list, self.gl._list_merge_requests(project="foo/bar")
+        )
+        self.assertEqual(self.url + "api/v4/projects/foo%2Fbar/merge_requests", e.path)
+        self.assertEqual(': {"message": "403 Forbidden"}', e.extra)
