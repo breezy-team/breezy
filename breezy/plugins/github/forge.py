@@ -430,6 +430,9 @@ class GitHub(Forge):
             raise GraphqlErrors(data.get("errors"))
         return data["data"]
 
+    def _api_url(self, path):
+        return urlutils.join(self.transport.base, path)
+
     def _api_request(self, method, path, body=None):
         headers = {
             "Content-Type": "application/json",
@@ -440,7 +443,7 @@ class GitHub(Forge):
         try:
             response = self.transport.request(
                 method,
-                urlutils.join(self.transport.base, path),
+                self._api_url(path),
                 headers=headers,
                 body=body,
                 retries=3,
@@ -456,12 +459,13 @@ class GitHub(Forge):
 
     def _get_repo(self, owner, repo):
         path = "repos/{}/{}".format(owner, repo)
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status == 404:
             raise NoSuchProject(path)
         if response.status == 200:
             return json.loads(response.text)
-        raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
+        raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
 
     def _get_repo_pulls(self, path, head=None, state=None):
         path = path + "?"
@@ -473,12 +477,13 @@ class GitHub(Forge):
         path += "&".join(
             ["{}={}".format(k, urlutils.quote(v)) for k, v in params.items()]
         )
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status == 404:
             raise NoSuchProject(path)
         if response.status == 200:
             return json.loads(response.text)
-        raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
+        raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
 
     def _create_pull(
         self,
@@ -506,25 +511,25 @@ class GitHub(Forge):
         if body:
             data["body"] = body
 
-        response = self._api_request(
-            "POST", path, body=json.dumps(data).encode("utf-8")
-        )
+        url = self._api_url(path)
+        response = self._api_request("POST", url, body=json.dumps(data).encode("utf-8"))
         if response.status == 403:
             raise PermissionDenied(path, response.text)
         if response.status == 422:
             raise ValidationFailed(json.loads(response.text))
         if response.status != 201:
             raise UnexpectedHttpStatus(
-                path, response.status, headers=response.getheaders()
+                url, response.status, headers=response.getheaders()
             )
         return json.loads(response.text)
 
     def _get_user_by_email(self, email):
         path = "search/users?q={}+in:email".format(email)
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status != 200:
             raise UnexpectedHttpStatus(
-                path, response.status, headers=response.getheaders()
+                url, response.status, headers=response.getheaders()
             )
         ret = json.loads(response.text)
         if ret["total_count"] == 0:
@@ -538,19 +543,21 @@ class GitHub(Forge):
             path = "users/{}".format(username)
         else:
             path = "user"
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status != 200:
             raise UnexpectedHttpStatus(
-                path, response.status, headers=response.getheaders()
+                url, response.status, headers=response.getheaders()
             )
         return json.loads(response.text)
 
     def _get_organization(self, name):
         path = "orgs/{}".format(name)
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status != 200:
             raise UnexpectedHttpStatus(
-                path, response.status, headers=response.getheaders()
+                url, response.status, headers=response.getheaders()
             )
         return json.loads(response.text)
 
@@ -562,11 +569,12 @@ class GitHub(Forge):
         if per_page:
             parameters["per_page"] = str(per_page)
         page = 1
+        url = self._api_url(path)
         while path:
             parameters["page"] = str(page)
             response = self._api_request(
                 "GET",
-                path
+                url
                 + "?"
                 + "&".join(
                     [
@@ -577,7 +585,7 @@ class GitHub(Forge):
             )
             if response.status != 200:
                 raise UnexpectedHttpStatus(
-                    path, response.status, headers=response.getheaders()
+                    url, response.status, headers=response.getheaders()
                 )
             data = json.loads(response.text)
             if not data:
@@ -595,10 +603,11 @@ class GitHub(Forge):
     def _create_fork(self, path, owner=None):
         if owner and owner != self.current_user["login"]:
             path += "?organization={}".format(owner)
-        response = self._api_request("POST", path)
+        url = self._api_url(path)
+        response = self._api_request("POST", url)
         if response.status != 202:
             raise UnexpectedHttpStatus(
-                path, response.status, headers=response.getheaders()
+                url, response.status, headers=response.getheaders()
             )
         return json.loads(response.text)
 
@@ -848,14 +857,15 @@ class GitHub(Forge):
 
     def delete_project(self, path):
         path = "repos/" + path
-        response = self._api_request("DELETE", path)
+        url = self._api_url(path)
+        response = self._api_request("DELETE", url)
         if response.status == 404:
             raise NoSuchProject(path)
         if response.status == 204:
             return
         if response.status == 200:
             return json.loads(response.text)
-        raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
+        raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
 
     def create_project(
         self,
@@ -879,12 +889,11 @@ class GitHub(Forge):
             "has_projects": has_projects,
             "has_wiki": has_wiki,
         }
-        response = self._api_request(
-            "POST", path, body=json.dumps(data).encode("utf-8")
-        )
+        url = self._api_url(path)
+        response = self._api_request("POST", url, body=json.dumps(data).encode("utf-8"))
         if response.status != 201:
             return json.loads(response.text)
-        raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
+        raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
 
     def get_current_user(self):
         if self._token is not None:

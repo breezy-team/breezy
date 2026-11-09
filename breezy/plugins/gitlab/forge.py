@@ -236,9 +236,9 @@ def parse_gitlab_merge_request_url(url):
     return host, project_name, int(parts[-1])
 
 
-def _unexpected_status(path, response):
+def _unexpected_status(url, response):
     raise errors.UnexpectedHttpStatus(
-        path,
+        url,
         response.status,
         response.data.decode("utf-8", "replace"),
         headers=response.getheaders(),
@@ -434,20 +434,22 @@ class GitLab(Forge):
         return urlutils.parse_url(self.base_url)[3]
 
     def _find_correct_project_name(self, path):
+        url = urlutils.join(self.base_url, path)
         try:
-            resp = self.transport.request(
-                "GET", urlutils.join(self.base_url, path), headers=self.headers
-            )
+            resp = self.transport.request("GET", url, headers=self.headers)
         except errors.RedirectRequested as e:
             return urlutils.parse_url(e.target)[-1].strip("/")
         if resp.status != 200:
-            _unexpected_status(path, resp)
+            _unexpected_status(url, resp)
         return None
+
+    def _api_url(self, path):
+        return urlutils.join(self.base_url, "api", "v4", path)
 
     def _api_request(self, method, path, fields=None, body=None):
         return self.transport.request(
             method,
-            urlutils.join(self.base_url, "api", "v4", path),
+            self._api_url(path),
             headers=self.headers,
             fields=fields,
             body=body,
@@ -460,16 +462,18 @@ class GitLab(Forge):
 
     def _get_user(self, username):
         path = "users/{}".format(urlutils.quote(str(username), ""))
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status == 404:
             raise KeyError("no such user {}".format(username))
         if response.status == 200:
             return json.loads(response.data)
-        _unexpected_status(path, response)
+        _unexpected_status(url, response)
 
     def _get_user_by_email(self, email):
         path = "users?search={}".format(urlutils.quote(str(email), ""))
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status == 404:
             raise KeyError("no such user {}".format(email))
         if response.status == 200:
@@ -477,12 +481,13 @@ class GitLab(Forge):
             if len(ret) != 1:
                 raise ValueError("unexpected number of results; {!r}".format(ret))
             return ret[0]
-        _unexpected_status(path, response)
+        _unexpected_status(url, response)
 
     def _get_project(self, project_name, _redirect_checked=False):
         project_name = str(project_name)
         path = "projects/{}".format(urlutils.quote(project_name, ""))
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status == 404:
             # A numeric id never moves, so there is no redirect to look up.
             if not _redirect_checked and not project_name.isdigit():
@@ -492,16 +497,17 @@ class GitLab(Forge):
             raise NoSuchProject(project_name)
         if response.status == 200:
             return json.loads(response.data)
-        _unexpected_status(path, response)
+        _unexpected_status(url, response)
 
     def _get_namespace(self, namespace):
         path = "namespaces/" + urlutils.quote(str(namespace), "")
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status == 200:
             return json.loads(response.data)
         if response.status == 404:
             return None
-        _unexpected_status(path, response)
+        _unexpected_status(url, response)
 
     def create_project(self, project_name, summary=None):
         if project_name.endswith(".git"):
@@ -522,7 +528,8 @@ class GitLab(Forge):
         }
         if summary is not None:
             fields["description"] = summary
-        response = self._api_request("POST", "projects", fields=fields)
+        url = self._api_url("projects")
+        response = self._api_request("POST", url, fields=fields)
         if response.status == 400:
             ret = json.loads(response.data)
             if ret.get("message", {}).get("path") == ["has already been taken"]:
@@ -531,7 +538,7 @@ class GitLab(Forge):
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status not in (200, 201):
-            _unexpected_status("projects", response)
+            _unexpected_status(url, response)
         project = json.loads(response.data)
         return project
 
@@ -541,14 +548,15 @@ class GitLab(Forge):
         fields = {}
         if owner is not None:
             fields["namespace"] = owner
-        response = self._api_request("POST", path, fields=fields)
+        url = self._api_url(path)
+        response = self._api_request("POST", url, fields=fields)
         if response.status == 404:
             raise ForkingDisabled(project_name)
         if response.status == 409:
             resp = json.loads(response.data)
             raise GitLabConflict(resp.get("message"))
         if response.status not in (200, 201):
-            _unexpected_status(path, response)
+            _unexpected_status(url, response)
         # The response should be valid JSON, but let's ignore it
         project = json.loads(response.data)
         # Spin and wait until import_status for new project
@@ -590,18 +598,19 @@ class GitLab(Forge):
         if per_page:
             parameters["per_page"] = str(per_page)
         page = "1"
+        url = self._api_url(path)
         while page:
             parameters["page"] = page
             response = self._api_request(
                 "GET",
-                path
+                url
                 + "?"
                 + "&".join(["{}={}".format(*item) for item in parameters.items()]),
             )
             if response.status == 403:
                 raise errors.PermissionDenied(response.text)
             if response.status != 200:
-                _unexpected_status(path, response)
+                _unexpected_status(url, response)
             page = response.getheader("X-Next-Page")
             yield from json.loads(response.data)
 
@@ -622,11 +631,12 @@ class GitLab(Forge):
             urlutils.quote(str(project), ""),
             merge_id,
         )
-        response = self._api_request("GET", path)
+        url = self._api_url(path)
+        response = self._api_request("GET", url)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status != 200:
-            _unexpected_status(path, response)
+            _unexpected_status(url, response)
         return json.loads(response.data)
 
     def _list_projects(self, owner):
@@ -638,37 +648,40 @@ class GitLab(Forge):
         path = "projects/{}/merge_requests/{}".format(
             urlutils.quote(str(project_id), ""), iid
         )
-        response = self._api_request("PUT", path, fields=mr)
+        url = self._api_url(path)
+        response = self._api_request("PUT", url, fields=mr)
         if response.status == 200:
             return json.loads(response.data)
         if response.status == 409:
             raise GitLabConflict(json.loads(response.data).get("message"))
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
-        _unexpected_status(path, response)
+        _unexpected_status(url, response)
 
     def _merge_mr(self, project_id, iid, kwargs):
         path = "projects/{}/merge_requests/{}/merge".format(
             urlutils.quote(str(project_id), ""), iid
         )
-        response = self._api_request("PUT", path, fields=kwargs)
+        url = self._api_url(path)
+        response = self._api_request("PUT", url, fields=kwargs)
         if response.status == 200:
             return json.loads(response.data)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
-        _unexpected_status(path, response)
+        _unexpected_status(url, response)
 
     def _post_merge_request_note(self, project_id, iid, kwargs):
         path = "projects/{}/merge_requests/{}/notes".format(
             urlutils.quote(str(project_id), ""), iid
         )
-        response = self._api_request("POST", path, fields=kwargs)
+        url = self._api_url(path)
+        response = self._api_request("POST", url, fields=kwargs)
         if response.status == 201:
             json.loads(response.data)
             return
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
-        _unexpected_status(path, response)
+        _unexpected_status(url, response)
 
     def _create_mergerequest(
         self,
@@ -692,7 +705,8 @@ class GitLab(Forge):
         }
         if labels:
             fields["labels"] = labels
-        response = self._api_request("POST", path, fields=fields)
+        url = self._api_url(path)
+        response = self._api_request("POST", url, fields=fields)
         if response.status == 400:
             data = json.loads(response.data)
             raise GitLabError(data.get("message"), response)
@@ -704,7 +718,7 @@ class GitLab(Forge):
             data = json.loads(response.data)
             raise GitLabUnprocessable(data.get("error") or data.get("message"), data)
         if response.status != 201:
-            _unexpected_status(path, response)
+            _unexpected_status(url, response)
         return json.loads(response.data)
 
     def get_push_url(self, branch):
@@ -949,11 +963,12 @@ class GitLab(Forge):
     def delete_project(self, project):
         project = str(project)
         path = "projects/{}".format(urlutils.quote(project, ""))
-        response = self._api_request("DELETE", path)
+        url = self._api_url(path)
+        response = self._api_request("DELETE", url)
         if response.status == 404:
             raise NoSuchProject(project)
         if response.status != 202:
-            _unexpected_status(path, response)
+            _unexpected_status(url, response)
 
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
