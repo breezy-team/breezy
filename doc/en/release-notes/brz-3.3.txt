@@ -35,6 +35,11 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * git: Fetching into a local git repository on Windows no longer fails
+   with ``WinError 32`` when the new pack is moved into place. The pack
+   was still open and mapped for indexing.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
