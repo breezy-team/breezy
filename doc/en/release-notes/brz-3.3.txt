@@ -35,6 +35,10 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * git: Open a repository served as static files over HTTP also when the
+   server sends a ``Content-Type``, as git does. Only an answer without
+   one was taken as a dumb repository. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
