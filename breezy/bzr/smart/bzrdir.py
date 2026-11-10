@@ -820,9 +820,6 @@ class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
             # filled out.
             str(e)
             resp = (b"nobranch",)
-            detail = e.detail
-            if detail:
-                if detail.startswith(": "):
-                    detail = detail[2:]
-                resp += (detail.encode("utf-8"),)
+            if e.detail:
+                resp += (e.detail.encode("utf-8"),)
             return FailedSmartServerResponse(resp)

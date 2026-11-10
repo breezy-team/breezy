@@ -417,6 +417,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         controldir = self.make_repository("repo").controldir
         err = errors.NotBranchError("path", controldir=controldir)
         self.assertEqual('Not a branch: "path": location is a repository.', str(err))
+        self.assertEqual("location is a repository", err.detail)
 
     def test_not_branch_bzrdir_without_repo(self):
         controldir = self.make_controldir("bzrdir")
