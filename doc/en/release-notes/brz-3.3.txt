@@ -35,6 +35,11 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * http: When an HTTPS proxy refuses the ``CONNECT`` request, brz no
+   longer fails with ``AttributeError: 'HTTPSHandler' object has no
+   attribute 'host'``. It now reports a connection error that names
+   the host and the proxy. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
