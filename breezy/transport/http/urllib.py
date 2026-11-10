@@ -840,6 +840,35 @@ class HTTPSHandler(AbstractHTTPHandler):
         return self.do_open(HTTPSConnection, request)
 
 
+# Request headers that carry credentials (compared in lower case).
+_CREDENTIAL_HEADERS = (
+    "authorization",
+    "proxy-authorization",
+    "cookie",
+    "private-token",
+)
+
+
+def _same_origin(url, other):
+    """Whether two URLs have the same scheme, host and port."""
+
+    def origin(u):
+        parsed = urlparse(u)
+        try:
+            port = parsed.port
+        except ValueError:
+            # An invalid port matches nothing; connecting to it fails later
+            return None
+        if not parsed.scheme or not parsed.hostname:
+            return None
+        if port is None:
+            port = {"http": 80, "https": 443}.get(parsed.scheme)
+        return (parsed.scheme, parsed.hostname, port)
+
+    first = origin(url)
+    return first is not None and first == origin(other)
+
+
 class HTTPRedirectHandler(urllib.request.HTTPRedirectHandler):
     """Handles redirect requests.
 
@@ -890,10 +919,18 @@ class HTTPRedirectHandler(urllib.request.HTTPRedirectHandler):
         origin_req_host = req.origin_req_host
 
         if code in (301, 302, 303, 307, 308):
+            headers = req.headers
+            if not _same_origin(req.get_full_url(), newurl):
+                # Credentials are only meant for the server they were sent to
+                headers = {
+                    name: value
+                    for name, value in headers.items()
+                    if name.lower() not in _CREDENTIAL_HEADERS
+                }
             return Request(
                 req.get_method(),
                 newurl,
-                headers=req.headers,
+                headers=headers,
                 origin_req_host=origin_req_host,
                 unverifiable=True,
                 # TODO: It will be nice to be able to
