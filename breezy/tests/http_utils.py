@@ -16,6 +16,8 @@
 
 import base64
 import re
+import select
+import socket
 from io import BytesIO
 from urllib.request import parse_http_list, parse_keqv_list
 
@@ -161,6 +163,37 @@ class ProxyServer(http_server.HttpServer):
     """A proxy test server for http transports."""
 
     proxy_requests = True
+
+
+class TunnellingProxyRequestHandler(http_server.TestingHTTPRequestHandler):
+    """Answer CONNECT and tunnel to the server's ``tunnel_address``."""
+
+    def do_CONNECT(self):
+        tcs = self.server.test_case_server
+        upstream = socket.create_connection(tcs.tunnel_address)
+        self.send_response(200)
+        self.end_headers()
+        try:
+            while True:
+                for s in select.select([self.connection, upstream], [], [])[0]:
+                    data = s.recv(65536)
+                    if not data:
+                        return
+                    peer = upstream if s is self.connection else self.connection
+                    peer.sendall(data)
+        finally:
+            upstream.close()
+            self.close_connection = True
+
+
+class TunnellingProxyServer(http_server.HttpServer):
+    """A proxy test server that tunnels every CONNECT to ``tunnel_address``."""
+
+    def __init__(self, tunnel_address, protocol_version=None):
+        http_server.HttpServer.__init__(
+            self, TunnellingProxyRequestHandler, protocol_version=protocol_version
+        )
+        self.tunnel_address = tunnel_address
 
 
 class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):

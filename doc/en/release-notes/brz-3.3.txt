@@ -35,6 +35,11 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * http: An IPv6 address such as ``https://[::1]/`` can now be reached
+   through an HTTPS proxy. Its certificate was checked against ``[``, so
+   it failed with ``Hostname mismatch, certificate is not valid for
+   '['``. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
