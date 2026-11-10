@@ -40,8 +40,10 @@ GitHub is a code hosting service so you can push your
 branch to it and others can access your code from there.
 
 The first time you use GitHub, you will need to log into to your GitHub account
-with Breezy. This can be done by running ``brz github-login``. This will prompt
-you for your password, and store the authentication token in ~/.config/breezy.
+with Breezy. This can be done by running ``brz github-login``. This asks for a
+personal access token with the ``repo`` and ``delete_repo`` scopes, which you
+can create at https://github.com/settings/tokens, and stores it in
+~/.config/breezy.
 
 You can now use either ``brz publish`` to upload the changes back to
 GitHub, or ``brz propose`` to upload to the changes to GitHub and
