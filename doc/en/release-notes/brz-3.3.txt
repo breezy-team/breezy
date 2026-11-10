@@ -35,6 +35,11 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * git: Unlocking a ref of a local git repository on Windows no longer
+   fails with ``WinError 32``. The lock file was removed while it was
+   still open; it is now closed first.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
