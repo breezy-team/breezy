@@ -40,6 +40,11 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * http: When an HTTPS proxy refuses the ``CONNECT`` request, brz no
+   longer fails with ``AttributeError: 'HTTPSHandler' object has no
+   attribute 'host'``. It now reports a connection error that names
+   the host and the proxy. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
