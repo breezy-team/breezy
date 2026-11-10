@@ -35,6 +35,11 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * forge: Add ``UnsupportedForgeHostname``, a subclass of
+   ``UnsupportedForge`` raised when a forge does not know a hostname.
+   The hostname is on ``.hostname``. ``UnsupportedForge.branch`` held a
+   bare hostname in this case before. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 

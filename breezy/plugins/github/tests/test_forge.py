@@ -19,6 +19,7 @@
 from datetime import datetime
 
 from ....errors import UnexpectedHttpStatus
+from ....forge import UnsupportedForgeHostname
 from ....tests import TestCase, http_server
 from ....transport import get_transport
 from ..forge import GitHub, parse_timestring
@@ -43,3 +44,11 @@ class UnexpectedStatusTests(TestCase):
         e = self.assertRaises(UnexpectedHttpStatus, gh._get_repo, "owner", "repo")
         self.assertEqual(server.get_url() + "repos/owner/repo", e.path)
         self.assertEqual(403, e.code)
+
+
+class ProbeFromHostnameTests(TestCase):
+    def test_other_host(self):
+        e = self.assertRaises(
+            UnsupportedForgeHostname, GitHub.probe_from_hostname, "example.invalid"
+        )
+        self.assertEqual("example.invalid", e.hostname)
