@@ -35,6 +35,11 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * gitlab: Pass the body of a 403 response as the detail of
+   ``PermissionDenied`` and the request URL as its path. The body was
+   given as the path, so callers that read the detail got none.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
