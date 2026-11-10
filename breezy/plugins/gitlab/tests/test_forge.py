@@ -22,10 +22,13 @@ from breezy.plugins.gitlab.forge import (
     GitLab,
     NotGitLabUrl,
     NotMergeRequestUrl,
+    _https_url,
+    get_credentials_by_url,
     parse_gitlab_merge_request_url,
     parse_timestring,
+    store_gitlab_token,
 )
-from breezy.tests import TestCase, http_server
+from breezy.tests import TestCase, TestCaseInTempDir, http_server
 from breezy.transport import get_transport
 
 
@@ -207,3 +210,21 @@ class UnexpectedStatusTests(TestCase):
         e = self.assertRaises(UnexpectedHttpStatus, gl._get_project, "foo/bar")
         self.assertEqual(url + "foo/bar", e.path)
         self.assertEqual(403, e.code)
+
+
+class HttpsUrlTests(TestCaseInTempDir):
+    def test_https_url(self):
+        for host, url in [
+            ("gitlab.com", "https://gitlab.com/"),
+            ("127.0.0.1", "https://127.0.0.1/"),
+            ("127.0.0.1:8443", "https://127.0.0.1:8443/"),
+            ("::1", "https://[::1]/"),
+            ("[::1]", "https://[::1]/"),
+        ]:
+            with self.subTest(host=host):
+                self.assertEqual(url, _https_url(host))
+
+    def test_ipv6_stored_login(self):
+        store_gitlab_token("local", "https://[::1]", "token")
+        credentials = get_credentials_by_url(_https_url("::1"))
+        self.assertEqual("token", credentials["private_token"])
