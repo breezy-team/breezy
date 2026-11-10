@@ -35,6 +35,10 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * http: Credential headers, such as an ``authentication.conf`` ``token``
+   or the GitHub plugin's token, are no longer sent on when an HTTP
+   redirect points to another scheme, host or port. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
