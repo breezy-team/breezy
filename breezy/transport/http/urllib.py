@@ -1111,8 +1111,12 @@ class ProxyHandler(urllib.request.ProxyHandler):
         phost = parsed_url.host
         if ":" in phost:  # IPv6
             phost = "[{}]".format(phost)
-        if parsed_url.port is not None:
-            phost += ":%d" % parsed_url.port
+        port = parsed_url.port
+        if port is None:
+            # A proxy URL without a port uses the default port of its scheme
+            port = {"http": 80, "https": 443}.get(parsed_url.scheme)
+        if port is not None:
+            phost += ":%d" % port
         request.set_proxy(phost, type)
         if self._debuglevel >= 3:
             print("set_proxy: proxy set to {}://{}".format(type, phost))
