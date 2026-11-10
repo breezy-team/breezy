@@ -40,6 +40,10 @@ brz 3.3.26
    it failed with ``Hostname mismatch, certificate is not valid for
    '['``. (Zainab Mehmut)
 
+ * http: brz no longer fails with ``Unexpected HTTP status 501`` through
+   an HTTPS proxy once the server closes the connection. It now sends a
+   new ``CONNECT`` to the proxy when it reconnects. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 

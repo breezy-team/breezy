@@ -168,6 +168,10 @@ class ProxyServer(http_server.HttpServer):
 class TunnellingProxyRequestHandler(http_server.TestingHTTPRequestHandler):
     """Answer CONNECT and tunnel to the server's ``tunnel_address``."""
 
+    def do_GET(self):
+        # Like a real proxy, refuse a plain request
+        self.send_error(501)
+
     def do_CONNECT(self):
         tcs = self.server.test_case_server
         upstream = socket.create_connection(tcs.tunnel_address)
