@@ -1355,6 +1355,21 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         self.overrideEnv("http_proxy", self.server_host_port)
         self.assertRaises(urlutils.InvalidURL, self.assertProxied)
 
+    def test_https_proxy_refuses_connect(self):
+        # The test proxy answers CONNECT with 501 Not Implemented
+        self.overrideEnv("https_proxy", self.proxy_url)
+        t = transport.get_transport_from_url(
+            "https://{}/".format(self.server_host_port)
+        )
+        e = self.assertRaises(errors.ConnectionError, t.get, "foo")
+        proxy = self.get_secondary_server()
+        self.assertEqual(
+            "Can't connect to {} via proxy {}:{}".format(
+                self.server_host_port, proxy.host, proxy.port
+            ),
+            e.msg,
+        )
+
 
 class TestRanges(http_utils.TestCaseWithWebserver):
     """Test the Range header in GET methods."""

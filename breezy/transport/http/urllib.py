@@ -828,7 +828,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             if response.code != 200:
                 raise errors.ConnectionError(
                     "Can't connect to {} via proxy {}".format(
-                        connect.proxied_host, self.host
+                        connect.proxied_host, connect.host
                     )
                 )
             # Housekeeping
