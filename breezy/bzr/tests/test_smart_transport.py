@@ -1683,6 +1683,26 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
         )
 
 
+class PermissionDeniedEndToEndTests(tests.TestCaseWithTransport):
+    def test_mkdir_error_detail(self):
+        """The client gets the same detail as the backing transport gives."""
+        self.requireFeature(features.not_running_as_root)
+        self.requireFeature(features.posix_permissions_feature)
+        self.transport_server = test_server.SmartTCPServer_for_testing
+        self.build_tree(["ro/"])
+        osutils.make_readonly("ro")
+        self.addCleanup(osutils.make_writable, "ro")
+        local_error = self.assertRaises(
+            errors.PermissionDenied,
+            _mod_transport.get_transport_from_path(".").mkdir,
+            "ro/new",
+        )
+        remote_error = self.assertRaises(
+            errors.PermissionDenied, self.get_transport().mkdir, "ro/new"
+        )
+        self.assertEqual(local_error.extra, remote_error.extra)
+
+
 class TestServerHooks(SmartTCPTests):
     def capture_server_call(self, backing_urls, public_url):
         """Record a server_started|stopped hook firing."""
