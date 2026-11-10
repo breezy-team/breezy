@@ -40,6 +40,11 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * http: brz no longer fails to connect to a proxy given as an IPv6
+   address without a port, such as ``http://[::1]``. It now uses the
+   default port instead of the last part of the address.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
