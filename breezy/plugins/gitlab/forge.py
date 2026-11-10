@@ -259,7 +259,9 @@ class GitLabMergeProposal(MergeProposal):
             )
         except GitLabConflict as e:
             self.gl._handle_merge_request_conflict(
-                e.reason, self.get_source_branch_url(), self._mr["target_project_id"]
+                e.reason,
+                self.get_source_branch_url() or self.url,
+                self._mr["target_project_id"],
             )
 
     def __repr__(self):
