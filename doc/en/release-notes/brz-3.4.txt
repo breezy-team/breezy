@@ -169,6 +169,10 @@ API Changes
    can be set to False to merge without running the merge hooks.
    (Zainab Mehmut)
 
+ * ``NotBranchError.detail`` now holds only the detail text, such as
+   ``location is a repository``, without a leading ``": "``. The error
+   message is unchanged. (Zainab Mehmut)
+
 Internals
 *********
 

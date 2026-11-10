@@ -776,6 +776,17 @@ class TestBzrDirOpenBranch(TestRemote):
             [("call", b"BzrDir.open_branchV3", (b"quack/",))], client._calls
         )
 
+    def test_branch_missing_in_shared_repository(self):
+        self.transport_server = test_server.SmartTCPServer_for_testing
+        self.make_repository("repo", shared=True)
+        bzrdir = BzrDir.open(self.get_url("repo"))
+        e = self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
+        self.assertEqual("location is a repository", e.detail)
+        self.assertEqual(
+            f'Not a branch: "{bzrdir.root_transport.base}": location is a repository.',
+            str(e),
+        )
+
     def test__get_tree_branch(self):
         # _get_tree_branch is a form of open_branch, but it should only ask for
         # branch opening, not any other network requests.
