@@ -3843,7 +3843,9 @@ class Stack:
         # Mostly for debugging use
         return "<config.{}({})>".format(self.__class__.__name__, id(self))
 
-    def _get_overrides(self):
+    @staticmethod
+    def _get_overrides():
+        # Static: a bound method in sections_def would point back at the stack.
         if breezy._global_state is not None:
             # TODO(jelmer): Urgh, this is circular so we can't call breezy.get_global_state()
             return breezy._global_state.cmdline_overrides.get_sections()
