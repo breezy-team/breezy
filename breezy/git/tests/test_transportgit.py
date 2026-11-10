@@ -62,6 +62,19 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         restore = TransportObjectStore(self.get_transport())
         self.assertEqual(2, len(restore.packs))
 
+    def test_add_pack_over_partial_pack(self):
+        blob = make_object(Blob, data=b"data")
+        self.store.add_objects([(blob, None)])
+        [pack] = self.store.packs
+        name = pack._basename + ".pack"
+        self.get_transport().mkdir("other")
+        other = TransportObjectStore.init(self.get_transport("other"))
+        # A pack file without its index is what an interrupted fetch leaves.
+        other.pack_transport.put_bytes(name, self.store.pack_transport.get_bytes(name))
+        other.add_objects([(blob, None)])
+        self.assertEqual([pack._basename], [p._basename for p in other.packs])
+        self.assertEqual(b"data", other[blob.id].data)
+
 
 # FIXME: Unfortunately RefsContainerTests requires on a specific set of refs existing.
 
