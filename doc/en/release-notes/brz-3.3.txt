@@ -35,6 +35,12 @@ brz 3.3.26
    waiting for Python's cycle collector.
    (Zainab Mehmut)
 
+ * The smart server sends the detail of ``PermissionDenied`` and
+   ``InvalidURL`` without the ``": "`` in front, which the client adds
+   itself. ``brz push`` to a ``bzr://`` URL printed
+   ``Permission denied: "ro/target/": : [Errno 13] ...``.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
