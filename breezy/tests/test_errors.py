@@ -320,6 +320,14 @@ class TestErrors(tests.TestCase):
     def test_not_branch_no_args(self):
         err = errors.NotBranchError("path")
         self.assertEqual('Not a branch: "path".', str(err))
+        self.assertIsNone(err.reason)
+
+    def test_not_branch_detail(self):
+        err = errors.NotBranchError("path", detail="some detail")
+        self.assertEqual('Not a branch: "path": some detail.', str(err))
+        self.assertEqual(": some detail", err.detail)
+        self.assertEqual("some detail", err.reason)
+        self.assertIsNone(errors.NotBranchError("path", detail="").reason)
 
     def test_not_branch_bzrdir_with_recursive_not_branch_error(self):
         class FakeBzrDir:
@@ -330,6 +338,7 @@ class TestErrors(tests.TestCase):
 
         err = errors.NotBranchError("path", controldir=FakeBzrDir())
         self.assertEqual('Not a branch: "path": NotBranchError.', str(err))
+        self.assertEqual("NotBranchError", err.reason)
 
     def test_recursive_bind(self):
         error = errors.RecursiveBind("foo_bar_branch")
@@ -416,11 +425,13 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
     def test_not_branch_bzrdir_with_repo(self):
         controldir = self.make_repository("repo").controldir
         err = errors.NotBranchError("path", controldir=controldir)
+        self.assertEqual("location is a repository", err.reason)
         self.assertEqual('Not a branch: "path": location is a repository.', str(err))
 
     def test_not_branch_bzrdir_without_repo(self):
         controldir = self.make_controldir("bzrdir")
         err = errors.NotBranchError("path", controldir=controldir)
+        self.assertIsNone(err.reason)
         self.assertEqual('Not a branch: "path".', str(err))
 
     def test_not_branch_laziness(self):

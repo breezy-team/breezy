@@ -122,6 +122,10 @@ API Changes
    and ``Registry`` base classes are implemented in Rust. They can still be
    subclassed. (Jelmer Vernooĳ)
 
+ * ``NotBranchError`` has a new ``reason`` attribute: ``detail`` without
+   its leading ``": "``, or ``None`` if there is no detail.
+   (Zainab Mehmut)
+
 Internals
 *********
 

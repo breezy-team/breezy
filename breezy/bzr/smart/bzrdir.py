@@ -816,13 +816,7 @@ class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
                     (b"ref", reference_url.encode("utf-8"))
                 )
         except errors.NotBranchError as e:
-            # Stringify the exception so that its .detail attribute will be
-            # filled out.
-            str(e)
             resp = (b"nobranch",)
-            detail = e.detail
-            if detail:
-                if detail.startswith(": "):
-                    detail = detail[2:]
-                resp += (detail.encode("utf-8"),)
+            if e.reason is not None:
+                resp += (e.reason.encode("utf-8"),)
             return FailedSmartServerResponse(resp)

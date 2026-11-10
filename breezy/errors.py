@@ -549,6 +549,13 @@ class NotBranchError(BzrError):
         """Return developer-friendly string representation of the error."""
         return f"<{self.__class__.__name__} {self.__dict__!r}>"
 
+    @property
+    def reason(self):
+        """The detail without the ": " in front, or None if there is none."""
+        if self.detail is None:
+            self.detail = self._get_detail()
+        return self.detail.removeprefix(": ") or None
+
     def _get_format_string(self):
         # GZ 2017-06-08: Not the best place to lazy fill detail in.
         if self.detail is None:
