@@ -1108,10 +1108,11 @@ class ProxyHandler(urllib.request.ProxyHandler):
                 # We ignore path since we connect to a proxy
                 "path": None,
             }
-        if parsed_url.port is None:
-            phost = parsed_url.host
-        else:
-            phost = parsed_url.host + ":%d" % parsed_url.port
+        phost = parsed_url.host
+        if ":" in phost:  # IPv6
+            phost = "[{}]".format(phost)
+        if parsed_url.port is not None:
+            phost += ":%d" % parsed_url.port
         request.set_proxy(phost, type)
         if self._debuglevel >= 3:
             print("set_proxy: proxy set to {}://{}".format(type, phost))

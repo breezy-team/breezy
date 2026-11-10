@@ -1248,6 +1248,14 @@ class TestHttpProxyWhiteBox(tests.TestCase):
         request = self._proxied_request()
         self.assertFalse("Proxy-authorization" in request.headers)
 
+    def test_ipv6_proxy_without_port(self):
+        self.overrideEnv("http_proxy", "http://[::1]")
+        request = self._proxied_request()
+        connection = urllib.ConnectionHandler().create_connection(
+            request, HTTPConnection
+        )
+        self.assertEqual(("::1", 80), (connection.host, connection.port))
+
     def test_invalid_proxy(self):
         """A proxy env variable without scheme."""
         self.overrideEnv("http_proxy", "host:1234")
