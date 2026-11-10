@@ -18,7 +18,7 @@
 
 import os
 
-from ...transform import ROOT_PARENT, conflict_pass, resolve_conflicts, revert
+from ...transform import ROOT_PARENT, conflict_pass, resolve_conflicts, revert, NoFinalPath
 from . import TestCaseWithTransport
 
 
@@ -48,3 +48,9 @@ class GitTransformTests(TestCaseWithTransport):
             f.write(b"new content2")
         revert(tree, tree.basis_tree())
         self.assertEqual([], list(tree.iter_changes(tree.basis_tree())))
+
+    def test_nonexisting_file_ids(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        tt = tree.transform()
+        tid = tt.trans_id_file_id(b'git:some-path')
+        self.assertRaises(NoFinalPath, tt.final_name, tid)
