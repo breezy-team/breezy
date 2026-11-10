@@ -2462,3 +2462,88 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         self.assertEqual("", ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
         self.assertEqual("", ui.ui_factory.stdout.getvalue())
+
+
+class RecordingRedirectRequestHandler(http_utils.RedirectRequestHandler):
+    """Redirects as configured and records the headers of every request."""
+
+    def parse_request(self):
+        valid = super().parse_request()
+        self.server.test_case_server.seen.append((self.path, self.headers))
+        return valid
+
+
+class RecordingRedirectingServer(http_utils.HTTPServerRedirecting):
+    def __init__(self, protocol_version=None):
+        super().__init__(
+            RecordingRedirectRequestHandler, protocol_version=protocol_version
+        )
+        self.seen = []
+
+
+class TestCredentialsOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
+    """Credentials only follow a redirect to the same scheme, host and port."""
+
+    scenarios = vary_by_http_protocol_version()
+
+    headers = {
+        "Cookie": "session=s3cret",
+        "Private-Token": "s3cret",
+        "Proxy-Authorization": "Basic cHJveHk6czNjcmV0",
+    }
+    credentials = dict(headers, Authorization="Bearer abc")
+
+    def setUp(self):
+        super().setUp()
+        self.build_tree_contents([("a", b"a"), ("1/",), ("1/a", b"redirected")])
+        _setup_authentication_config(
+            scheme="http",
+            host=self.old_server.host,
+            port=self.old_server.port,
+            token="abc",
+        )
+        cleanup_http_redirection_connections(self)
+
+    def create_transport_readonly_server(self):
+        server = RecordingRedirectingServer(protocol_version=self._protocol_version)
+        server._url_protocol = self._url_protocol
+        return server
+
+    def create_transport_secondary_server(self):
+        server = self.create_transport_readonly_server()
+        new = self.get_readonly_server()
+        server.redirect_to(new.host, new.port)
+        return server
+
+    def get_a(self):
+        t = self.get_old_transport()
+        self.addCleanup(t.disconnect)
+        headers = dict(self.headers, **{"X-Other": "plain"})
+        return t.request("GET", t.abspath("a"), headers=headers, retries=3).read()
+
+    def credentials_seen(self, server, path):
+        (headers,) = [h for p, h in server.seen if p == path]
+        self.assertEqual("plain", headers.get("X-Other"))
+        return {k: headers[k] for k in self.credentials if k in headers}
+
+    def test_same_server(self):
+        self.old_server.redirections = [("^/a$", "/1/a", 302)]
+        self.assertEqual(b"redirected", self.get_a())
+        self.assertEqual(self.credentials, self.credentials_seen(self.old_server, "/a"))
+        self.assertEqual(
+            self.credentials, self.credentials_seen(self.old_server, "/1/a")
+        )
+
+    def test_other_port(self):
+        self.assertEqual(b"a", self.get_a())
+        self.assertEqual(self.credentials, self.credentials_seen(self.old_server, "/a"))
+        self.assertEqual({}, self.credentials_seen(self.new_server, "/a"))
+
+    def test_other_host(self):
+        # The same server, reached under another host name
+        self.assertNotEqual("localhost", self.old_server.host)
+        self.old_server.redirections = [
+            ("^/a$", "http://localhost:{}/1/a".format(self.old_server.port), 302)
+        ]
+        self.assertEqual(b"redirected", self.get_a())
+        self.assertEqual({}, self.credentials_seen(self.old_server, "/1/a"))
