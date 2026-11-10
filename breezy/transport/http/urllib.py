@@ -336,7 +336,7 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
         config_stack = config.GlobalStack()
         cert_reqs = config_stack.get("ssl.cert_reqs")
         if self.proxied_host is not None:
-            host = self.proxied_host.split(":", 1)[0]
+            host = splitport(self.proxied_host)[0].strip("[]")
         else:
             host = self.host
         if cert_reqs == ssl.CERT_NONE:
