@@ -40,6 +40,10 @@ brz 3.3.26
    default port instead of the last part of the address.
    (Zainab Mehmut)
 
+ * http: a proxy URL without a port now uses the default port of its
+   scheme, 80 for ``http://`` and 443 for ``https://``, whatever the
+   URL being fetched. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
