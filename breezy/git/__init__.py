@@ -183,13 +183,12 @@ class RemoteGitProber(Prober):
             from .remote import RemoteGitControlDirFormat
 
             return RemoteGitControlDirFormat()
-        elif not ct:
-            from .dir import BareLocalGitControlDirFormat
+        # Like git, anything but the smart type is a dumb server.
+        from .dir import BareLocalGitControlDirFormat
 
-            ret = BareLocalGitControlDirFormat()
-            ret._refs_text = resp.read()
-            return ret
-        raise brz_errors.NotBranchError(transport.base)
+        ret = BareLocalGitControlDirFormat()
+        ret._refs_text = resp.read()
+        return ret
 
     def probe_transport(self, transport):
         try:
