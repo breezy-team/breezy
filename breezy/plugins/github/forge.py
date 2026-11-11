@@ -21,7 +21,7 @@ import os
 from datetime import datetime
 from typing import Any
 
-from dromedary.errors import PermissionDenied, UnexpectedHttpStatus
+from dromedary.errors import NoSuchFile, PermissionDenied, UnexpectedHttpStatus
 
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
@@ -758,6 +758,31 @@ mutation ($pullRequestId: ID!) {
             cursor = items["pageInfo"]["endCursor"]
         events.sort(key=lambda event: event.timestamp)
         return events
+
+    def get_file_text(self, path, revision):
+        """Return the contents of a file at a revision, via the GitHub API.
+
+        The heads of pull requests from forks can be read from the target
+        repository as well.
+        """
+        from ...git.mapping import default_mapping
+
+        sha, _mapping = default_mapping.revision_id_bzr_to_foreign(revision)
+        api_path = "repos/{}/contents/{}?ref={}".format(
+            self._pr["base"]["repo"]["full_name"],
+            urlutils.quote(path),
+            sha.decode("ascii"),
+        )
+        response = self._gh._api_request(
+            "GET", api_path, headers={"Accept": "application/vnd.github.raw+json"}
+        )
+        if response.status == 404:
+            raise NoSuchFile(path)
+        if response.status != 200:
+            raise UnexpectedHttpStatus(
+                api_path, response.status, headers=response.getheaders()
+            )
+        return response.data
 
 
 def _actor_fields(actor):

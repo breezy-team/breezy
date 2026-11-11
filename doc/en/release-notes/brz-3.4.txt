@@ -63,6 +63,10 @@ New Features
  * Merge proposals now provide ``get_labels``, ``add_label`` and
    ``remove_label``, implemented for GitHub and GitLab. (Jelmer Vernooĳ)
 
+ * Merge proposals on GitHub and GitLab can return the contents of a file
+   at a revision through the forge API, with
+   ``MergeProposal.get_file_text``. (Jelmer Vernooĳ)
+
 Improvements
 ************
 

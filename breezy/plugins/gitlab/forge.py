@@ -1043,6 +1043,27 @@ class GitLabMergeProposal(MergeProposal):
         events.sort(key=lambda event: event.timestamp)
         return events
 
+    def get_file_text(self, path, revision):
+        """Return the contents of a file at a revision, via the GitLab API.
+
+        The heads of merge requests from forks are fetched into the target
+        project, so they can be read from there.
+        """
+        from ...git.mapping import default_mapping
+
+        sha, _mapping = default_mapping.revision_id_bzr_to_foreign(revision)
+        api_path = "projects/{}/repository/files/{}/raw?ref={}".format(
+            self._mr["target_project_id"],
+            urlutils.quote(path, ""),
+            sha.decode("ascii"),
+        )
+        response = self.gl._api_request("GET", api_path)
+        if response.status == 404:
+            raise transport_errors.NoSuchFile(path)
+        if response.status != 200:
+            _unexpected_status(api_path, response)
+        return response.data
+
 
 def gitlab_url_to_bzr_url(url, name):
     """Convert a GitLab repository URL to a Breezy URL with branch name.

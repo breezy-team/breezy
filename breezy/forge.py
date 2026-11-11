@@ -460,6 +460,19 @@ class MergeProposal:
         """
         raise NotImplementedError(self.remove_label)
 
+    def get_file_text(self, path, revision):
+        """Return the contents of a file at a revision, via the forge API.
+
+        This does not need a clone, and works for revisions that only exist
+        in the source branch, such as the head of a proposal from a fork.
+
+        :param path: Path of the file, relative to the root of the tree
+        :param revision: Revision id to read the file at
+        :return: Contents of the file, as bytes
+        :raise NoSuchFile: if there is no file at path in that revision
+        """
+        raise NotImplementedError(self.get_file_text)
+
 
 class MergeProposalBuilder:
     """Merge proposal creator.
