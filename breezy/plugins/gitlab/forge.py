@@ -191,10 +191,12 @@ def iter_tokens():
                 yield name, creds
 
 
-def _https_url(host):
+def _https_url(host, port=None):
     # A bare IPv6 address needs brackets in a URL.
     if host.count(":") > 1 and not host.startswith("["):
         host = "[{}]".format(host)
+    if port is not None:
+        host = "{}:{}".format(host, port)
     return "https://{}/".format(host)
 
 
@@ -900,7 +902,9 @@ class GitLab(Forge):
             (host, project) = parse_gitlab_url(url)
         except NotGitLabUrl:
             raise UnsupportedForge(url)
-        base_url = _https_url(host)
+        (scheme, _user, _password, _host, port, _path) = urlutils.parse_url(url)
+        # Only an https URL carries the port of the web interface.
+        base_url = _https_url(host, port if scheme == "https" else None)
         transport = get_transport(base_url, possible_transports=possible_transports)
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
