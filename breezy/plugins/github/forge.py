@@ -517,6 +517,18 @@ mutation ($pullRequestId: ID!) {
             return None
         return parse_timestring(merged_at)
 
+    def is_work_in_progress(self):
+        """Check whether this pull request is a draft."""
+        return self._pr["draft"]
+
+    def get_created_at(self):
+        """Return when this pull request was created."""
+        return parse_timestring(self._pr["created_at"])
+
+    def get_updated_at(self):
+        """Return when this pull request was last updated."""
+        return parse_timestring(self._pr["updated_at"])
+
     def post_comment(self, body):
         """Post a comment on this pull request.
 

@@ -166,3 +166,28 @@ class GetAuthorTests(TestCase):
     def test_no_author(self):
         mp = GitLabMergeProposal(None, {"author": None})
         self.assertIsNone(mp.get_author())
+
+
+class MetadataTests(TestCase):
+    def test_draft(self):
+        mp = GitLabMergeProposal(None, {"draft": True, "work_in_progress": True})
+        self.assertTrue(mp.is_work_in_progress())
+
+    def test_not_draft(self):
+        mp = GitLabMergeProposal(None, {"draft": False, "work_in_progress": False})
+        self.assertFalse(mp.is_work_in_progress())
+
+    def test_work_in_progress_only(self):
+        mp = GitLabMergeProposal(None, {"work_in_progress": True})
+        self.assertTrue(mp.is_work_in_progress())
+
+    def test_timestamps(self):
+        mp = GitLabMergeProposal(
+            None,
+            {
+                "created_at": "2026-01-01T10:00:00.000Z",
+                "updated_at": "2026-01-02T11:30:00.250Z",
+            },
+        )
+        self.assertEqual(datetime(2026, 1, 1, 10, 0, 0), mp.get_created_at())
+        self.assertEqual(datetime(2026, 1, 2, 11, 30, 0, 250000), mp.get_updated_at())

@@ -311,6 +311,18 @@ class MergeProposal:
         """Return the username of who created this proposal, or None."""
         raise NotImplementedError(self.get_author)
 
+    def is_work_in_progress(self):
+        """Check whether this proposal is marked as a draft or work in progress."""
+        raise NotImplementedError(self.is_work_in_progress)
+
+    def get_created_at(self):
+        """Return when this proposal was created, as a datetime."""
+        raise NotImplementedError(self.get_created_at)
+
+    def get_updated_at(self):
+        """Return when this proposal was last updated, as a datetime."""
+        raise NotImplementedError(self.get_updated_at)
+
     def post_comment(self, body):
         """Post a comment on the merge proposal.
 

@@ -833,6 +833,25 @@ class GitLabMergeProposal(MergeProposal):
             return None
         return parse_timestring(merged_at)
 
+    def is_work_in_progress(self):
+        """Check whether this merge request is a draft.
+
+        GitLab versions before 14.0 only provide the deprecated
+        ``work_in_progress`` field.
+        """
+        try:
+            return self._mr["draft"]
+        except KeyError:
+            return self._mr["work_in_progress"]
+
+    def get_created_at(self):
+        """Return when this merge request was created."""
+        return parse_timestring(self._mr["created_at"])
+
+    def get_updated_at(self):
+        """Return when this merge request was last updated."""
+        return parse_timestring(self._mr["updated_at"])
+
     def post_comment(self, body):
         """Post a comment to this merge request.
 
