@@ -247,8 +247,14 @@ pub fn supports_hardlinks<P: AsRef<Path>>(path: P) -> Option<bool> {
 }
 
 pub fn supports_executable<P: AsRef<Path>>(path: P) -> Option<bool> {
-    let fs_type = get_fs_type(path.as_ref())?;
-    match fs_type.as_str() {
+    supports_executable_ext(&MOUNTS, path.as_ref())
+}
+
+fn supports_executable_ext(entries: &[MountEntry], path: &Path) -> Option<bool> {
+    let Some(fs_type) = get_fs_type_ext(entries, path) else {
+        return Some(true);
+    };
+    match fs_type {
         "vfat" | "ntfs" => Some(false),
         "ext2" | "ext3" | "ext4" | "btrfs" | "xfs" | "jfs" | "reiserfs" | "zfs" => Some(true),
         _ => {
@@ -259,8 +265,14 @@ pub fn supports_executable<P: AsRef<Path>>(path: P) -> Option<bool> {
 }
 
 pub fn supports_symlinks<P: AsRef<Path>>(path: P) -> Option<bool> {
-    let fs_type = get_fs_type(path.as_ref())?;
-    match fs_type.as_str() {
+    supports_symlinks_ext(&MOUNTS, path.as_ref())
+}
+
+fn supports_symlinks_ext(entries: &[MountEntry], path: &Path) -> Option<bool> {
+    let Some(fs_type) = get_fs_type_ext(entries, path) else {
+        return Some(true);
+    };
+    match fs_type {
         "vfat" | "ntfs" => Some(false), // Maybe?
         "ext2" | "ext3" | "ext4" | "btrfs" | "xfs" | "jfs" | "reiserfs" | "zfs" => Some(true),
         _ => {
@@ -268,6 +280,40 @@ pub fn supports_symlinks<P: AsRef<Path>>(path: P) -> Option<bool> {
             Some(true)
         }
     }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_supports_executable_and_symlinks() {
+    let entry = |path: &str, fs_type: &str, options: &str| MountEntry {
+        path: PathBuf::from(path),
+        fs_type: fs_type.to_string(),
+        options: options.to_string(),
+    };
+    let mut mounts = vec![
+        entry("/", "overlay", "rw,relatime"),
+        entry("/boot/efi", "vfat", "rw"),
+        entry("/home", "ext4", "rw"),
+    ];
+    sort_mounts(&mut mounts);
+    let got: Vec<_> = ["/tmp", "/boot/efi/x", "/home/x"]
+        .iter()
+        .map(|p| {
+            let p = Path::new(p);
+            (
+                supports_executable_ext(&mounts, p),
+                supports_symlinks_ext(&mounts, p),
+            )
+        })
+        .collect();
+    assert_eq!(
+        got,
+        vec![
+            (Some(true), Some(true)),
+            (Some(false), Some(false)),
+            (Some(true), Some(true))
+        ]
+    );
 }
 
 /// Return True if 'readonly' has POSIX semantics, False otherwise.
