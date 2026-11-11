@@ -19,6 +19,9 @@
 import json
 from datetime import datetime
 
+from dromedary.errors import UnexpectedHttpStatus
+
+from ....forge import DiffRefs
 from ....tests import TestCase
 from ..forge import GitHub, GitHubMergeProposal, _LazyDict, parse_timestring
 
@@ -43,9 +46,18 @@ class GetAuthorTests(TestCase):
 class FakeResponse:
     """A canned HTTP response."""
 
-    def __init__(self, status, payload=None):
+    def __init__(self, status, body=None):
         self.status = status
-        self.text = "" if payload is None else json.dumps(payload)
+        if body is None:
+            self.data = b""
+        elif isinstance(body, bytes):
+            self.data = body
+        else:
+            self.data = json.dumps(body).encode("utf-8")
+
+    @property
+    def text(self):
+        return self.data.decode("utf-8")
 
     def getheaders(self):
         return {}
@@ -61,7 +73,7 @@ class FakeTransport:
         self.requests = []
 
     def request(self, method, url, headers=None, body=None, retries=None):
-        self.requests.append((method, url, body))
+        self.requests.append((method, url, headers, body))
         return self.responses[(method, url)]
 
 
@@ -145,3 +157,63 @@ class LazyDictTests(TestCase):
         d = self.make_dict()
         self.assertEqual(1, d.get("a"))
         self.assertEqual(0, self.loads)
+
+
+PR_URL = "https://api.github.com/repos/owner/repo/pulls/1"
+PR = {
+    "url": PR_URL,
+    "html_url": "https://github.com/owner/repo/pull/1",
+    "head": {"sha": "a" * 40},
+    "base": {
+        "sha": "b" * 40,
+        "repo": {"url": "https://api.github.com/repos/owner/repo"},
+    },
+}
+
+
+class GetDiffTests(TestCase):
+    def test_diff(self):
+        diff = b"diff --git a/foo b/foo\n"
+        transport = FakeTransport({("GET", PR_URL): FakeResponse(200, diff)})
+        gh = GitHub(transport)
+        mp = GitHubMergeProposal(gh, PR)
+        self.assertEqual(diff, mp.get_diff())
+        self.assertEqual(
+            "application/vnd.github.diff", transport.requests[0][2]["Accept"]
+        )
+
+    def test_too_large(self):
+        transport = FakeTransport({("GET", PR_URL): FakeResponse(406)})
+        gh = GitHub(transport)
+        mp = GitHubMergeProposal(gh, PR)
+        self.assertRaises(UnexpectedHttpStatus, mp.get_diff)
+
+
+class GetDiffRefsTests(TestCase):
+    def test_refs(self):
+        moved = dict(PR, head={"sha": "c" * 40})
+        compare_url = (
+            "https://api.github.com/repos/owner/repo/compare/"
+            + "b" * 40
+            + "..."
+            + "c" * 40
+            + "?per_page=1"
+        )
+        transport = FakeTransport(
+            {
+                ("GET", PR_URL): FakeResponse(200, moved),
+                ("GET", compare_url): FakeResponse(
+                    200, {"merge_base_commit": {"sha": "d" * 40}}
+                ),
+            }
+        )
+        mp = GitHubMergeProposal(GitHub(transport), PR)
+        self.assertEqual(
+            DiffRefs(
+                head_revision=b"git-v1:" + b"c" * 40,
+                base_revision=b"git-v1:" + b"d" * 40,
+                start_revision=b"git-v1:" + b"b" * 40,
+            ),
+            mp.get_diff_refs(),
+        )
+        self.assertEqual(b"git-v1:" + b"c" * 40, mp.get_source_revision())

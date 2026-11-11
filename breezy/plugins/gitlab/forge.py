@@ -27,6 +27,7 @@ from dromedary import errors as transport_errors
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
 from ...forge import (
+    DiffRefs,
     Forge,
     ForgeLoginRequired,
     MergeProposal,
@@ -460,6 +461,12 @@ def _unexpected_status(path, response):
     )
 
 
+def _sha_to_revid(sha):
+    from ...git.mapping import default_mapping
+
+    return default_mapping.revision_id_foreign_to_bzr(sha.encode("ascii"))
+
+
 class GitLabMergeProposal(MergeProposal):
     """A GitLab merge request implementation of the MergeProposal interface.
 
@@ -865,6 +872,28 @@ class GitLabMergeProposal(MergeProposal):
         kwargs = {"body": body}
         self.gl._post_merge_request_note(
             self._mr["project_id"], self._mr["iid"], kwargs
+        )
+
+    def get_diff(self):
+        """Get the diff of this merge request as GitLab shows it.
+
+        This uses the raw_diffs API, which older GitLab versions lack.
+        """
+        return self.gl._get_merge_request_raw_diffs(
+            self._mr["project_id"], self._mr["iid"]
+        )
+
+    def get_diff_refs(self):
+        """Get the revisions of the latest version of this merge request.
+
+        The merge request is refreshed first.
+        """
+        self._mr = self.gl._get_merge_request(self._mr["project_id"], self._mr["iid"])
+        refs = self._mr["diff_refs"]
+        return DiffRefs(
+            head_revision=_sha_to_revid(refs["head_sha"]),
+            base_revision=_sha_to_revid(refs["base_sha"]),
+            start_revision=_sha_to_revid(refs["start_sha"]),
         )
 
 
@@ -1305,6 +1334,24 @@ class GitLab(Forge):
         if response.status != 200:
             _unexpected_status(path, response)
         return json.loads(response.data)
+
+    def _get_merge_request_raw_diffs(self, project, merge_id):
+        """Get the diff of a merge request as a git-style unified diff.
+
+        Raises:
+            PermissionDenied: If access is denied to the merge request
+            UnexpectedHttpStatus: If the API request fails
+        """
+        path = "projects/%s/merge_requests/%d/raw_diffs" % (
+            urlutils.quote(str(project), ""),
+            merge_id,
+        )
+        response = self._api_request("GET", path)
+        if response.status == 403:
+            raise transport_errors.PermissionDenied(response.text)
+        if response.status != 200:
+            _unexpected_status(path, response)
+        return response.data
 
     def _list_projects(self, owner):
         """List projects for a specific user.

@@ -28,6 +28,7 @@ from ... import branch as _mod_branch
 from ...config import AuthenticationConfig
 from ...forge import (
     AutoMergeUnavailable,
+    DiffRefs,
     Forge,
     ForgeLoginRequired,
     MergeProposal,
@@ -73,6 +74,12 @@ def parse_timestring(ts):
         datetime.datetime(2023, 1, 15, 10, 30, 45)
     """
     return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+
+
+def _sha_to_revid(sha):
+    from ...git.mapping import default_mapping
+
+    return default_mapping.revision_id_foreign_to_bzr(sha.encode("ascii"))
 
 
 def store_github_token(token):
@@ -551,6 +558,50 @@ mutation ($pullRequestId: ID!) {
             )
         json.loads(response.text)
 
+    def get_diff(self):
+        """Get the diff of this pull request as GitHub shows it.
+
+        Raises:
+            UnexpectedHttpStatus: If GitHub refuses, e.g. because the diff is
+                too large.
+        """
+        response = self._gh._api_request(
+            "GET", self._pr["url"], headers={"Accept": "application/vnd.github.diff"}
+        )
+        if response.status != 200:
+            raise UnexpectedHttpStatus(
+                self._pr["url"], response.status, headers=response.getheaders()
+            )
+        return response.data
+
+    def get_diff_refs(self):
+        """Get the revisions the diff of this pull request is made from.
+
+        The pull request is refreshed first. The start revision is the head
+        of the target branch as GitHub last saw it; the merge base comes from
+        comparing it with the head.
+        """
+        response = self._gh._api_request("GET", self._pr["url"])
+        if response.status != 200:
+            raise UnexpectedHttpStatus(
+                self._pr["url"], response.status, headers=response.getheaders()
+            )
+        self._pr = json.loads(response.text)
+        head_sha = self._pr["head"]["sha"]
+        start_sha = self._pr["base"]["sha"]
+        path = f"{self._pr['base']['repo']['url']}/compare/{start_sha}...{head_sha}?per_page=1"
+        response = self._gh._api_request("GET", path)
+        if response.status != 200:
+            raise UnexpectedHttpStatus(
+                path, response.status, headers=response.getheaders()
+            )
+        base_sha = json.loads(response.text)["merge_base_commit"]["sha"]
+        return DiffRefs(
+            head_revision=_sha_to_revid(head_sha),
+            base_revision=_sha_to_revid(base_sha),
+            start_revision=_sha_to_revid(start_sha),
+        )
+
 
 def parse_github_url(url):
     """Parse a GitHub repository URL to extract owner and repository name.
@@ -894,13 +945,14 @@ class GitHub(Forge):
             raise GraphqlErrors(data.get("errors"))
         return data["data"]
 
-    def _api_request(self, method, path, body=None):
+    def _api_request(self, method, path, body=None, headers=None):
         """Make a REST API request to GitHub's API.
 
         Args:
             method: The HTTP method (GET, POST, PATCH, DELETE, etc.).
             path: The API path relative to the base API URL.
             body: Optional request body data.
+            headers: Optional headers, overriding the defaults.
 
         Returns:
             The HTTP response object.
@@ -913,6 +965,7 @@ class GitHub(Forge):
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/vnd.github.v3+json",
+            **(headers or {}),
         }
         if self._token:
             headers["Authorization"] = f"token {self._token}"
