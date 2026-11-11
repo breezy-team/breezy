@@ -40,6 +40,11 @@ brz 3.3.26
    login was never found and the API request went to the wrong host.
    (Zainab Mehmut)
 
+ * gitlab: Keep the port of an ``https://`` project URL when probing for
+   GitLab, so an instance such as ``https://gitlab.example:8443/`` is
+   found. The probe went to port 443, where the stored login did not
+   match and the connection was refused. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
