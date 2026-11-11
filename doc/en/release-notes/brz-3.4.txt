@@ -68,6 +68,10 @@ Bug Fixes
    request. It held only the API path, such as ``repos/owner/repo/pulls``.
    (Zainab Mehmut)
 
+ * gitea: Set the labels given to ``create_proposal`` on the new pull
+   request; they were dropped. A label name that neither the repository
+   nor its organization has raises ``UnknownLabels``. (Zainab Mehmut)
+
  * launchpad: Fix authorization engine creation against newer
    launchpadlib, which made ``Launchpad.authorization_engine_factory``
    take keyword arguments only. Enumerating forges raised ``TypeError``
