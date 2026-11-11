@@ -19,11 +19,19 @@ from datetime import datetime
 
 from dromedary.errors import RedirectRequested, UnexpectedHttpStatus
 
-from breezy.forge import DiffRefs, HeadChanged, NoSuchProject
+from breezy.forge import (
+    DiffRefs,
+    HeadChanged,
+    NoSuchProject,
+    ProposalEvent,
+    ProposalEventKind,
+)
+from breezy.git.mapping import default_mapping
 from breezy.tests import TestCase
 
 from ..forge import (
     GitLab,
+    GitLabError,
     GitLabMergeProposal,
     NotGitLabUrl,
     NotMergeRequestUrl,
@@ -75,11 +83,20 @@ class ParseTimestringTests(TestCase):
             parse_timestring("2018-09-07T11:16:17.520Z"),
         )
 
+    def test_without_fraction(self):
+        self.assertEqual(
+            datetime(2018, 9, 7, 11, 16, 17),
+            parse_timestring("2018-09-07T11:16:17Z"),
+        )
+
 
 class FakeResponse:
     def __init__(self, status, data=b""):
         self.status = status
         self.data = data
+
+    def getheader(self, name):
+        return None
 
     def getheaders(self):
         return {}
@@ -97,6 +114,8 @@ class FakeTransport:
     def request(self, method, url, headers=None, fields=None, body=None):
         self.calls.append((method, url))
         response = self.responses[url]
+        if isinstance(response, list):
+            response = response.pop(0)
         if isinstance(response, Exception):
             raise response
         return response
@@ -302,3 +321,155 @@ class RebaseTests(TestCase):
         e = self.assertRaises(HeadChanged, mp.rebase, expected_revision=HEAD_REVISION)
         self.assertEqual((HEAD_REVISION, NEW_REVISION), (e.expected, e.actual))
         self.assertEqual(1, len(transport.calls))
+
+
+def json_response(payload):
+    return FakeResponse(200, json.dumps(payload).encode("utf-8"))
+
+
+def notes_page(nodes, cursor=None):
+    return json_response(
+        {
+            "data": {
+                "project": {
+                    "mergeRequest": {
+                        "notes": {
+                            "nodes": nodes,
+                            "pageInfo": {
+                                "hasNextPage": cursor is not None,
+                                "endCursor": cursor,
+                            },
+                        }
+                    }
+                }
+            }
+        }
+    )
+
+
+def note(created_at, username, action=None, bot=False):
+    return {
+        "system": action is not None,
+        "createdAt": created_at,
+        "author": None if username is None else {"username": username, "bot": bot},
+        "systemNoteMetadata": None if action is None else {"action": action},
+    }
+
+
+class IterEventsTests(TestCase):
+    MR = {"project_id": 5, "iid": 2}
+    VERSIONS_URL = (
+        "https://gitlab.example.com/api/v4/projects/5/merge_requests/2/versions"
+        "?per_page=50&page=1"
+    )
+    GRAPHQL_URL = "https://gitlab.example.com/api/graphql"
+
+    def test_events(self):
+        transport = FakeTransport(
+            {
+                self.VERSIONS_URL: json_response(
+                    [
+                        {
+                            "head_commit_sha": "b" * 40,
+                            "created_at": "2026-01-03T10:00:00.000Z",
+                        },
+                        {
+                            "head_commit_sha": "a" * 40,
+                            "created_at": "2026-01-01T10:00:00.000Z",
+                        },
+                    ]
+                ),
+                self.GRAPHQL_URL: [
+                    notes_page(
+                        [
+                            note("2026-01-01T11:00:00Z", "ci", bot=True),
+                            note("2026-01-01T12:00:00Z", "alice", "requested_changes"),
+                            note("2026-01-03T10:00:00Z", "bob", "commit"),
+                        ],
+                        cursor="c1",
+                    ),
+                    notes_page(
+                        [
+                            note("2026-01-04T10:00:00Z", "alice", "approved"),
+                            note("2026-01-04T11:00:00Z", None),
+                            note("2026-01-05T10:00:00Z", "alice", "unapproved"),
+                        ]
+                    ),
+                ],
+            }
+        )
+        mp = GitLabMergeProposal(GitLab(transport, "token"), self.MR)
+
+        def revid(sha):
+            return default_mapping.revision_id_foreign_to_bzr(sha.encode("ascii"))
+
+        events = mp.iter_events()
+        self.assertEqual(
+            [
+                ProposalEvent(
+                    kind=ProposalEventKind.PUSH,
+                    actor=None,
+                    timestamp=datetime(2026, 1, 1, 10, 0, 0),
+                    revision=revid("a" * 40),
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.COMMENT,
+                    actor="ci",
+                    timestamp=datetime(2026, 1, 1, 11, 0, 0),
+                    actor_is_bot=True,
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.UNAPPROVAL,
+                    actor="alice",
+                    timestamp=datetime(2026, 1, 1, 12, 0, 0),
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.PUSH,
+                    actor=None,
+                    timestamp=datetime(2026, 1, 3, 10, 0, 0),
+                    revision=revid("b" * 40),
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.APPROVAL,
+                    actor="alice",
+                    timestamp=datetime(2026, 1, 4, 10, 0, 0),
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.COMMENT,
+                    actor=None,
+                    timestamp=datetime(2026, 1, 4, 11, 0, 0),
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.UNAPPROVAL,
+                    actor="alice",
+                    timestamp=datetime(2026, 1, 5, 10, 0, 0),
+                ),
+            ],
+            events,
+        )
+        # The "commit" system note from bob is suppressed; pushes come from
+        # the versions, which do not record who pushed.
+        self.assertNotIn("bob", [event.actor for event in events])
+
+    def test_not_found(self):
+        transport = FakeTransport(
+            {
+                self.VERSIONS_URL: json_response([]),
+                self.GRAPHQL_URL: json_response({"data": {"project": None}}),
+            }
+        )
+        mp = GitLabMergeProposal(GitLab(transport, "token"), self.MR)
+        self.assertRaises(NoSuchProject, mp.iter_events)
+
+    def test_graphql_errors(self):
+        transport = FakeTransport(
+            {
+                self.VERSIONS_URL: json_response([]),
+                self.GRAPHQL_URL: json_response(
+                    {"data": None, "errors": [{"message": "boom"}]}
+                ),
+            }
+        )
+        mp = GitLabMergeProposal(GitLab(transport, "token"), self.MR)
+        e = self.assertRaises(GitLabError, mp.iter_events)
+        self.assertEqual("boom", e.error)

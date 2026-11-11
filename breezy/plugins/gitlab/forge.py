@@ -36,6 +36,8 @@ from ...forge import (
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
+    ProposalEvent,
+    ProposalEventKind,
     SourceNotDerivedFromTarget,
     UnsupportedForge,
     determine_title,
@@ -47,6 +49,28 @@ from ...transport import get_transport
 _DEFAULT_FILES = ["/etc/python-gitlab.cfg", "~/.python-gitlab.cfg"]
 DEFAULT_PAGE_SIZE = 50
 DEFAULT_PREFERRED_SCHEMES = ["ssh", "http"]
+
+# The REST API does not say what a system note records, so use GraphQL.
+_NOTES_QUERY = """
+query($id: ProjectID!, $iid: String!, $cursor: String) {
+  project(id: $id) { mergeRequest(iid: $iid) {
+    notes(first: 100, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        system createdAt author { username bot } systemNoteMetadata { action }
+      }
+    }
+  } }
+}"""
+
+# Other system notes record pushes (which come from the versions instead),
+# label changes and the like.
+_SYSTEM_NOTE_EVENT_KINDS = {
+    "approved": ProposalEventKind.APPROVAL,
+    "unapproved": ProposalEventKind.UNAPPROVAL,
+    "requested_changes": ProposalEventKind.UNAPPROVAL,
+}
+
 SCHEME_MAP = {
     "git+ssh": "ssh_url_to_repo",
     "ssh": "ssh_url_to_repo",
@@ -76,7 +100,8 @@ def parse_timestring(ts):
     """Parse a GitLab ISO timestamp string into a datetime object.
 
     Args:
-        ts: A timestamp string in the format "YYYY-MM-DDTHH:MM:SS.fZ"
+        ts: A timestamp string in the format "YYYY-MM-DDTHH:MM:SS.fZ" or
+            "YYYY-MM-DDTHH:MM:SSZ"
 
     Returns:
         A datetime object representing the parsed timestamp
@@ -84,7 +109,11 @@ def parse_timestring(ts):
     Raises:
         ValueError: If the timestamp string is not in the expected format
     """
-    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%fZ")
+    try:
+        return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%fZ")
+    except ValueError:
+        # The GraphQL API leaves out fractional seconds.
+        return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
 
 
 class NotGitLabUrl(errors.BzrError):
@@ -459,6 +488,29 @@ def _unexpected_status(path, response):
         response.status,
         response.data.decode("utf-8", "replace"),
         headers=response.getheaders(),
+    )
+
+
+def _note_event(note):
+    """Convert a GraphQL merge request note to a ProposalEvent.
+
+    Returns:
+        A ProposalEvent, or None for system notes that do not record an
+        approval or its withdrawal.
+    """
+    if note["system"]:
+        action = (note["systemNoteMetadata"] or {}).get("action")
+        kind = _SYSTEM_NOTE_EVENT_KINDS.get(action)
+        if kind is None:
+            return None
+    else:
+        kind = ProposalEventKind.COMMENT
+    author = note["author"]
+    return ProposalEvent(
+        kind=kind,
+        actor=author["username"] if author else None,
+        timestamp=parse_timestring(note["createdAt"]),
+        actor_is_bot=author["bot"] if author else False,
     )
 
 
@@ -925,6 +977,52 @@ class GitLabMergeProposal(MergeProposal):
             start_revision=sha_to_revid(refs["start_sha"]),
         )
 
+    def iter_events(self):
+        """Return the events in the history of this merge request.
+
+        Pushes come from the merge request versions, which do not record
+        who pushed.
+
+        Returns:
+            List of ProposalEvent objects, oldest first.
+        """
+        from ...git.mapping import sha_to_revid
+
+        path = "projects/%s/merge_requests/%d/versions" % (
+            urlutils.quote(str(self._mr["project_id"]), ""),
+            self._mr["iid"],
+        )
+        events = [
+            ProposalEvent(
+                kind=ProposalEventKind.PUSH,
+                actor=None,
+                timestamp=parse_timestring(version["created_at"]),
+                revision=sha_to_revid(version["head_commit_sha"]),
+            )
+            for version in self.gl._list_paged(path, per_page=DEFAULT_PAGE_SIZE)
+        ]
+        project_gid = f"gid://gitlab/Project/{self._mr['project_id']}"
+        cursor = None
+        while True:
+            data = self.gl._graphql_request(
+                _NOTES_QUERY,
+                id=project_gid,
+                iid=str(self._mr["iid"]),
+                cursor=cursor,
+            )
+            if data["project"] is None or data["project"]["mergeRequest"] is None:
+                raise NoSuchProject(f"{project_gid}!{self._mr['iid']}")
+            notes = data["project"]["mergeRequest"]["notes"]
+            for note in notes["nodes"]:
+                event = _note_event(note)
+                if event is not None:
+                    events.append(event)
+            if not notes["pageInfo"]["hasNextPage"]:
+                break
+            cursor = notes["pageInfo"]["endCursor"]
+        events.sort(key=lambda event: event.timestamp)
+        return events
+
 
 def gitlab_url_to_bzr_url(url, name):
     """Convert a GitLab repository URL to a Breezy URL with branch name.
@@ -1019,6 +1117,34 @@ class GitLab(Forge):
             fields=fields,
             body=body,
         )
+
+    def _graphql_request(self, query, **variables):
+        """Make a GraphQL request.
+
+        Args:
+            query: The GraphQL query
+            **variables: Variables for the query
+
+        Returns:
+            The data of the response
+
+        Raises:
+            GitLabError: If the response contains errors
+            UnexpectedHttpStatus: If the API request fails
+        """
+        url = urlutils.join(self.base_url, "api", "graphql")
+        response = self.transport.request(
+            "POST",
+            url,
+            headers={**self.headers, "Content-Type": "application/json"},
+            body=json.dumps({"query": query, "variables": variables}).encode("utf-8"),
+        )
+        if response.status != 200:
+            _unexpected_status(url, response)
+        data = json.loads(response.data)
+        if data.get("errors"):
+            raise GitLabError(data["errors"][0]["message"], data)
+        return data["data"]
 
     def __init__(self, transport, private_token):
         """Initialize a GitLab forge instance.
