@@ -84,6 +84,18 @@ class NotMergeRequestUrl(errors.BzrError):
         self.url = url
 
 
+class UnknownLabels(errors.BzrError):
+    """Raised when a repository has no labels with the given names."""
+
+    _fmt = "No such labels in %(full_name)s: %(labels)s"
+
+    def __init__(self, full_name, labels):
+        """Initialize with the repository and the missing label names."""
+        errors.BzrError.__init__(self)
+        self.full_name = full_name
+        self.labels = ", ".join(labels)
+
+
 class DifferentGiteaInstances(errors.BzrError):
     """Raised when source and target branches live on different Gitea instances."""
 
@@ -498,6 +510,8 @@ class Gitea(Forge):
             "base": base,
             "body": body,
         }
+        if labels:
+            data["labels"] = self._get_label_ids(base_full_name, labels)
         if assignees:
             data["assignees"] = assignees
         response = self._api_json_request("POST", path, data)
@@ -506,6 +520,24 @@ class Gitea(Forge):
         if response.status not in (200, 201):
             _unexpected_status(self._api_url(path), response)
         return json.loads(response.data)
+
+    def _get_label_ids(self, full_name, names):
+        """Return the ids of the repository or organization labels named."""
+        repo_labels = list(self._list_paged(f"repos/{full_name}/labels"))
+        org_labels = []
+        if not set(names) <= {label["name"] for label in repo_labels}:
+            owner = full_name.split("/")[0]
+            try:
+                org_labels = list(self._list_paged(f"orgs/{owner}/labels"))
+            except transport_errors.UnexpectedHttpStatus as e:
+                # The owner is a user, not an organization.
+                if e.code != 404:
+                    raise
+        ids = {label["name"]: label["id"] for label in org_labels + repo_labels}
+        missing = [name for name in names if name not in ids]
+        if missing:
+            raise UnknownLabels(full_name, missing)
+        return [ids[name] for name in names]
 
     def _list_paged(self, path, parameters=None):
         parameters = {} if parameters is None else dict(parameters.items())
@@ -892,6 +924,7 @@ class GiteaMergeProposalBuilder(MergeProposalBuilder):
             head=head,
             base=self.target_branch_name,
             body=description,
+            labels=labels,
             assignees=reviewers,
         )
         return GiteaMergeProposal(self.gitea, pr)
