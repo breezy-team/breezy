@@ -25,8 +25,11 @@ from ....forge import (
     DiffRefs,
     HeadChanged,
     NoSuchProject,
+    ProposalComment,
     ProposalEvent,
     ProposalEventKind,
+    ProposalReview,
+    ReviewVerdict,
 )
 from ....git.mapping import default_mapping
 from ....tests import TestCase
@@ -243,11 +246,17 @@ NEW_SHA = "b" * 40
 HEAD_REVISION = default_mapping.revision_id_foreign_to_bzr(HEAD_SHA.encode("ascii"))
 NEW_REVISION = default_mapping.revision_id_foreign_to_bzr(NEW_SHA.encode("ascii"))
 GRAPHQL_URL = "https://api.github.com/graphql"
+COMMENTS_URL = "https://api.github.com/repos/owner/repo/issues/1/comments"
 
 
 def make_proposal(responses):
     transport = FakeTransport(responses)
-    pr = {"url": PR_URL, "node_id": "PR_1", "head": {"sha": HEAD_SHA}}
+    pr = {
+        "url": PR_URL,
+        "node_id": "PR_1",
+        "head": {"sha": HEAD_SHA},
+        "comments_url": COMMENTS_URL,
+    }
     return GitHubMergeProposal(GitHub(transport), pr), transport
 
 
@@ -608,4 +617,105 @@ class GetFileTextTests(TestCase):
         mp = make_file_proposal({("GET", self.url): FakeResponse(500)})
         self.assertRaises(
             UnexpectedHttpStatus, mp.get_file_text, "sub dir/README", HEAD_REVISION
+        )
+
+
+class IterCommentsTests(TestCase):
+    def test_comments(self):
+        mp, _ = make_proposal(
+            {
+                ("GET", COMMENTS_URL + "?per_page=100;page=1"): FakeResponse(
+                    200,
+                    [
+                        {
+                            "user": {"login": "alice"},
+                            "body": "Looks good",
+                            "created_at": "2024-01-02T03:04:05Z",
+                            "html_url": "https://github.com/owner/repo/pull/1#c1",
+                        },
+                        {
+                            "user": None,
+                            "body": "Me too",
+                            "created_at": "2024-01-03T03:04:05Z",
+                            "html_url": "https://github.com/owner/repo/pull/1#c2",
+                        },
+                    ],
+                ),
+                ("GET", COMMENTS_URL + "?per_page=100;page=2"): FakeResponse(200, []),
+            }
+        )
+        self.assertEqual(
+            [
+                ProposalComment(
+                    author="alice",
+                    body="Looks good",
+                    created_at=datetime(2024, 1, 2, 3, 4, 5),
+                    url="https://github.com/owner/repo/pull/1#c1",
+                ),
+                ProposalComment(
+                    author=None,
+                    body="Me too",
+                    created_at=datetime(2024, 1, 3, 3, 4, 5),
+                    url="https://github.com/owner/repo/pull/1#c2",
+                ),
+            ],
+            list(mp.iter_comments()),
+        )
+
+
+class IterReviewsTests(TestCase):
+    def test_reviews(self):
+        mp, _ = make_proposal(
+            {
+                ("GET", PR_URL + "/reviews?per_page=100;page=1"): FakeResponse(
+                    200,
+                    [
+                        {
+                            "user": {"login": "alice"},
+                            "body": "",
+                            "state": "APPROVED",
+                            "submitted_at": "2024-01-02T03:04:05Z",
+                            "commit_id": HEAD_SHA,
+                            "html_url": "https://github.com/owner/repo/pull/1#r1",
+                        },
+                        {
+                            "user": {"login": "bob"},
+                            "body": "Please fix",
+                            "state": "CHANGES_REQUESTED",
+                            "submitted_at": "2024-01-03T03:04:05Z",
+                            "commit_id": None,
+                            "html_url": "https://github.com/owner/repo/pull/1#r2",
+                        },
+                        {
+                            "user": {"login": "carol"},
+                            "body": "",
+                            "state": "PENDING",
+                            "commit_id": HEAD_SHA,
+                            "html_url": "https://github.com/owner/repo/pull/1#r3",
+                        },
+                    ],
+                ),
+                ("GET", PR_URL + "/reviews?per_page=100;page=2"): FakeResponse(200, []),
+            }
+        )
+        self.assertEqual(
+            [
+                ProposalReview(
+                    author="alice",
+                    verdict=ReviewVerdict.APPROVED,
+                    body=None,
+                    submitted_at=datetime(2024, 1, 2, 3, 4, 5),
+                    revision=HEAD_REVISION,
+                    url="https://github.com/owner/repo/pull/1#r1",
+                ),
+                ProposalReview(
+                    author="bob",
+                    verdict=ReviewVerdict.CHANGES_REQUESTED,
+                    body="Please fix",
+                    submitted_at=datetime(2024, 1, 3, 3, 4, 5),
+                    revision=None,
+                    url="https://github.com/owner/repo/pull/1#r2",
+                ),
+            ],
+            list(mp.iter_reviews()),
         )

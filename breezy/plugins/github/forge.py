@@ -37,9 +37,12 @@ from ...forge import (
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
+    ProposalComment,
     ProposalEvent,
     ProposalEventKind,
+    ProposalReview,
     ReopenFailed,
+    ReviewVerdict,
     UnsupportedForge,
     determine_title,
 )
@@ -92,6 +95,20 @@ SCHEME_FIELD_MAP = {
     "git": "git_url",
 }
 DEFAULT_PREFERRED_SCHEMES = ["ssh", "http"]
+
+REVIEW_VERDICTS = {
+    "APPROVED": ReviewVerdict.APPROVED,
+    "CHANGES_REQUESTED": ReviewVerdict.CHANGES_REQUESTED,
+    "COMMENTED": ReviewVerdict.COMMENTED,
+    "DISMISSED": ReviewVerdict.DISMISSED,
+}
+
+
+def _login(user):
+    """Return the login of a GitHub user object, or None for deleted users."""
+    if user is None:
+        return None
+    return user["login"]
 
 
 def parse_timestring(ts):
@@ -783,6 +800,43 @@ mutation ($pullRequestId: ID!) {
                 api_path, response.status, headers=response.getheaders()
             )
         return response.data
+
+    def iter_comments(self):
+        """Iterate over the comments on this pull request as a whole.
+
+        Review comments on lines of the diff are not included.
+        """
+        for page in self._gh._list_paged(
+            self._pr["comments_url"], per_page=DEFAULT_PER_PAGE
+        ):
+            for comment in page:
+                yield ProposalComment(
+                    author=_login(comment["user"]),
+                    body=comment["body"],
+                    created_at=parse_timestring(comment["created_at"]),
+                    url=comment["html_url"],
+                )
+
+    def iter_reviews(self):
+        """Iterate over the submitted reviews of this pull request.
+
+        Pending reviews, which have not been submitted yet, are skipped.
+        """
+        for page in self._gh._list_paged(
+            self._pr["url"] + "/reviews", per_page=DEFAULT_PER_PAGE
+        ):
+            for review in page:
+                if review["state"] == "PENDING":
+                    continue
+                commit_id = review["commit_id"]
+                yield ProposalReview(
+                    author=_login(review["user"]),
+                    verdict=REVIEW_VERDICTS[review["state"]],
+                    body=review["body"] or None,
+                    submitted_at=parse_timestring(review["submitted_at"]),
+                    revision=sha_to_revid(commit_id) if commit_id else None,
+                    url=review["html_url"],
+                )
 
 
 def _actor_fields(actor):
