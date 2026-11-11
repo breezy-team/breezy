@@ -20,5 +20,6 @@ from unittest import TestLoader, TestSuite
 def test_suite():
     result = TestSuite()
 
-    TestLoader()
+    loader = TestLoader()
+    result.addTests(loader.loadTestsFromName(__name__ + ".test_cmds"))
     return result
