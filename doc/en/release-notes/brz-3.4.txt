@@ -68,6 +68,11 @@ Bug Fixes
    request. It held only the API path, such as ``repos/owner/repo/pulls``.
    (Zainab Mehmut)
 
+ * ``brz init`` no longer crashes with ``TypeError`` when the file system
+   type cannot be found, as in a rootless container whose root is on
+   overlayfs. Executable bits and symlinks are then assumed to work, as
+   in 3.3. (Zainab Mehmut)
+
  * launchpad: Fix authorization engine creation against newer
    launchpadlib, which made ``Launchpad.authorization_engine_factory``
    take keyword arguments only. Enumerating forges raised ``TypeError``
