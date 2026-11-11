@@ -119,13 +119,20 @@ def summarize_unmerged(local_branch, remote_branch, target, prerequisite_branch=
     log_format = _mod_log.log_formatter_registry.get_default(local_branch)
     to_file = StringIO()
     lf = log_format(to_file=to_file, show_ids=False, show_timezone="original")
+    # Remote git branches give no graph access, so walk the local history.
+    other = prerequisite_branch or target
+    local_branch.repository.fetch(other.repository, revision_id=other.last_revision())
+    pushed = (None, remote_branch.last_revision())
     if prerequisite_branch:
         local_extra = _mod_missing.find_unmerged(
-            remote_branch, prerequisite_branch, restrict="local"
+            local_branch,
+            prerequisite_branch,
+            restrict="local",
+            local_revid_range=pushed,
         )[0]
     else:
         local_extra = _mod_missing.find_unmerged(
-            remote_branch, target, restrict="local"
+            local_branch, target, restrict="local", local_revid_range=pushed
         )[0]
 
     if remote_branch.supports_tags():
