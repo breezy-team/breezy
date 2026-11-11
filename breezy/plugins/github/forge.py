@@ -677,6 +677,8 @@ class _LazyDict(dict):
 
     def _load_full(self):
         """Load the full data set and disable further lazy loading."""
+        if self._load_fn is None:
+            return
         super().update(self._load_fn())
         self._load_fn = None
 
@@ -772,11 +774,8 @@ class _LazyDict(dict):
         Returns:
             The value associated with the key, or the default value.
         """
-        if self._load_fn is not None:
-            try:
-                return super().get(name, default)
-            except KeyError:
-                self._load_full()
+        if not super().__contains__(name):
+            self._load_full()
         return super().get(name, default)
 
     def pop(self):

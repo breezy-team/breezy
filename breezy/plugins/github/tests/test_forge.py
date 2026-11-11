@@ -20,7 +20,7 @@ import json
 from datetime import datetime
 
 from ....tests import TestCase
-from ..forge import GitHub, GitHubMergeProposal, parse_timestring
+from ..forge import GitHub, GitHubMergeProposal, _LazyDict, parse_timestring
 
 
 class ParseTimestringTests(TestCase):
@@ -105,3 +105,43 @@ class MetadataTests(TestCase):
         [mp] = GitHub(transport).iter_my_proposals(author="jelmer")
         self.assertTrue(mp.is_work_in_progress())
         self.assertEqual(datetime(2026, 1, 1, 10, 0, 0), mp.get_created_at())
+
+
+class LazyDictTests(TestCase):
+    def make_dict(self):
+        self.loads = 0
+
+        def load():
+            self.loads += 1
+            return {"a": 1, "b": 2}
+
+        return _LazyDict({"a": 1}, load)
+
+    def test_keys_twice(self):
+        d = self.make_dict()
+        self.assertEqual({"a", "b"}, set(d.keys()))
+        self.assertEqual({"a", "b"}, set(d.keys()))
+        self.assertEqual(1, self.loads)
+
+    def test_items_after_getitem_loaded(self):
+        d = self.make_dict()
+        self.assertEqual(2, d["b"])
+        self.assertEqual({("a", 1), ("b", 2)}, set(d.items()))
+        self.assertEqual(1, self.loads)
+
+    def test_values_twice(self):
+        d = self.make_dict()
+        self.assertEqual([1, 2], sorted(d.values()))
+        self.assertEqual([1, 2], sorted(d.values()))
+        self.assertEqual(1, self.loads)
+
+    def test_get_loads_missing(self):
+        d = self.make_dict()
+        self.assertEqual(2, d.get("b"))
+        self.assertEqual(None, d.get("c"))
+        self.assertEqual(1, self.loads)
+
+    def test_get_present_does_not_load(self):
+        d = self.make_dict()
+        self.assertEqual(1, d.get("a"))
+        self.assertEqual(0, self.loads)
