@@ -32,6 +32,11 @@ class TestProbeFromHostname(TestCase):
             Launchpad.probe_from_hostname("bazaar.launchpad.net"), Launchpad
         )
 
+    def test_code(self):
+        self.assertIsInstance(
+            Launchpad.probe_from_hostname("code.launchpad.net"), Launchpad
+        )
+
     def test_subdomain(self):
         self.assertIsInstance(
             Launchpad.probe_from_hostname("git.staging.launchpad.net"), Launchpad
