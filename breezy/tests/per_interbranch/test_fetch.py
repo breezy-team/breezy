@@ -143,3 +143,10 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b2.fetch(b1, depth=2)
 
         self.assertEqual({rev2, rev3}, b2.repository.has_revisions([rev1, rev2, rev3]))
+
+        # Deepening again moves the boundary further back
+        b2.fetch(b1, depth=3)
+
+        self.assertEqual(
+            {rev1, rev2, rev3}, b2.repository.has_revisions([rev1, rev2, rev3])
+        )
