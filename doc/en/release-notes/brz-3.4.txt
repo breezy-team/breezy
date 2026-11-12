@@ -44,6 +44,10 @@ New Features
    with ``--message``, ``--author`` or ``--commit-time``.
    (Jelmer Vernooĳ)
 
+ * Merge proposals now provide ``is_work_in_progress``, ``get_created_at``
+   and ``get_updated_at``, implemented for GitHub and GitLab, and the
+   timestamps for Gitea. (Jelmer Vernooĳ)
+
 Improvements
 ************
 

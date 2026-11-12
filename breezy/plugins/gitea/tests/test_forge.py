@@ -343,3 +343,16 @@ class GetAuthorTests(TestCase):
     def test_no_user(self):
         mp = GiteaMergeProposal(None, {"user": None})
         self.assertIsNone(mp.get_author())
+
+
+class TimestampTests(TestCase):
+    def test_timestamps(self):
+        mp = GiteaMergeProposal(
+            None,
+            {
+                "created_at": "2026-01-01T10:00:00Z",
+                "updated_at": "2026-01-02T11:30:00+02:00",
+            },
+        )
+        self.assertEqual(datetime(2026, 1, 1, 10, 0, 0), mp.get_created_at())
+        self.assertEqual(datetime(2026, 1, 2, 11, 30, 0), mp.get_updated_at())

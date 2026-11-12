@@ -372,6 +372,14 @@ class GiteaMergeProposal(MergeProposal):
             return None
         return parse_timestring(merged_at)
 
+    def get_created_at(self):
+        """Return when the pull request was created."""
+        return parse_timestring(self._pr["created_at"])
+
+    def get_updated_at(self):
+        """Return when the pull request was last updated."""
+        return parse_timestring(self._pr["updated_at"])
+
     def post_comment(self, body):
         """Post a comment on the pull request."""
         self.gitea._post_issue_comment(
