@@ -88,6 +88,7 @@ jobs:
         env:
           CIBW_SKIP: "*musllinux* *-win32"
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+          CIBW_BUILD: "${{ matrix.build-identifier }}*"
           CIBW_SKIP_LINUX: '*-musllinux_*'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY="1" MACOSX_DEPLOYMENT_TARGET="10.15"'
           # Statically link liblzma rather than the Homebrew dylib, whose
