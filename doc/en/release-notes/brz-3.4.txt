@@ -132,6 +132,10 @@ API Changes
    and ``Registry`` base classes are implemented in Rust. They can still be
    subclassed. (Jelmer Vernooĳ)
 
+ * ``NotBranchError.detail`` now holds only the detail text, such as
+   ``location is a repository``, without a leading ``": "``. The error
+   message is unchanged. (Zainab Mehmut)
+
 Internals
 *********
 
