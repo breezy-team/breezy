@@ -96,6 +96,25 @@ fn update_path(py: Python<'_>) -> PyResult<()> {
     Ok(())
 }
 
+// Start Python as the python3 next to brz (as in a virtualenv), not the first one on PATH.
+#[allow(deprecated)]
+fn set_program_name() {
+    if let Ok(exe) = std::env::current_exe() {
+        let python = exe.with_file_name("python3");
+        if python.is_file() {
+            let path = std::ffi::CString::new(python.as_os_str().as_encoded_bytes())
+                .expect("invalid local path");
+            unsafe {
+                // Decode the path in the user's locale, as Python does when it starts.
+                libc::setlocale(libc::LC_CTYPE, c"".as_ptr());
+                let name = pyo3::ffi::Py_DecodeLocale(path.as_ptr(), std::ptr::null_mut());
+                assert!(!name.is_null(), "cannot decode {}", python.display());
+                pyo3::ffi::Py_SetProgramName(name);
+            }
+        }
+    }
+}
+
 fn posix_setup(py: Python<'_>) -> PyResult<()> {
     let os = PyModule::import(py, "os")?;
 
@@ -115,6 +134,7 @@ fn posix_setup(py: Python<'_>) -> PyResult<()> {
 }
 
 fn main() {
+    set_program_name();
     Python::initialize();
 
     Python::attach(|py| {
