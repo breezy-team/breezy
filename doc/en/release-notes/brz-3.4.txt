@@ -58,6 +58,10 @@ Improvements
    so the forks of the logged in user can be listed and removed.
    (Zainab Mehmut)
 
+ * gitea: brz now asks for a login on a Gitea host without stored
+   credentials, as with GitLab, instead of reporting an unsupported forge.
+   The host is recognised by asking its API for the version. (Zainab Mehmut)
+
 Bug Fixes
 *********
 
