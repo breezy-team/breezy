@@ -205,6 +205,23 @@ def _unexpected_status(url, response):
     )
 
 
+def _is_gitea(transport):
+    """Check whether the server behind ``transport`` answers the Gitea API."""
+    try:
+        response = transport.request(
+            "GET", urlutils.join(transport.base, "api/v1/version")
+        )
+    except (transport_errors.UnexpectedHttpStatus, transport_errors.RedirectRequested):
+        return False
+    if response.status != 200:
+        return False
+    try:
+        data = json.loads(response.data)
+    except ValueError:
+        return False
+    return isinstance(data, dict) and isinstance(data.get("version"), str)
+
+
 def gitea_url_to_bzr_url(url, name):
     """Convert a Gitea clone URL plus branch name into a Breezy URL."""
     return git_url_to_bzr_url(url, branch=name)
@@ -792,7 +809,11 @@ class Gitea(Forge):
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
-        """Create a Gitea instance from a project URL, if credentials exist."""
+        """Create a Gitea instance from a project URL, if credentials exist.
+
+        Raises:
+            GiteaLoginMissing: If the URL is on a Gitea host without credentials.
+        """
         try:
             (host, _project) = parse_gitea_url(url)
         except NotGiteaUrl as e:
@@ -805,6 +826,8 @@ class Gitea(Forge):
             instance = cls(transport, credentials.get("private_token"))
             instance._retrieve_user()
             return instance
+        if _is_gitea(transport):
+            raise GiteaLoginMissing(transport.base)
         raise UnsupportedForge(url)
 
     @classmethod
