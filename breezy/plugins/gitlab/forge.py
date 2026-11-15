@@ -461,12 +461,6 @@ def _unexpected_status(path, response):
     )
 
 
-def _sha_to_revid(sha):
-    from ...git.mapping import default_mapping
-
-    return default_mapping.revision_id_foreign_to_bzr(sha.encode("ascii"))
-
-
 class GitLabMergeProposal(MergeProposal):
     """A GitLab merge request implementation of the MergeProposal interface.
 
@@ -890,10 +884,12 @@ class GitLabMergeProposal(MergeProposal):
         """
         self._mr = self.gl._get_merge_request(self._mr["project_id"], self._mr["iid"])
         refs = self._mr["diff_refs"]
+        from ...git.mapping import sha_to_revid
+
         return DiffRefs(
-            head_revision=_sha_to_revid(refs["head_sha"]),
-            base_revision=_sha_to_revid(refs["base_sha"]),
-            start_revision=_sha_to_revid(refs["start_sha"]),
+            head_revision=sha_to_revid(refs["head_sha"]),
+            base_revision=sha_to_revid(refs["base_sha"]),
+            start_revision=sha_to_revid(refs["start_sha"]),
         )
 
 

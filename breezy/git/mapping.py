@@ -824,6 +824,11 @@ foreign_vcs_git = ForeignGit()
 default_mapping = mapping_registry.get_default()()
 
 
+def sha_to_revid(sha):
+    """Convert a git commit SHA given as a hex string to a Breezy revision id."""
+    return default_mapping.revision_id_foreign_to_bzr(sha.encode("ascii"))
+
+
 def symlink_to_blob(symlink_target):
     """Convert a symlink target to a Git blob object.
 

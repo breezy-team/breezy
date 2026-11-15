@@ -76,12 +76,6 @@ def parse_timestring(ts):
     return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
 
 
-def _sha_to_revid(sha):
-    from ...git.mapping import default_mapping
-
-    return default_mapping.revision_id_foreign_to_bzr(sha.encode("ascii"))
-
-
 def store_github_token(token):
     """Store a GitHub personal access token in the authentication configuration.
 
@@ -596,10 +590,12 @@ mutation ($pullRequestId: ID!) {
                 path, response.status, headers=response.getheaders()
             )
         base_sha = json.loads(response.text)["merge_base_commit"]["sha"]
+        from ...git.mapping import sha_to_revid
+
         return DiffRefs(
-            head_revision=_sha_to_revid(head_sha),
-            base_revision=_sha_to_revid(base_sha),
-            start_revision=_sha_to_revid(start_sha),
+            head_revision=sha_to_revid(head_sha),
+            base_revision=sha_to_revid(base_sha),
+            start_revision=sha_to_revid(start_sha),
         )
 
 
