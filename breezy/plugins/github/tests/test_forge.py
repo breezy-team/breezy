@@ -21,9 +21,16 @@ from datetime import datetime
 
 from dromedary.errors import UnexpectedHttpStatus
 
-from ....forge import DiffRefs
+from ....forge import DiffRefs, HeadChanged
+from ....git.mapping import default_mapping
 from ....tests import TestCase
-from ..forge import GitHub, GitHubMergeProposal, _LazyDict, parse_timestring
+from ..forge import (
+    GitHub,
+    GitHubMergeProposal,
+    GraphqlErrors,
+    _LazyDict,
+    parse_timestring,
+)
 
 
 class ParseTimestringTests(TestCase):
@@ -217,3 +224,87 @@ class GetDiffRefsTests(TestCase):
             mp.get_diff_refs(),
         )
         self.assertEqual(b"git-v1:" + b"c" * 40, mp.get_source_revision())
+
+
+HEAD_SHA = "a" * 40
+NEW_SHA = "b" * 40
+HEAD_REVISION = default_mapping.revision_id_foreign_to_bzr(HEAD_SHA.encode("ascii"))
+NEW_REVISION = default_mapping.revision_id_foreign_to_bzr(NEW_SHA.encode("ascii"))
+GRAPHQL_URL = "https://api.github.com/graphql"
+
+
+def make_proposal(responses):
+    transport = FakeTransport(responses)
+    pr = {"url": PR_URL, "node_id": "PR_1", "head": {"sha": HEAD_SHA}}
+    return GitHubMergeProposal(GitHub(transport), pr), transport
+
+
+def graphql_error(message):
+    return FakeResponse(
+        200,
+        {
+            "errors": [
+                {
+                    "type": "UNPROCESSABLE",
+                    "path": ["updatePullRequestBranch"],
+                    "message": message,
+                }
+            ]
+        },
+    )
+
+
+class RebaseTests(TestCase):
+    def test_rebase(self):
+        mp, transport = make_proposal(
+            {
+                ("POST", GRAPHQL_URL): FakeResponse(
+                    200,
+                    {
+                        "data": {
+                            "updatePullRequestBranch": {
+                                "pullRequest": {"headRefOid": NEW_SHA}
+                            }
+                        }
+                    },
+                )
+            }
+        )
+        self.assertTrue(mp.rebase(expected_revision=HEAD_REVISION))
+        body = json.loads(transport.requests[0][3])
+        self.assertEqual(
+            {"pullRequestId": "PR_1", "expectedHeadOid": HEAD_SHA}, body["variables"]
+        )
+
+    def test_up_to_date(self):
+        mp, _ = make_proposal(
+            {
+                ("POST", GRAPHQL_URL): graphql_error(
+                    "There are no new commits on the base branch."
+                )
+            }
+        )
+        self.assertFalse(mp.rebase())
+
+    def test_head_changed(self):
+        mp, _ = make_proposal(
+            {
+                ("POST", GRAPHQL_URL): graphql_error("Head moved"),
+                ("GET", PR_URL): FakeResponse(
+                    200, {"url": PR_URL, "head": {"sha": NEW_SHA}}
+                ),
+            }
+        )
+        e = self.assertRaises(HeadChanged, mp.rebase, expected_revision=HEAD_REVISION)
+        self.assertEqual((HEAD_REVISION, NEW_REVISION), (e.expected, e.actual))
+
+    def test_other_error(self):
+        mp, _ = make_proposal(
+            {
+                ("POST", GRAPHQL_URL): graphql_error("Merge conflict"),
+                ("GET", PR_URL): FakeResponse(
+                    200, {"url": PR_URL, "head": {"sha": HEAD_SHA}}
+                ),
+            }
+        )
+        self.assertRaises(GraphqlErrors, mp.rebase, expected_revision=HEAD_REVISION)

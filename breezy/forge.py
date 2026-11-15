@@ -195,6 +195,21 @@ class DiffRefs:
     start_revision: bytes | None
 
 
+class HeadChanged(errors.BzrError):
+    """The head of a merge proposal is not the revision the caller expected."""
+
+    _fmt = "Head of merge proposal is %(actual)s rather than %(expected)s."
+
+    def __init__(self, expected, actual):
+        """Initialize the exception.
+
+        Args:
+            expected: Revision id the caller expected the head to be.
+            actual: Revision id of the current head.
+        """
+        errors.BzrError.__init__(self, expected=expected, actual=actual)
+
+
 class MergeProposal:
     """A merge proposal.
 
@@ -309,6 +324,25 @@ class MergeProposal:
     def merge(self, commit_message=None, auto=False):
         """Merge this merge proposal."""
         raise NotImplementedError(self.merge)
+
+    def rebase(self, expected_revision=None):
+        """Have the forge rebase the source branch onto the target branch.
+
+        Some forges finish the rebase in the background, so the head of the
+        proposal may not have moved yet when this returns.
+
+        Args:
+            expected_revision: If set, the revision id the head of the
+                proposal must be.
+
+        Returns:
+            False if the source branch was already up to date, True if a
+            rebase was done or started.
+
+        Raises:
+            HeadChanged: if the head is not expected_revision
+        """
+        raise NotImplementedError(self.rebase)
 
     def can_be_merged(self):
         """Can this merge proposal be merged?

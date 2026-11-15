@@ -19,7 +19,7 @@ from datetime import datetime
 
 from dromedary.errors import RedirectRequested, UnexpectedHttpStatus
 
-from breezy.forge import DiffRefs, NoSuchProject
+from breezy.forge import DiffRefs, HeadChanged, NoSuchProject
 from breezy.tests import TestCase
 
 from ..forge import (
@@ -239,3 +239,66 @@ class GetDiffRefsTests(TestCase):
             mp.get_diff_refs(),
         )
         self.assertEqual(b"git-v1:" + b"a" * 40, mp.get_source_revision())
+
+
+HEAD_SHA = "a" * 40
+NEW_SHA = "b" * 40
+HEAD_REVISION = b"git-v1:" + HEAD_SHA.encode("ascii")
+NEW_REVISION = b"git-v1:" + NEW_SHA.encode("ascii")
+
+
+def mr_response(**mr):
+    data = {"project_id": 3, "iid": 7, "sha": HEAD_SHA}
+    data.update(mr)
+    return FakeResponse(200, json.dumps(data).encode("utf-8"))
+
+
+def make_proposal(responses):
+    transport = FakeTransport(responses)
+    mp = GitLabMergeProposal(
+        GitLab(transport, "token"), {"project_id": 3, "iid": 7, "sha": HEAD_SHA}
+    )
+    return mp, transport
+
+
+class RebaseTests(TestCase):
+    def test_rebase(self):
+        mp, transport = make_proposal(
+            {
+                MR_URL + "?include_diverged_commits_count=true": mr_response(
+                    diverged_commits_count=2
+                ),
+                MR_URL + "/rebase": FakeResponse(202, b'{"rebase_in_progress": true}'),
+            }
+        )
+        self.assertTrue(mp.rebase(expected_revision=HEAD_REVISION))
+        self.assertEqual(
+            [
+                ("GET", MR_URL + "?include_diverged_commits_count=true"),
+                ("PUT", MR_URL + "/rebase"),
+            ],
+            transport.calls,
+        )
+
+    def test_up_to_date(self):
+        mp, transport = make_proposal(
+            {
+                MR_URL + "?include_diverged_commits_count=true": mr_response(
+                    diverged_commits_count=0
+                ),
+            }
+        )
+        self.assertFalse(mp.rebase())
+        self.assertEqual(1, len(transport.calls))
+
+    def test_head_changed(self):
+        mp, transport = make_proposal(
+            {
+                MR_URL + "?include_diverged_commits_count=true": mr_response(
+                    sha=NEW_SHA, diverged_commits_count=2
+                ),
+            }
+        )
+        e = self.assertRaises(HeadChanged, mp.rebase, expected_revision=HEAD_REVISION)
+        self.assertEqual((HEAD_REVISION, NEW_REVISION), (e.expected, e.actual))
+        self.assertEqual(1, len(transport.calls))
