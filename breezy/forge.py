@@ -16,6 +16,8 @@
 
 """Helper functions for proposing merges."""
 
+from dataclasses import dataclass
+
 from . import errors, hooks, registry, trace, urlutils
 
 
@@ -177,6 +179,22 @@ class SourceNotDerivedFromTarget(errors.BzrError):
         )
 
 
+@dataclass(frozen=True)
+class DiffRefs:
+    """The revisions a merge proposal's diff was made from.
+
+    Attributes:
+        head_revision: Head of the source branch.
+        base_revision: Merge base of the source and target branches, if known.
+        start_revision: Head of the target branch when the diff was made, if
+            known.
+    """
+
+    head_revision: bytes
+    base_revision: bytes | None
+    start_revision: bytes | None
+
+
 class MergeProposal:
     """A merge proposal.
 
@@ -334,6 +352,22 @@ class MergeProposal:
     def reopen(self):
         """Reopen this merge proposal."""
         raise NotImplementedError(self.reopen)
+
+    def get_diff(self):
+        """Get the diff of this merge proposal as the forge shows it.
+
+        Returns:
+            The changes as a unified diff in git format, as bytes.
+        """
+        raise NotImplementedError(self.get_diff)
+
+    def get_diff_refs(self):
+        """Get the revisions the diff of this merge proposal is made from.
+
+        Returns:
+            A DiffRefs object.
+        """
+        raise NotImplementedError(self.get_diff_refs)
 
 
 class MergeProposalBuilder:

@@ -14,11 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import json
 from datetime import datetime
 
-from dromedary.errors import RedirectRequested
+from dromedary.errors import RedirectRequested, UnexpectedHttpStatus
 
-from breezy.forge import NoSuchProject
+from breezy.forge import DiffRefs, NoSuchProject
 from breezy.tests import TestCase
 
 from ..forge import (
@@ -191,3 +192,50 @@ class MetadataTests(TestCase):
         )
         self.assertEqual(datetime(2026, 1, 1, 10, 0, 0), mp.get_created_at())
         self.assertEqual(datetime(2026, 1, 2, 11, 30, 0, 250000), mp.get_updated_at())
+
+
+MR_URL = "https://gitlab.example.com/api/v4/projects/3/merge_requests/7"
+
+
+class GetDiffTests(TestCase):
+    def test_diff(self):
+        diff = b"diff --git a/foo b/foo\n"
+        transport = FakeTransport({MR_URL + "/raw_diffs": FakeResponse(200, diff)})
+        mp = GitLabMergeProposal(
+            GitLab(transport, "token"), {"project_id": 3, "iid": 7}
+        )
+        self.assertEqual(diff, mp.get_diff())
+
+    def test_error(self):
+        transport = FakeTransport({MR_URL + "/raw_diffs": FakeResponse(404)})
+        mp = GitLabMergeProposal(
+            GitLab(transport, "token"), {"project_id": 3, "iid": 7}
+        )
+        self.assertRaises(UnexpectedHttpStatus, mp.get_diff)
+
+
+class GetDiffRefsTests(TestCase):
+    def test_refs(self):
+        mr = {
+            "project_id": 3,
+            "iid": 7,
+            "sha": "a" * 40,
+            "diff_refs": {
+                "head_sha": "a" * 40,
+                "base_sha": "b" * 40,
+                "start_sha": "c" * 40,
+            },
+        }
+        transport = FakeTransport({MR_URL: FakeResponse(200, json.dumps(mr).encode())})
+        mp = GitLabMergeProposal(
+            GitLab(transport, "token"), {"project_id": 3, "iid": 7}
+        )
+        self.assertEqual(
+            DiffRefs(
+                head_revision=b"git-v1:" + b"a" * 40,
+                base_revision=b"git-v1:" + b"b" * 40,
+                start_revision=b"git-v1:" + b"c" * 40,
+            ),
+            mp.get_diff_refs(),
+        )
+        self.assertEqual(b"git-v1:" + b"a" * 40, mp.get_source_revision())

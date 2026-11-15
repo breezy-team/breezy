@@ -48,6 +48,10 @@ New Features
    and ``get_updated_at``, implemented for GitHub and GitLab, and the
    timestamps for Gitea. (Jelmer Vernooĳ)
 
+ * Merge proposals on GitHub and GitLab now provide their diff, with
+   ``MergeProposal.get_diff``, and the revisions it was made from, with
+   ``MergeProposal.get_diff_refs``. (Jelmer Vernooĳ)
+
 Improvements
 ************
 
