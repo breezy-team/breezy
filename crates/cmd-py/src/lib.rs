@@ -972,6 +972,11 @@ impl PyHookPoint {
             .map_err(|e| pyo3::exceptions::PyKeyError::new_err(e.to_string()))
     }
 
+    /// Remove all registered callbacks.
+    fn clear(&self) {
+        self.callbacks.clear();
+    }
+
     fn __iter__(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let objs = breezy::pyhooks::callables(py, &self.callbacks)?
             .into_iter()

@@ -153,6 +153,11 @@ impl<P> CallbackList<P> {
         Ok(())
     }
 
+    /// Remove every callback.
+    pub fn clear(&self) {
+        self.lock().clear();
+    }
+
     /// The number of callbacks.
     pub fn len(&self) -> usize {
         self.lock().len()

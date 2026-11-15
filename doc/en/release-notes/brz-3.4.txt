@@ -144,6 +144,9 @@ API Changes
    and ``Registry`` base classes are implemented in Rust. They can still be
    subclassed. (Jelmer Vernooĳ)
 
+ * ``HookPoint.clear`` removes every callback from a hook point.
+   (Zainab Mehmut)
+
 Internals
 *********
 

@@ -347,6 +347,17 @@ class TestHook(tests.TestCase):
         hook = HookPoint("foo", "no docs", None, None)
         self.assertRaises(KeyError, hook.uninstall, "my callback")
 
+    def test_clear(self):
+        hook = HookPoint("foo", "no docs", None, None)
+
+        def callback():
+            pass
+
+        hook.hook(callback, "my callback")
+        hook.hook(callback, None)
+        hook.clear()
+        self.assertEqual([], list(hook))
+
     def test___repr(self):
         # The repr should list all the callbacks, with names.
         hook = HookPoint("foo", "no docs", None, None)
