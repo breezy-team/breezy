@@ -30,6 +30,7 @@ from ...forge import (
     DiffRefs,
     Forge,
     ForgeLoginRequired,
+    HeadChanged,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
@@ -767,6 +768,38 @@ class GitLabMergeProposal(MergeProposal):
         )
         self._mr.update(ret)
 
+    def rebase(self, expected_revision=None):
+        """Have GitLab rebase the merge request onto its target branch.
+
+        GitLab rebases in the background, so the head of the merge request
+        may not have moved yet when this returns. GitLab can not refuse
+        based on the head, so expected_revision is compared to the head
+        just before starting the rebase.
+
+        Args:
+            expected_revision: If set, the revision id the head of the merge
+                request must be.
+
+        Returns:
+            False if the merge request was already up to date, True if a
+            rebase was started.
+
+        Raises:
+            HeadChanged: If the head is not expected_revision.
+            PermissionDenied: If the user may not rebase the merge request.
+        """
+        self._mr = self.gl._get_merge_request(
+            self._mr["project_id"], self._mr["iid"], include_diverged_commits_count=True
+        )
+        if expected_revision is not None:
+            actual = self.get_source_revision()
+            if actual != expected_revision:
+                raise HeadChanged(expected_revision, actual)
+        if self._mr["diverged_commits_count"] == 0:
+            return False
+        self.gl._rebase_mr(self._mr["project_id"], self._mr["iid"])
+        return True
+
     def can_be_merged(self):
         """Check if this merge request can be merged.
 
@@ -1306,12 +1339,16 @@ class GitLab(Forge):
             parameters["author_username"] = urlutils.quote(author, "")
         return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
 
-    def _get_merge_request(self, project, merge_id):
+    def _get_merge_request(
+        self, project, merge_id, include_diverged_commits_count=False
+    ):
         """Get detailed information about a specific merge request.
 
         Args:
             project: The project path or ID
             merge_id: The merge request IID (internal ID)
+            include_diverged_commits_count: Whether to include the number of
+                commits the source branch is behind the target branch
 
         Returns:
             A dictionary containing merge request information from GitLab API
@@ -1324,6 +1361,8 @@ class GitLab(Forge):
             urlutils.quote(str(project), ""),
             merge_id,
         )
+        if include_diverged_commits_count:
+            path += "?include_diverged_commits_count=true"
         response = self._api_request("GET", path)
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
@@ -1409,6 +1448,27 @@ class GitLab(Forge):
         response = self._api_request("PUT", path, fields=kwargs)
         if response.status == 200:
             return json.loads(response.data)
+        if response.status == 403:
+            raise transport_errors.PermissionDenied(response.text)
+        _unexpected_status(path, response)
+
+    def _rebase_mr(self, project_id, iid):
+        """Start a rebase of a merge request onto its target branch.
+
+        Args:
+            project_id: The project ID or path
+            iid: The merge request IID (internal ID)
+
+        Raises:
+            PermissionDenied: If user lacks permission to rebase the merge request
+            UnexpectedHttpStatus: If the API request fails
+        """
+        path = "projects/{}/merge_requests/{}/rebase".format(
+            urlutils.quote(str(project_id), ""), iid
+        )
+        response = self._api_request("PUT", path)
+        if response.status == 202:
+            return
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
         _unexpected_status(path, response)

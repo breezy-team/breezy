@@ -52,6 +52,10 @@ New Features
    ``MergeProposal.get_diff``, and the revisions it was made from, with
    ``MergeProposal.get_diff_refs``. (Jelmer Vernooĳ)
 
+ * ``MergeProposal.rebase`` has the forge rebase a proposal onto its
+   target branch, optionally only if its head is still a given revision.
+   Implemented for GitHub and GitLab. (Jelmer Vernooĳ)
+
 Improvements
 ************
 

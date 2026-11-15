@@ -31,6 +31,7 @@ from ...forge import (
     DiffRefs,
     Forge,
     ForgeLoginRequired,
+    HeadChanged,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
@@ -421,6 +422,69 @@ class GitHubMergeProposal(MergeProposal):
             True if the pull request is mergeable, False otherwise.
         """
         return self._pr["mergeable"]
+
+    def _refresh(self):
+        """Fetch the current state of this pull request."""
+        response = self._gh._api_request("GET", self._pr["url"])
+        if response.status != 200:
+            raise UnexpectedHttpStatus(
+                self._pr["url"], response.status, headers=response.getheaders()
+            )
+        self._pr = json.loads(response.text)
+
+    def _check_head(self, expected_revision):
+        """Raise HeadChanged if the head is no longer expected_revision."""
+        self._refresh()
+        actual = self.get_source_revision()
+        if actual != expected_revision:
+            raise HeadChanged(expected_revision, actual)
+
+    def rebase(self, expected_revision=None):
+        """Have GitHub rebase the pull request onto its base branch.
+
+        Args:
+            expected_revision: If set, the revision id the head of the pull
+                request must be.
+
+        Returns:
+            False if the pull request was already up to date, True if
+            GitHub rebased it.
+
+        Raises:
+            HeadChanged: If the head is not expected_revision.
+            GraphqlErrors: If GitHub refused for another reason.
+        """
+        if expected_revision is not None:
+            from ...git.mapping import default_mapping
+
+            expected_sha = default_mapping.revision_id_bzr_to_foreign(
+                expected_revision
+            )[0].decode("ascii")
+        else:
+            expected_sha = None
+        query = """
+mutation ($pullRequestId: ID!, $expectedHeadOid: GitObjectID) {
+  updatePullRequestBranch(input: {
+    pullRequestId: $pullRequestId,
+    expectedHeadOid: $expectedHeadOid,
+    updateMethod: REBASE
+  }) {
+    pullRequest { headRefOid }
+  }
+}
+"""
+        try:
+            self._gh._graphql_request(
+                query, pullRequestId=self._pr["node_id"], expectedHeadOid=expected_sha
+            )
+        except GraphqlErrors as e:
+            # GitHub only says so in the message.
+            if "There are no new commits on the base branch" in e.errors[0]["message"]:
+                return False
+            if expected_revision is not None:
+                self._check_head(expected_revision)
+            raise
+        return True
 
     def merge(self, commit_message=None, auto=False):
         """Merge this pull request.
