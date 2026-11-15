@@ -1108,10 +1108,15 @@ class ProxyHandler(urllib.request.ProxyHandler):
                 # We ignore path since we connect to a proxy
                 "path": None,
             }
-        if parsed_url.port is None:
-            phost = parsed_url.host
-        else:
-            phost = parsed_url.host + ":%d" % parsed_url.port
+        phost = parsed_url.host
+        if ":" in phost:  # IPv6
+            phost = "[{}]".format(phost)
+        port = parsed_url.port
+        if port is None:
+            # A proxy URL without a port uses the default port of its scheme
+            port = {"http": 80, "https": 443}.get(parsed_url.scheme)
+        if port is not None:
+            phost += ":%d" % port
         request.set_proxy(phost, type)
         if self._debuglevel >= 3:
             print("set_proxy: proxy set to {}://{}".format(type, phost))
