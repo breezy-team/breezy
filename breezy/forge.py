@@ -17,6 +17,8 @@
 """Helper functions for proposing merges."""
 
 from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
 
 from . import errors, hooks, registry, trace, urlutils
 
@@ -208,6 +210,36 @@ class HeadChanged(errors.BzrError):
             actual: Revision id of the current head.
         """
         errors.BzrError.__init__(self, expected=expected, actual=actual)
+
+
+class ProposalEventKind(Enum):
+    """Kind of event in the history of a merge proposal."""
+
+    PUSH = "push"
+    COMMENT = "comment"
+    REVIEW = "review"
+    APPROVAL = "approval"
+    # Approval withdrawn or changes requested.
+    UNAPPROVAL = "unapproval"
+
+
+@dataclass(frozen=True)
+class ProposalEvent:
+    """An event in the history of a merge proposal.
+
+    :ivar kind: What happened
+    :ivar actor: Login name of who did it, or None if unknown
+    :ivar timestamp: When it happened
+    :ivar revision: Head revid at the time, when known. The revid format is
+        forge-specific, matching how the forge's branches expose revisions.
+    :ivar actor_is_bot: Whether the actor is a bot account
+    """
+
+    kind: ProposalEventKind
+    actor: str | None
+    timestamp: datetime
+    revision: bytes | None = None
+    actor_is_bot: bool = False
 
 
 class MergeProposal:
@@ -402,6 +434,13 @@ class MergeProposal:
             A DiffRefs object.
         """
         raise NotImplementedError(self.get_diff_refs)
+
+    def iter_events(self):
+        """Return the events in the history of this proposal.
+
+        :return: List of ProposalEvent objects, oldest first
+        """
+        raise NotImplementedError(self.iter_events)
 
 
 class MergeProposalBuilder:

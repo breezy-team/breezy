@@ -21,7 +21,13 @@ from datetime import datetime
 
 from dromedary.errors import UnexpectedHttpStatus
 
-from ....forge import DiffRefs, HeadChanged
+from ....forge import (
+    DiffRefs,
+    HeadChanged,
+    NoSuchProject,
+    ProposalEvent,
+    ProposalEventKind,
+)
 from ....git.mapping import default_mapping
 from ....tests import TestCase
 from ..forge import (
@@ -71,7 +77,10 @@ class FakeResponse:
 
 
 class FakeTransport:
-    """A transport answering requests from a table of canned responses."""
+    """A transport answering requests from a table of canned responses.
+
+    A list of responses is answered in order, one per request.
+    """
 
     base = "https://api.github.com/"
 
@@ -81,7 +90,10 @@ class FakeTransport:
 
     def request(self, method, url, headers=None, body=None, retries=None):
         self.requests.append((method, url, headers, body))
-        return self.responses[(method, url)]
+        response = self.responses[(method, url)]
+        if isinstance(response, list):
+            return response.pop(0)
+        return response
 
 
 class MetadataTests(TestCase):
@@ -308,3 +320,194 @@ class RebaseTests(TestCase):
             }
         )
         self.assertRaises(GraphqlErrors, mp.rebase, expected_revision=HEAD_REVISION)
+
+
+def timeline_page(nodes, cursor=None):
+    return FakeResponse(
+        200,
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "timelineItems": {
+                            "nodes": nodes,
+                            "pageInfo": {
+                                "hasNextPage": cursor is not None,
+                                "endCursor": cursor,
+                            },
+                        }
+                    }
+                }
+            }
+        },
+    )
+
+
+def revid(sha):
+    return default_mapping.revision_id_foreign_to_bzr(sha.encode("ascii"))
+
+
+class IterEventsTests(TestCase):
+    def test_events(self):
+        user = {"__typename": "User", "login": "alice"}
+        bot = {"__typename": "Bot", "login": "ci"}
+        transport = FakeTransport(
+            {
+                ("POST", GRAPHQL_URL): [
+                    timeline_page(
+                        [
+                            {
+                                "__typename": "IssueComment",
+                                "createdAt": "2026-01-01T10:00:00Z",
+                                "author": bot,
+                            },
+                            {
+                                # Committed before it was pushed.
+                                "__typename": "PullRequestCommit",
+                                "commit": {
+                                    "oid": "a" * 40,
+                                    "committedDate": "2026-01-01T09:00:00Z",
+                                },
+                            },
+                            {
+                                "__typename": "PullRequestReview",
+                                "submittedAt": None,
+                                "state": "PENDING",
+                                "author": user,
+                                "commit": None,
+                            },
+                        ],
+                        cursor="c1",
+                    ),
+                    timeline_page(
+                        [
+                            {
+                                "__typename": "PullRequestReview",
+                                "submittedAt": "2026-01-02T10:00:00Z",
+                                "state": "CHANGES_REQUESTED",
+                                "author": user,
+                                "commit": {"oid": "a" * 40},
+                            },
+                            {
+                                "__typename": "HeadRefForcePushedEvent",
+                                "createdAt": "2026-01-03T10:00:00Z",
+                                "actor": {"__typename": "User", "login": "bob"},
+                                "afterCommit": {"oid": "b" * 40},
+                            },
+                            {
+                                "__typename": "IssueComment",
+                                "createdAt": "2026-01-03T11:00:00Z",
+                                "author": None,
+                            },
+                            {
+                                "__typename": "PullRequestReview",
+                                "submittedAt": "2026-01-04T10:00:00Z",
+                                "state": "APPROVED",
+                                "author": user,
+                                "commit": {"oid": "b" * 40},
+                            },
+                        ]
+                    ),
+                ],
+            }
+        )
+        mp = GitHubMergeProposal(
+            GitHub(transport), {"html_url": "https://github.com/foo/bar/pull/3"}
+        )
+        self.assertEqual(
+            [
+                ProposalEvent(
+                    kind=ProposalEventKind.PUSH,
+                    actor=None,
+                    timestamp=datetime(2026, 1, 1, 9, 0, 0),
+                    revision=revid("a" * 40),
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.COMMENT,
+                    actor="ci[bot]",
+                    timestamp=datetime(2026, 1, 1, 10, 0, 0),
+                    actor_is_bot=True,
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.UNAPPROVAL,
+                    actor="alice",
+                    timestamp=datetime(2026, 1, 2, 10, 0, 0),
+                    revision=revid("a" * 40),
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.PUSH,
+                    actor="bob",
+                    timestamp=datetime(2026, 1, 3, 10, 0, 0),
+                    revision=revid("b" * 40),
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.COMMENT,
+                    actor=None,
+                    timestamp=datetime(2026, 1, 3, 11, 0, 0),
+                ),
+                ProposalEvent(
+                    kind=ProposalEventKind.APPROVAL,
+                    actor="alice",
+                    timestamp=datetime(2026, 1, 4, 10, 0, 0),
+                    revision=revid("b" * 40),
+                ),
+            ],
+            list(mp.iter_events()),
+        )
+        self.assertEqual(
+            [
+                {"owner": "foo", "name": "bar", "number": 3, "cursor": None},
+                {"owner": "foo", "name": "bar", "number": 3, "cursor": "c1"},
+            ],
+            [json.loads(body)["variables"] for (_, _, _, body) in transport.requests],
+        )
+
+    def test_not_found(self):
+        transport = FakeTransport(
+            {
+                ("POST", GRAPHQL_URL): FakeResponse(
+                    200, {"data": {"repository": None}}
+                ),
+            }
+        )
+        mp = GitHubMergeProposal(
+            GitHub(transport), {"html_url": "https://github.com/foo/bar/pull/3"}
+        )
+        self.assertRaises(NoSuchProject, mp.iter_events)
+
+    def test_graphql_errors(self):
+        transport = FakeTransport(
+            {
+                ("POST", GRAPHQL_URL): FakeResponse(
+                    200, {"data": None, "errors": [{"message": "boom"}]}
+                ),
+            }
+        )
+        mp = GitHubMergeProposal(
+            GitHub(transport), {"html_url": "https://github.com/foo/bar/pull/3"}
+        )
+        self.assertRaises(GraphqlErrors, mp.iter_events)
+
+    def test_dismissed_review_skipped(self):
+        user = {"__typename": "User", "login": "alice"}
+        transport = FakeTransport(
+            {
+                ("POST", GRAPHQL_URL): [
+                    timeline_page(
+                        [
+                            {
+                                "__typename": "PullRequestReview",
+                                "submittedAt": "2026-01-02T10:00:00Z",
+                                "state": "DISMISSED",
+                                "author": user,
+                                "commit": {"oid": "a" * 40},
+                            },
+                        ]
+                    ),
+                ],
+            }
+        )
+        mp = GitHubMergeProposal(
+            GitHub(transport), {"html_url": "https://github.com/foo/bar/pull/3"}
+        )
+        self.assertEqual([], mp.iter_events())

@@ -37,10 +37,13 @@ from ...forge import (
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
+    ProposalEvent,
+    ProposalEventKind,
     ReopenFailed,
     UnsupportedForge,
     determine_title,
 )
+from ...git.mapping import sha_to_revid
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...trace import mutter, note
@@ -50,6 +53,36 @@ GITHUB_HOST = "github.com"
 WEB_GITHUB_URL = "https://github.com"
 API_GITHUB_URL = "https://api.github.com"
 DEFAULT_PER_PAGE = 100
+
+_TIMELINE_QUERY = """
+query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) { pullRequest(number: $number) {
+    timelineItems(first: 100, after: $cursor, itemTypes: [
+        ISSUE_COMMENT, PULL_REQUEST_REVIEW, PULL_REQUEST_COMMIT,
+        HEAD_REF_FORCE_PUSHED_EVENT]) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        __typename
+        ... on IssueComment { createdAt author { __typename login } }
+        ... on PullRequestReview {
+          submittedAt state author { __typename login } commit { oid }
+        }
+        ... on PullRequestCommit { commit { oid committedDate } }
+        ... on HeadRefForcePushedEvent {
+          createdAt actor { __typename login } afterCommit { oid }
+        }
+      }
+    }
+  } }
+}"""
+
+_REVIEW_EVENT_KINDS = {
+    "APPROVED": ProposalEventKind.APPROVAL,
+    "CHANGES_REQUESTED": ProposalEventKind.UNAPPROVAL,
+    "COMMENTED": ProposalEventKind.REVIEW,
+    # Dismissed reviews no longer count, so skip them.
+    "DISMISSED": None,
+}
 
 SCHEME_FIELD_MAP = {
     "ssh": "ssh_url",
@@ -662,6 +695,96 @@ mutation ($pullRequestId: ID!) {
             start_revision=sha_to_revid(start_sha),
         )
 
+    def iter_events(self):
+        """Return the events in the history of this pull request.
+
+        Regular commits are dated by their commit date, as GitHub does not
+        record who pushed them and when. Force-pushes come through
+        HeadRefForcePushedEvent, which does.
+
+        Returns:
+            List of ProposalEvent objects, oldest first.
+        """
+        owner, name, number = parse_github_pr_url(self.url)
+        events = []
+        cursor = None
+        while True:
+            data = self._gh._graphql_request(
+                _TIMELINE_QUERY,
+                owner=owner,
+                name=name,
+                number=number,
+                cursor=cursor,
+            )
+            repo = data["repository"]
+            if repo is None or repo["pullRequest"] is None:
+                raise NoSuchProject(f"{owner}/{name}#{number}")
+            items = repo["pullRequest"]["timelineItems"]
+            for item in items["nodes"]:
+                event = _timeline_event(item)
+                if event is not None:
+                    events.append(event)
+            if not items["pageInfo"]["hasNextPage"]:
+                break
+            cursor = items["pageInfo"]["endCursor"]
+        events.sort(key=lambda event: event.timestamp)
+        return events
+
+
+def _actor_fields(actor):
+    """ProposalEvent fields for a GraphQL actor."""
+    if actor is None:
+        return {"actor": None}
+    if actor["__typename"] == "Bot":
+        # GraphQL leaves off the "[bot]" suffix that REST logins have.
+        return {"actor": f"{actor['login']}[bot]", "actor_is_bot": True}
+    return {"actor": actor["login"]}
+
+
+def _timeline_event(item):
+    """Convert a GraphQL pull request timeline item to a ProposalEvent.
+
+    Returns:
+        A ProposalEvent, or None for reviews that do not record an event
+        (pending or dismissed).
+    """
+    kind = item["__typename"]
+    if kind == "IssueComment":
+        return ProposalEvent(
+            kind=ProposalEventKind.COMMENT,
+            timestamp=parse_timestring(item["createdAt"]),
+            **_actor_fields(item["author"]),
+        )
+    if kind == "PullRequestReview":
+        if item["state"] == "PENDING" or item["submittedAt"] is None:
+            return None
+        event_kind = _REVIEW_EVENT_KINDS[item["state"]]
+        if event_kind is None:
+            return None
+        commit = item["commit"]
+        return ProposalEvent(
+            kind=event_kind,
+            timestamp=parse_timestring(item["submittedAt"]),
+            revision=sha_to_revid(commit["oid"]) if commit else None,
+            **_actor_fields(item["author"]),
+        )
+    if kind == "PullRequestCommit":
+        return ProposalEvent(
+            kind=ProposalEventKind.PUSH,
+            actor=None,
+            timestamp=parse_timestring(item["commit"]["committedDate"]),
+            revision=sha_to_revid(item["commit"]["oid"]),
+        )
+    if kind == "HeadRefForcePushedEvent":
+        after = item["afterCommit"]
+        return ProposalEvent(
+            kind=ProposalEventKind.PUSH,
+            timestamp=parse_timestring(item["createdAt"]),
+            revision=sha_to_revid(after["oid"]) if after else None,
+            **_actor_fields(item["actor"]),
+        )
+    raise ValueError(f"unexpected timeline item {kind}")
+
 
 def parse_github_url(url):
     """Parse a GitHub repository URL to extract owner and repository name.
@@ -720,7 +843,7 @@ def parse_github_pr_url(url):
 
     Example:
         >>> parse_github_pr_url("https://github.com/owner/repo/pull/123")
-        ('owner', 'repo', '123')
+        ('owner', 'repo', 123)
     """
     (_scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if host != GITHUB_HOST:
@@ -733,7 +856,7 @@ def parse_github_pr_url(url):
     if pull != "pull":
         raise ValueError("Not a PR URL")
 
-    return (owner, repo_name, pr_id)
+    return (owner, repo_name, int(pr_id))
 
 
 def github_url_to_bzr_url(url, branch_name):

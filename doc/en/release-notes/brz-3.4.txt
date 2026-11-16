@@ -56,6 +56,10 @@ New Features
    target branch, optionally only if its head is still a given revision.
    Implemented for GitHub and GitLab. (Jelmer Vernooĳ)
 
+ * Merge proposals now have an ``iter_events`` method that returns the
+   pushes, comments, reviews and (un)approvals on the proposal, oldest
+   first. Implemented for GitHub and GitLab. (Jelmer Vernooĳ)
+
 Improvements
 ************
 
