@@ -546,7 +546,7 @@ class GitLabMergeProposal(MergeProposal):
             GitLabConflict: If the update conflicts with current state
         """
         try:
-            self.gl._update_merge_request(
+            self._mr = self.gl._update_merge_request(
                 self._mr["project_id"], self._mr["iid"], kwargs
             )
         except GitLabConflict as e:
