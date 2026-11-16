@@ -292,6 +292,72 @@ class ProposalReview:
     url: str | None = None
 
 
+class DiffSide(Enum):
+    """Side of a diff that a line number refers to."""
+
+    OLD = "old"
+    NEW = "new"
+
+
+@dataclass(frozen=True)
+class InlineComment:
+    """A comment on a line of a merge proposal's diff.
+
+    Attributes:
+        path: Path of the file, on the side the comment is on.
+        line: Line number on that side.
+        side: Side of the diff the line is on.
+        body: Text of the comment.
+        old_path: Path of the file before the change, if it was renamed.
+        old_line: Line number in the old file. GitLab needs both line numbers
+            for context (unchanged) lines; set this when commenting on such
+            a line, otherwise leave it and the implementation will fill in
+            one side from ``line``/``side``.
+        new_line: Line number in the new file, likewise.
+    """
+
+    path: str
+    line: int
+    side: DiffSide
+    body: str
+    old_path: str | None = None
+    old_line: int | None = None
+    new_line: int | None = None
+
+
+@dataclass(frozen=True)
+class ThreadReply:
+    """A reply to an existing review thread."""
+
+    thread_id: str
+    body: str
+
+
+class ReviewOutcome(Enum):
+    """What a review asks for."""
+
+    COMMENT = "comment"
+    APPROVE = "approve"
+    REQUEST_CHANGES = "request-changes"
+
+
+def check_review(body, comments, replies, outcome):
+    """Refuse a review that would say nothing.
+
+    Approving needs no text, but commenting and requesting changes do.
+    An empty-string ``body`` is treated as no body, so a non-approving review
+    with only ``body=''`` is refused.
+
+    Raises:
+        ValueError: If the review has no body, comments or replies and
+            does not approve.
+    """
+    if outcome != ReviewOutcome.APPROVE and not (body or comments or replies):
+        raise ValueError(
+            f"a review with outcome {outcome.value} needs a body, comments or replies"
+        )
+
+
 class MergeProposal:
     """A merge proposal.
 
@@ -554,6 +620,37 @@ class MergeProposal:
         :raise NoSuchFile: if there is no file at path in that revision
         """
         raise NotImplementedError(self.get_file_text)
+
+    def post_review(
+        self,
+        revision,
+        *,
+        body=None,
+        comments=(),
+        replies=(),
+        outcome=ReviewOutcome.COMMENT,
+    ):
+        """Post a review, with inline comments and replies to threads.
+
+        Implementations may refresh and replace the proposal's cached state
+        as a side effect of the head check.
+
+        Args:
+            revision: Revision id of the head the comments were written
+                against.
+            body: Optional text for the review as a whole.
+            comments: InlineComment objects.
+            replies: ThreadReply objects.
+            outcome: A ReviewOutcome.
+
+        Returns:
+            URL of the review, or None if the forge has none.
+
+        Raises:
+            HeadChanged: If the head of the proposal is not revision.
+            ValueError: If the review would say nothing (see check_review).
+        """
+        raise NotImplementedError(self.post_review)
 
 
 class MergeProposalBuilder:
