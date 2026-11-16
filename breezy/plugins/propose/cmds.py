@@ -435,7 +435,7 @@ class cmd_my_merge_proposals(Command):  # noqa: D101
                         self.outf.write("\n")
             except _mod_forge.ForgeLoginRequired:
                 warning("Skipping %s, login required.", instance)
-            except (errors.BzrError, transport_errors.TransportError) as e:
+            except transport_errors.TransportError as e:
                 warning("Skipping %s: %s", instance, e)
 
 
@@ -552,7 +552,7 @@ class cmd_forges(Command):  # noqa: D101
             except _mod_forge.ForgeLoginRequired:
                 warning("Skipping %s, login required.", instance)
                 continue
-            except (errors.BzrError, transport_errors.TransportError) as e:
+            except transport_errors.TransportError as e:
                 warning("Skipping %s: %s", instance, e)
                 continue
             if current_user is not None:
