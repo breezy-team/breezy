@@ -148,6 +148,10 @@ API Changes
    and ``Registry`` base classes are implemented in Rust. They can still be
    subclassed. (Jelmer Vernooĳ)
 
+ * ``Merger.run_hooks`` and the ``run_hooks`` argument of ``Merge3Merger``
+   can be set to False to merge without running the merge hooks.
+   (Zainab Mehmut)
+
 Internals
 *********
 

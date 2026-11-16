@@ -3940,3 +3940,19 @@ class TestMergeHooks(TestCaseWithTransport):
 
         self.assertFileEqual(b"content_2", "tree_a/file")
         self.assertLength(1, calls)
+
+    def test_run_hooks_false(self):
+        calls = []
+        for name in ("pre_merge", "merge_file_content", "post_merge"):
+            _mod_merge.Merger.hooks.install_named_hook(name, calls.append, "test")
+        self.tree_a.lock_write()
+        self.addCleanup(self.tree_a.unlock)
+        merger = _mod_merge.Merger.from_revision_ids(
+            self.tree_a, self.tree_b.last_revision(), other_branch=self.tree_b.branch
+        )
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.run_hooks = False
+        merger.do_merge()
+
+        self.assertFileEqual(b"content_2", "tree_a/file")
+        self.assertEqual([], calls)
