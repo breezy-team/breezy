@@ -29,6 +29,7 @@ from ...config import AuthenticationConfig
 from ...forge import (
     AutoMergeUnavailable,
     DiffRefs,
+    DiffSide,
     Forge,
     ForgeLoginRequired,
     HeadChanged,
@@ -40,7 +41,9 @@ from ...forge import (
     ProposalEvent,
     ProposalEventKind,
     ReopenFailed,
+    ReviewOutcome,
     UnsupportedForge,
+    check_review,
     determine_title,
 )
 from ...git.mapping import sha_to_revid
@@ -758,6 +761,109 @@ mutation ($pullRequestId: ID!) {
             cursor = items["pageInfo"]["endCursor"]
         events.sort(key=lambda event: event.timestamp)
         return events
+
+    def post_review(
+        self,
+        revision,
+        *,
+        body=None,
+        comments=(),
+        replies=(),
+        outcome=ReviewOutcome.COMMENT,
+    ):
+        """Post a review, with inline comments and replies to threads.
+
+        The comments go into a pending review, the replies are added to it
+        and it is then submitted. If any step after creating the pending
+        review fails, the pending review is deleted, since GitHub allows only
+        one per user.
+
+        The pull request is refreshed to check its head, and this replaces
+        the cached state on ``self._pr`` as a side effect.
+
+        Returns:
+            URL of the review.
+        """
+        from ...git.mapping import default_mapping
+
+        check_review(body, comments, replies, outcome)
+        head_sha = default_mapping.revision_id_bzr_to_foreign(revision)[0].decode(
+            "ascii"
+        )
+        self._refresh()
+        actual = default_mapping.revision_id_foreign_to_bzr(
+            self._pr["head"]["sha"].encode("ascii")
+        )
+        if actual != revision:
+            raise HeadChanged(revision, actual)
+        threads = [
+            {
+                "path": c.path,
+                "line": c.line,
+                "side": "LEFT" if c.side == DiffSide.OLD else "RIGHT",
+                "body": c.body,
+            }
+            for c in comments
+        ]
+        data = self._gh._graphql_request(
+            """
+mutation ($pull: ID!, $commit: GitObjectID!, $threads: [DraftPullRequestReviewThread]) {
+  addPullRequestReview(input: {pullRequestId: $pull, commitOID: $commit, threads: $threads}) {
+    pullRequestReview { id }
+  }
+}
+""",
+            pull=self._pr["node_id"],
+            commit=head_sha,
+            threads=threads,
+        )
+        review_id = data["addPullRequestReview"]["pullRequestReview"]["id"]
+        try:
+            for reply in replies:
+                self._gh._graphql_request(
+                    """
+mutation ($review: ID!, $thread: ID!, $text: String!) {
+  addPullRequestReviewThreadReply(input: {
+    pullRequestReviewId: $review, pullRequestReviewThreadId: $thread, body: $text
+  }) { comment { id } }
+}
+""",
+                    review=review_id,
+                    thread=reply.thread_id,
+                    text=reply.body,
+                )
+            data = self._gh._graphql_request(
+                """
+mutation ($review: ID!, $event: PullRequestReviewEvent!, $text: String) {
+  submitPullRequestReview(input: {pullRequestReviewId: $review, event: $event, body: $text}) {
+    pullRequestReview { url }
+  }
+}
+""",
+                review=review_id,
+                event={
+                    ReviewOutcome.COMMENT: "COMMENT",
+                    ReviewOutcome.APPROVE: "APPROVE",
+                    ReviewOutcome.REQUEST_CHANGES: "REQUEST_CHANGES",
+                }[outcome],
+                text=body,
+            )
+        except BaseException:
+            # BaseException so that Ctrl-C still cleans up the pending
+            # review, which would otherwise block further ones.
+            try:
+                self._gh._graphql_request(
+                    """
+mutation ($review: ID!) {
+  deletePullRequestReview(input: {pullRequestReviewId: $review}) { clientMutationId }
+}
+""",
+                    review=review_id,
+                )
+            except Exception:
+                mutter("failed to delete pending review %s", review_id)
+            raise
+        return data["submitPullRequestReview"]["pullRequestReview"]["url"]
 
 
 def _actor_fields(actor):

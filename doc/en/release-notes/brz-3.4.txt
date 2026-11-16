@@ -63,6 +63,11 @@ New Features
  * Merge proposals now provide ``get_labels``, ``add_label`` and
    ``remove_label``, implemented for GitHub and GitLab. (Jelmer Vernooĳ)
 
+ * Reviews with inline comments, replies to review threads and an outcome
+   (comment, approve or requesting changes) can now be posted on GitHub and
+   GitLab merge proposals with ``MergeProposal.post_review``. It refuses
+   with ``HeadChanged`` if the proposal's head moved on. (Jelmer Vernooĳ)
+
 Improvements
 ************
 
