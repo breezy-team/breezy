@@ -110,9 +110,11 @@ class FakeTransport:
     def __init__(self, responses):
         self.responses = responses
         self.calls = []
+        self.fields = []
 
     def request(self, method, url, headers=None, fields=None, body=None):
         self.calls.append((method, url))
+        self.fields.append(fields)
         response = self.responses[url]
         if isinstance(response, list):
             response = response.pop(0)
@@ -473,3 +475,43 @@ class IterEventsTests(TestCase):
         mp = GitLabMergeProposal(GitLab(transport, "token"), self.MR)
         e = self.assertRaises(GitLabError, mp.iter_events)
         self.assertEqual("boom", e.error)
+
+
+class LabelsTests(TestCase):
+    def make_proposal(self, responses):
+        transport = FakeTransport(responses)
+        mr = {"project_id": 3, "iid": 7, "labels": ["bug"]}
+        return transport, GitLabMergeProposal(GitLab(transport, "token"), mr)
+
+    def test_get_labels(self):
+        _, mp = self.make_proposal({})
+        self.assertEqual(["bug"], mp.get_labels())
+
+    def test_add_label(self):
+        transport, mp = self.make_proposal(
+            {
+                MR_URL: FakeResponse(
+                    200,
+                    b'{"project_id": 3, "iid": 7, "labels": ["bug", "new label"]}',
+                )
+            }
+        )
+        mp.add_label("new label")
+        self.assertEqual([("PUT", MR_URL)], transport.calls)
+        self.assertEqual([{"add_labels": "new label"}], transport.fields)
+        self.assertEqual(["bug", "new label"], mp.get_labels())
+
+    def test_remove_label(self):
+        transport, mp = self.make_proposal(
+            {MR_URL: FakeResponse(200, b'{"project_id": 3, "iid": 7, "labels": []}')}
+        )
+        mp.remove_label("bug")
+        self.assertEqual([("PUT", MR_URL)], transport.calls)
+        self.assertEqual([{"remove_labels": "bug"}], transport.fields)
+        self.assertEqual([], mp.get_labels())
+
+    def test_comma(self):
+        transport, mp = self.make_proposal({})
+        self.assertRaises(ValueError, mp.add_label, "a,b")
+        self.assertRaises(ValueError, mp.remove_label, "a,b")
+        self.assertEqual([], transport.calls)

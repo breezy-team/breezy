@@ -60,6 +60,9 @@ New Features
    pushes, comments, reviews and (un)approvals on the proposal, oldest
    first. Implemented for GitHub and GitLab. (Jelmer Vernooĳ)
 
+ * Merge proposals now provide ``get_labels``, ``add_label`` and
+   ``remove_label``, implemented for GitHub and GitLab. (Jelmer Vernooĳ)
+
 Improvements
 ************
 

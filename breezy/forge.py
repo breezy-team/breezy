@@ -442,6 +442,24 @@ class MergeProposal:
         """
         raise NotImplementedError(self.iter_events)
 
+    def get_labels(self):
+        """Return the names of the labels attached to this proposal."""
+        raise NotImplementedError(self.get_labels)
+
+    def add_label(self, name):
+        """Attach a label to this proposal.
+
+        The forge creates the label if it does not exist yet.
+        """
+        raise NotImplementedError(self.add_label)
+
+    def remove_label(self, name):
+        """Remove a label from this proposal.
+
+        Silently succeeds if the label is not attached.
+        """
+        raise NotImplementedError(self.remove_label)
+
 
 class MergeProposalBuilder:
     """Merge proposal creator.

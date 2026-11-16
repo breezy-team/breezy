@@ -511,3 +511,68 @@ class IterEventsTests(TestCase):
             GitHub(transport), {"html_url": "https://github.com/foo/bar/pull/3"}
         )
         self.assertEqual([], mp.iter_events())
+
+
+ISSUE_URL = "https://api.github.com/repos/foo/bar/issues/1"
+
+
+class LabelsTests(TestCase):
+    def make_proposal(self, responses):
+        transport = FakeTransport(responses)
+        pr = {"issue_url": ISSUE_URL, "labels": [{"name": "bug"}]}
+        return transport, GitHubMergeProposal(GitHub(transport), pr)
+
+    def test_get_labels(self):
+        _, mp = self.make_proposal({})
+        self.assertEqual(["bug"], mp.get_labels())
+
+    def test_add_label(self):
+        transport, mp = self.make_proposal(
+            {
+                ("POST", ISSUE_URL + "/labels"): FakeResponse(
+                    200, [{"name": "bug"}, {"name": "new label"}]
+                )
+            }
+        )
+        mp.add_label("new label")
+        self.assertEqual(
+            [("POST", ISSUE_URL + "/labels", b'{"labels": ["new label"]}')],
+            [(m, u, b) for (m, u, h, b) in transport.requests],
+        )
+        self.assertEqual(["bug", "new label"], mp.get_labels())
+
+    def test_remove_label(self):
+        transport, mp = self.make_proposal(
+            {("DELETE", ISSUE_URL + "/labels/bug%2Ffix"): FakeResponse(200, [])}
+        )
+        mp.remove_label("bug/fix")
+        self.assertEqual(
+            [("DELETE", ISSUE_URL + "/labels/bug%2Ffix", None)],
+            [(m, u, b) for (m, u, h, b) in transport.requests],
+        )
+        self.assertEqual([], mp.get_labels())
+
+    def test_remove_missing_label(self):
+        _, mp = self.make_proposal(
+            {
+                ("DELETE", ISSUE_URL + "/labels/other"): FakeResponse(
+                    404, {"message": "Label does not exist"}
+                )
+            }
+        )
+        mp.remove_label("other")
+        self.assertEqual(["bug"], mp.get_labels())
+
+    def test_add_label_search_result(self):
+        # Search results only have a summary of the pull request.
+        transport = FakeTransport(
+            {("POST", ISSUE_URL + "/labels"): FakeResponse(200, [{"name": "new"}])}
+        )
+        pr = _LazyDict(
+            {"url": "https://api.github.com/repos/foo/bar/pulls/1"},
+            lambda: {"issue_url": ISSUE_URL, "labels": [], "title": "Title"},
+        )
+        mp = GitHubMergeProposal(GitHub(transport), pr)
+        mp.add_label("new")
+        self.assertEqual(["new"], mp.get_labels())
+        self.assertEqual("Title", mp.get_title())
