@@ -19,8 +19,8 @@
 import os
 from io import BytesIO
 
-from .. import bedding, ignores
-from . import TestCase, TestCaseInTempDir, TestCaseWithTransport
+from .. import bedding, ignores, osutils
+from . import TestCase, TestCaseInTempDir, TestCaseWithTransport, TestSkipped, features
 
 
 class TestParseIgnoreFile(TestCase):
@@ -99,6 +99,18 @@ class TestUserIgnores(TestCaseInTempDir):
 
         ignore_path = bedding.user_ignore_config_path()
         self.assertPathDoesNotExist(ignore_path)
+
+    def test_create_in_readonly_dir(self):
+        self.requireFeature(features.not_running_as_root)
+        if not osutils.supports_posix_readonly():
+            raise TestSkipped("Cannot induce a permission failure")
+        os.mkdir("readonly-home")
+        osutils.make_readonly("readonly-home")
+        self.overrideEnv("BRZ_HOME", os.path.join(self.test_dir, "readonly-home"))
+
+        user_ignores = ignores.get_user_ignores()
+        self.assertEqual(set(ignores.USER_DEFAULTS), user_ignores)
+        self.assertPathDoesNotExist(bedding.user_ignore_config_path())
 
     def test_use_existing(self):
         patterns = ["*.o", "*.py[co]", "\xe5*"]

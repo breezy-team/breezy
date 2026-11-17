@@ -10,6 +10,11 @@ brz 3.3.26
 
 :3.3.26: UNRELEASED
 
+ * Do not fail when the per-user ignore file cannot be written because
+   the home directory is read-only or on a read-only file system.
+   ``brz add`` and ``brz status`` failed with "Permission denied" or
+   "Read-only file system". (Zainab Mehmut)
+
  * Add ``urlutils.join_segment_parameters_encoded`` and
    ``urlutils.split_segment_parameters_decoded``, which encode and decode
    segment parameter values, so a value may hold ``/`` or ``,``. Only the
