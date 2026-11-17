@@ -17,7 +17,7 @@
 import json
 from datetime import datetime
 
-from dromedary.errors import RedirectRequested, UnexpectedHttpStatus
+from dromedary.errors import NoSuchFile, RedirectRequested, UnexpectedHttpStatus
 
 from breezy.forge import (
     DiffRefs,
@@ -515,3 +515,30 @@ class LabelsTests(TestCase):
         self.assertRaises(ValueError, mp.add_label, "a,b")
         self.assertRaises(ValueError, mp.remove_label, "a,b")
         self.assertEqual([], transport.calls)
+
+
+class GetFileTextTests(TestCase):
+    url = (
+        "https://gitlab.example.com/api/v4/projects/3/repository/files/"
+        f"sub%2FREADME/raw?ref={HEAD_SHA}"
+    )
+
+    def make_proposal(self, response):
+        transport = FakeTransport({self.url: response})
+        mr = {"project_id": 4, "target_project_id": 3}
+        return GitLabMergeProposal(GitLab(transport, "token"), mr)
+
+    def test_found(self):
+        mp = self.make_proposal(FakeResponse(200, b"hi\n"))
+        self.assertEqual(b"hi\n", mp.get_file_text("sub/README", HEAD_REVISION))
+
+    def test_missing(self):
+        mp = self.make_proposal(FakeResponse(404))
+        e = self.assertRaises(NoSuchFile, mp.get_file_text, "sub/README", HEAD_REVISION)
+        self.assertEqual("sub/README", e.path)
+
+    def test_error(self):
+        mp = self.make_proposal(FakeResponse(500))
+        self.assertRaises(
+            UnexpectedHttpStatus, mp.get_file_text, "sub/README", HEAD_REVISION
+        )

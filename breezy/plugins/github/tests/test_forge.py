@@ -19,7 +19,7 @@
 import json
 from datetime import datetime
 
-from dromedary.errors import UnexpectedHttpStatus
+from dromedary.errors import NoSuchFile, UnexpectedHttpStatus
 
 from ....forge import (
     DiffRefs,
@@ -576,3 +576,36 @@ class LabelsTests(TestCase):
         mp.add_label("new")
         self.assertEqual(["new"], mp.get_labels())
         self.assertEqual("Title", mp.get_title())
+
+
+def make_file_proposal(responses):
+    transport = FakeTransport(responses)
+    pr = {"base": {"repo": {"full_name": "foo/bar"}}}
+    return GitHubMergeProposal(GitHub(transport), pr)
+
+
+class GetFileTextTests(TestCase):
+    url = (
+        f"https://api.github.com/repos/foo/bar/contents/sub%20dir/README?ref={HEAD_SHA}"
+    )
+
+    def test_found(self):
+        mp = make_file_proposal({("GET", self.url): FakeResponse(200, b"hi\n")})
+        self.assertEqual(b"hi\n", mp.get_file_text("sub dir/README", HEAD_REVISION))
+        self.assertEqual(
+            [("GET", self.url, "application/vnd.github.raw+json")],
+            [(m, u, h["Accept"]) for (m, u, h, b) in mp._gh.transport.requests],
+        )
+
+    def test_missing(self):
+        mp = make_file_proposal({("GET", self.url): FakeResponse(404)})
+        e = self.assertRaises(
+            NoSuchFile, mp.get_file_text, "sub dir/README", HEAD_REVISION
+        )
+        self.assertEqual("sub dir/README", e.path)
+
+    def test_error(self):
+        mp = make_file_proposal({("GET", self.url): FakeResponse(500)})
+        self.assertRaises(
+            UnexpectedHttpStatus, mp.get_file_text, "sub dir/README", HEAD_REVISION
+        )
