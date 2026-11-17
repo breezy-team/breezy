@@ -23,7 +23,7 @@ requires-python = ">=3.10,<3.16"
 dependencies = [
 	"bzrformats>=3.5.3",
 	"configobj",
-	"dromedary>=0.1.7",
+	"dromedary>=0.1.12",
 	"fastbencode",
 	"patiencediff",
 	"merge3",
