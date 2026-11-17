@@ -40,6 +40,10 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * gitlab: Report an error answer to the current user lookup, such as
+   a 403, as that HTTP error rather than as "No supported forge".
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
