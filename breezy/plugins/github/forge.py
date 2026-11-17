@@ -591,6 +591,35 @@ mutation ($pullRequestId: ID!) {
             return None
         return user["login"]
 
+    def get_labels(self):
+        """Return the names of the labels attached to this pull request."""
+        return [label["name"] for label in self._pr["labels"]]
+
+    def _labels_request(self, method, path, body=None, missing_ok=False):
+        url = self._pr["issue_url"] + "/labels" + path
+        response = self._gh._api_request(method, url, body=body)
+        if response.status == 422:
+            raise ValidationFailed(json.loads(response.text))
+        if missing_ok and response.status == 404:
+            return
+        if response.status != 200:
+            raise UnexpectedHttpStatus(
+                url, response.status, headers=response.getheaders()
+            )
+        # GitHub answers with the labels that are now attached.
+        self._pr = {**self._pr, "labels": json.loads(response.text)}
+
+    def add_label(self, name):
+        """Attach a label to this pull request, creating it if necessary."""
+        self._labels_request("POST", "", json.dumps({"labels": [name]}).encode("utf-8"))
+
+    def remove_label(self, name):
+        """Remove a label from this pull request.
+
+        Silently succeeds if the label is not attached.
+        """
+        self._labels_request("DELETE", "/" + urlutils.quote(name, ""), missing_ok=True)
+
     def get_merged_by(self):
         """Get the username who merged this pull request.
 

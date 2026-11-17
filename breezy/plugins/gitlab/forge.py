@@ -514,6 +514,12 @@ def _note_event(note):
     )
 
 
+def _check_label_name(name):
+    # The API takes a comma-separated list of label names.
+    if "," in name:
+        raise ValueError(f"GitLab label names can not contain commas: {name!r}")
+
+
 class GitLabMergeProposal(MergeProposal):
     """A GitLab merge request implementation of the MergeProposal interface.
 
@@ -546,7 +552,7 @@ class GitLabMergeProposal(MergeProposal):
             GitLabConflict: If the update conflicts with current state
         """
         try:
-            self.gl._update_merge_request(
+            self._mr = self.gl._update_merge_request(
                 self._mr["project_id"], self._mr["iid"], kwargs
             )
         except GitLabConflict as e:
@@ -894,6 +900,20 @@ class GitLabMergeProposal(MergeProposal):
         if user is None:
             return None
         return user["username"]
+
+    def get_labels(self):
+        """Return the names of the labels attached to this merge request."""
+        return list(self._mr["labels"])
+
+    def add_label(self, name):
+        """Attach a label to this merge request, creating it if necessary."""
+        _check_label_name(name)
+        self._update(add_labels=name)
+
+    def remove_label(self, name):
+        """Remove a label from this merge request."""
+        _check_label_name(name)
+        self._update(remove_labels=name)
 
     def get_merged_by(self):
         """Get the username of who merged this merge request.
