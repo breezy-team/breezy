@@ -153,38 +153,66 @@ def get_credentials_by_url(url):
     return None
 
 
-def parse_gitea_url(url):
+def get_credentials_by_project_url(url):
+    """Find credentials for the instance a project URL is under, or None.
+
+    The longest matching stored URL wins.
+    """
+    found, found_root = None, ""
+    for _name, credentials in iter_tokens():
+        root = credentials["url"].rstrip("/") + "/"
+        if url.startswith(root) and len(root) > len(found_root):
+            found, found_root = credentials, root
+    return found
+
+
+def _strip_root_path(url, scheme, path, root_path):
+    path = path.strip("/")
+    # SSH URLs leave out the subpath that the web pages are served under.
+    if not root_path or scheme == "git+ssh":
+        return path
+    if not path.startswith(root_path + "/"):
+        raise NotGiteaUrl(url)
+    return path[len(root_path) + 1 :]
+
+
+def parse_gitea_url(url, root_path=""):
     """Parse a Gitea repository URL into (hostname, owner/repo).
 
+    ``root_path`` is the path the instance is served under, if any.
+
     Raises:
-        NotGiteaUrl: If the URL scheme is unsupported or the host is missing.
+        NotGiteaUrl: If the URL scheme is unsupported, the host is missing or
+            the URL is not under ``root_path``.
     """
     (scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if scheme not in ("git+ssh", "https", "http"):
         raise NotGiteaUrl(url)
     if not host:
         raise NotGiteaUrl(url)
-    path = path.strip("/")
+    path = _strip_root_path(url, scheme, path, root_path)
     if path.endswith(".git"):
         path = path[:-4]
     return host, path
 
 
-def parse_gitea_branch_url(branch):
+def parse_gitea_branch_url(branch, root_path=""):
     """Parse a branch into (hostname, owner/repo, branch_name)."""
     url = urlutils.strip_segment_parameters(branch.user_url)
-    host, path = parse_gitea_url(url)
+    host, path = parse_gitea_url(url, root_path)
     return host, path, branch.name
 
 
-def parse_gitea_merge_request_url(url):
+def parse_gitea_merge_request_url(url, root_path=""):
     """Parse a Gitea pull request URL into (hostname, owner/repo, pr_index).
 
     Gitea pull request URLs are of the form
-    ``https://host/owner/repo/pulls/123``.
+    ``https://host/owner/repo/pulls/123``, with ``root_path`` after the host
+    for an instance served under a subpath.
 
     Raises:
-        NotGiteaUrl: If the URL scheme is unsupported or the host is missing.
+        NotGiteaUrl: If the URL scheme is unsupported, the host is missing or
+            the URL is not under ``root_path``.
         NotMergeRequestUrl: If the URL is not a pull request URL.
     """
     (scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
@@ -192,7 +220,7 @@ def parse_gitea_merge_request_url(url):
         raise NotGiteaUrl(url)
     if not host:
         raise NotGiteaUrl(url)
-    path = path.strip("/")
+    path = _strip_root_path(url, scheme, path, root_path)
     parts = path.split("/")
     if len(parts) != 4 or parts[2] != "pulls":
         raise NotMergeRequestUrl(host, url)
@@ -429,6 +457,11 @@ class Gitea(Forge):
         """The hostname of the Gitea instance."""
         return urlutils.parse_url(self.base_url)[3]
 
+    @property
+    def root_path(self):
+        """Return the path the instance is served under, without slashes."""
+        return urlutils.parse_url(self.base_url)[5].strip("/")
+
     def __init__(self, transport, private_token):
         """Initialize with a transport and access token."""
         self.transport = transport
@@ -609,20 +642,22 @@ class Gitea(Forge):
     def hosts(self, branch):
         """Return whether this instance hosts the given branch."""
         try:
-            (host, _project, _branch_name) = parse_gitea_branch_url(branch)
+            (host, _project, _branch_name) = parse_gitea_branch_url(
+                branch, self.root_path
+            )
         except NotGiteaUrl:
             return False
         return self.base_hostname == host
 
     def get_push_url(self, branch):
         """Return the SSH push URL for a branch."""
-        (_host, full_name, branch_name) = parse_gitea_branch_url(branch)
+        (_host, full_name, branch_name) = parse_gitea_branch_url(branch, self.root_path)
         repo = self._get_repo(full_name)
         return gitea_url_to_bzr_url(repo["ssh_url"], branch_name)
 
     def get_web_url(self, branch):
         """Return the web URL for viewing a branch."""
-        (_host, full_name, branch_name) = parse_gitea_branch_url(branch)
+        (_host, full_name, branch_name) = parse_gitea_branch_url(branch, self.root_path)
         repo = self._get_repo(full_name)
         if branch_name:
             return repo["html_url"] + "/src/branch/" + branch_name
@@ -646,7 +681,9 @@ class Gitea(Forge):
             def tag_selector(t):
                 return False
 
-        (_host, base_full_name, _base_branch_name) = parse_gitea_branch_url(base_branch)
+        (_host, base_full_name, _base_branch_name) = parse_gitea_branch_url(
+            base_branch, self.root_path
+        )
         base_repo = self._get_repo(base_full_name)
         if owner is None:
             owner = base_branch.get_config_stack().get("fork-namespace")
@@ -686,7 +723,9 @@ class Gitea(Forge):
         self, base_branch, name, project=None, owner=None, preferred_schemes=None
     ):
         """Open a derived branch from an existing fork."""
-        (_host, base_full_name, _base_branch_name) = parse_gitea_branch_url(base_branch)
+        (_host, base_full_name, _base_branch_name) = parse_gitea_branch_url(
+            base_branch, self.root_path
+        )
         base_repo = self._get_repo(base_full_name)
         if owner is None:
             owner = self.get_current_user()
@@ -722,12 +761,12 @@ class Gitea(Forge):
             source_host,
             source_full_name,
             source_branch_name,
-        ) = parse_gitea_branch_url(source_branch)
+        ) = parse_gitea_branch_url(source_branch, self.root_path)
         (
             target_host,
             target_full_name,
             target_branch_name,
-        ) = parse_gitea_branch_url(target_branch)
+        ) = parse_gitea_branch_url(target_branch, self.root_path)
         if source_host != target_host:
             raise DifferentGiteaInstances(source_host, target_host)
         state = "all" if status == "all" else "open"
@@ -789,7 +828,9 @@ class Gitea(Forge):
     def get_proposal_by_url(self, url):
         """Return the pull request identified by a Gitea pull request URL."""
         try:
-            (host, full_name, index) = parse_gitea_merge_request_url(url)
+            (host, full_name, index) = parse_gitea_merge_request_url(
+                url, self.root_path
+            )
         except NotGiteaUrl as e:
             raise UnsupportedForge(url) from e
         except NotMergeRequestUrl as e:
@@ -825,10 +866,13 @@ class Gitea(Forge):
             (host, _project) = parse_gitea_url(url)
         except NotGiteaUrl as e:
             raise UnsupportedForge(url) from e
-        transport = get_transport(
-            f"https://{host}", possible_transports=possible_transports
-        )
-        credentials = get_credentials_by_url(transport.base)
+        credentials = get_credentials_by_project_url(url)
+        if credentials is not None:
+            base_url = credentials["url"]
+        else:
+            base_url = f"https://{host}"
+            credentials = get_credentials_by_url(base_url)
+        transport = get_transport(base_url, possible_transports=possible_transports)
         if credentials is not None:
             instance = cls(transport, credentials.get("private_token"))
             instance._retrieve_user()
@@ -871,13 +915,13 @@ class GiteaMergeProposalBuilder(MergeProposalBuilder):
             self.source_host,
             self.source_full_name,
             self.source_branch_name,
-        ) = parse_gitea_branch_url(source_branch)
+        ) = parse_gitea_branch_url(source_branch, gitea.root_path)
         self.target_branch = target_branch
         (
             self.target_host,
             self.target_full_name,
             self.target_branch_name,
-        ) = parse_gitea_branch_url(target_branch)
+        ) = parse_gitea_branch_url(target_branch, gitea.root_path)
         if self.source_host != self.target_host:
             raise DifferentGiteaInstances(self.source_host, self.target_host)
 
