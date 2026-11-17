@@ -155,6 +155,11 @@ API Changes
    and ``Registry`` base classes are implemented in Rust. They can still be
    subclassed. (Jelmer Vernooĳ)
 
+ * Add ``urlutils.join_segment_parameters_encoded`` and
+   ``urlutils.split_segment_parameters_decoded`` from ``dromedary``. They
+   encode and decode segment parameter values, as in 3.3.26.
+   (Zainab Mehmut)
+
 Internals
 *********
 
