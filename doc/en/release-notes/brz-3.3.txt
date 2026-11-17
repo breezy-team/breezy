@@ -40,6 +40,11 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * The smart server sends the detail of ``PermissionDenied`` and
+   ``InvalidURL`` without the ``": "`` the client adds itself, so
+   ``brz push`` to ``bzr://`` no longer prints ``: :`` in the error.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
