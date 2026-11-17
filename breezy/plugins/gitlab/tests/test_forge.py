@@ -21,20 +21,26 @@ from dromedary.errors import RedirectRequested, UnexpectedHttpStatus
 
 from breezy.forge import (
     DiffRefs,
+    DiffSide,
     HeadChanged,
+    InlineComment,
     NoSuchProject,
     ProposalEvent,
     ProposalEventKind,
+    ReviewOutcome,
+    ThreadReply,
 )
 from breezy.git.mapping import default_mapping
 from breezy.tests import TestCase
 
 from ..forge import (
     GitLab,
+    GitLabConflict,
     GitLabError,
     GitLabMergeProposal,
     NotGitLabUrl,
     NotMergeRequestUrl,
+    UnpublishedDraftNotes,
     parse_gitlab_merge_request_url,
     parse_timestring,
 )
@@ -95,6 +101,10 @@ class FakeResponse:
         self.status = status
         self.data = data
 
+    @property
+    def text(self):
+        return self.data.decode("utf-8")
+
     def getheader(self, name):
         return None
 
@@ -111,10 +121,12 @@ class FakeTransport:
         self.responses = responses
         self.calls = []
         self.fields = []
+        self.bodies = []
 
     def request(self, method, url, headers=None, fields=None, body=None):
         self.calls.append((method, url))
         self.fields.append(fields)
+        self.bodies.append(body)
         response = self.responses[url]
         if isinstance(response, list):
             response = response.pop(0)
@@ -325,8 +337,16 @@ class RebaseTests(TestCase):
         self.assertEqual(1, len(transport.calls))
 
 
-def json_response(payload):
-    return FakeResponse(200, json.dumps(payload).encode("utf-8"))
+def json_response(data, status=200):
+    return FakeResponse(status, json.dumps(data).encode("utf-8"))
+
+
+def sent(transport, method, url):
+    return [
+        json.loads(body)
+        for (m, u), body in zip(transport.calls, transport.bodies, strict=True)
+        if (m, u) == (method, url)
+    ]
 
 
 def notes_page(nodes, cursor=None):
@@ -514,4 +534,242 @@ class LabelsTests(TestCase):
         transport, mp = self.make_proposal({})
         self.assertRaises(ValueError, mp.add_label, "a,b")
         self.assertRaises(ValueError, mp.remove_label, "a,b")
+
+
+REVIEW_MR = {
+    "project_id": 3,
+    "iid": 7,
+    "sha": HEAD_SHA,
+    "web_url": "https://gitlab.example.com/foo/bar/-/merge_requests/7",
+    "diff_refs": {
+        "head_sha": HEAD_SHA,
+        "base_sha": "c" * 40,
+        "start_sha": "d" * 40,
+    },
+}
+
+
+class PostReviewTests(TestCase):
+    def make_proposal(self, responses):
+        responses = {
+            MR_URL: json_response(REVIEW_MR),
+            MR_URL + "/draft_notes?page=1": json_response([]),
+            **responses,
+        }
+        transport = FakeTransport(responses)
+        mp = GitLabMergeProposal(
+            GitLab(transport, "token"), {"project_id": 3, "iid": 7}
+        )
+        return transport, mp
+
+    def test_review(self):
+        transport, mp = self.make_proposal(
+            {
+                MR_URL + "/draft_notes": [
+                    json_response({"id": 1}, 201),
+                    json_response({"id": 2}, 201),
+                    json_response({"id": 3}, 201),
+                    json_response({"id": 4}, 201),
+                ],
+                MR_URL + "/draft_notes/bulk_publish": FakeResponse(204),
+                MR_URL + "/approve": json_response({}, 201),
+            }
+        )
+        self.assertIsNone(
+            mp.post_review(
+                HEAD_REVISION,
+                body="Looks good",
+                comments=[
+                    InlineComment("foo", 3, DiffSide.NEW, "why?"),
+                    InlineComment(
+                        "bar", 5, DiffSide.OLD, "gone?", old_path="baz", new_line=6
+                    ),
+                ],
+                replies=[ThreadReply("gid://gitlab/Discussion/abc", "done")],
+                outcome=ReviewOutcome.APPROVE,
+            )
+        )
+        position = {
+            "position_type": "text",
+            "base_sha": "c" * 40,
+            "start_sha": "d" * 40,
+            "head_sha": HEAD_SHA,
+        }
+        self.assertEqual(
+            [
+                {
+                    "note": "why?",
+                    "position": dict(
+                        position,
+                        old_path="foo",
+                        new_path="foo",
+                        old_line=None,
+                        new_line=3,
+                    ),
+                },
+                {
+                    "note": "gone?",
+                    "position": dict(
+                        position,
+                        old_path="baz",
+                        new_path="bar",
+                        old_line=None,
+                        new_line=6,
+                    ),
+                },
+                {"note": "done", "in_reply_to_discussion_id": "abc"},
+                {"note": "Looks good"},
+            ],
+            sent(transport, "POST", MR_URL + "/draft_notes"),
+        )
+        self.assertEqual(
+            [{}], sent(transport, "POST", MR_URL + "/draft_notes/bulk_publish")
+        )
+        self.assertEqual(
+            [{"sha": HEAD_SHA}], sent(transport, "POST", MR_URL + "/approve")
+        )
+
+    def test_approve_only(self):
+        transport, mp = self.make_proposal(
+            {MR_URL + "/approve": json_response({}, 201)}
+        )
+        mp.post_review(HEAD_REVISION, outcome=ReviewOutcome.APPROVE)
+        self.assertEqual(
+            [
+                ("GET", MR_URL),
+                ("GET", MR_URL + "/draft_notes?page=1"),
+                ("POST", MR_URL + "/approve"),
+            ],
+            transport.calls,
+        )
+
+    def test_approve_head_moved(self):
+        transport, mp = self.make_proposal(
+            {
+                MR_URL: [json_response(REVIEW_MR), mr_response(sha=NEW_SHA)],
+                MR_URL + "/approve": json_response({"message": "SHA mismatch"}, 409),
+            }
+        )
+        e = self.assertRaises(
+            HeadChanged, mp.post_review, HEAD_REVISION, outcome=ReviewOutcome.APPROVE
+        )
+        self.assertEqual((HEAD_REVISION, NEW_REVISION), (e.expected, e.actual))
+        self.assertEqual(("GET", MR_URL), transport.calls[-1])
+
+    def test_approve_conflict_without_head_change(self):
+        _, mp = self.make_proposal(
+            {MR_URL + "/approve": json_response({"message": "conflict"}, 409)}
+        )
+        self.assertRaises(
+            GitLabConflict,
+            mp.post_review,
+            HEAD_REVISION,
+            outcome=ReviewOutcome.APPROVE,
+        )
+
+    def test_request_changes(self):
+        transport, mp = self.make_proposal(
+            {
+                MR_URL + "/draft_notes": json_response({"id": 1}, 201),
+                MR_URL + "/draft_notes/bulk_publish": FakeResponse(204),
+                "https://gitlab.example.com/api/graphql": json_response(
+                    {"data": {"mergeRequestRequestChanges": {"errors": []}}}
+                ),
+            }
+        )
+        mp.post_review(
+            HEAD_REVISION, body="Fix this", outcome=ReviewOutcome.REQUEST_CHANGES
+        )
+        [request] = sent(transport, "POST", "https://gitlab.example.com/api/graphql")
+        self.assertEqual({"path": "foo/bar", "iid": "7"}, request["variables"])
+
+    def test_request_changes_errors(self):
+        _, mp = self.make_proposal(
+            {
+                MR_URL + "/draft_notes": json_response({"id": 1}, 201),
+                MR_URL + "/draft_notes/bulk_publish": FakeResponse(204),
+                "https://gitlab.example.com/api/graphql": json_response(
+                    {
+                        "data": {
+                            "mergeRequestRequestChanges": {
+                                "errors": ["cannot request changes"]
+                            }
+                        }
+                    }
+                ),
+            }
+        )
+        self.assertRaises(
+            GitLabError,
+            mp.post_review,
+            HEAD_REVISION,
+            body="Fix this",
+            outcome=ReviewOutcome.REQUEST_CHANGES,
+        )
+
+    def test_approve_with_comments(self):
+        transport, mp = self.make_proposal(
+            {
+                MR_URL + "/draft_notes": [
+                    json_response({"id": 1}, 201),
+                    json_response({"id": 2}, 201),
+                ],
+                MR_URL + "/draft_notes/bulk_publish": FakeResponse(204),
+                MR_URL + "/approve": json_response({}, 201),
+            }
+        )
+        mp.post_review(
+            HEAD_REVISION,
+            body="Looks good",
+            comments=[InlineComment("foo", 3, DiffSide.NEW, "nit")],
+            outcome=ReviewOutcome.APPROVE,
+        )
+        self.assertEqual(
+            [
+                ("POST", MR_URL + "/draft_notes"),
+                ("POST", MR_URL + "/draft_notes"),
+                ("POST", MR_URL + "/draft_notes/bulk_publish"),
+                ("POST", MR_URL + "/approve"),
+            ],
+            [c for c in transport.calls if c[0] == "POST"],
+        )
+
+    def test_head_changed(self):
+        moved = dict(
+            REVIEW_MR, diff_refs=dict(REVIEW_MR["diff_refs"], head_sha=NEW_SHA)
+        )
+        _, mp = self.make_proposal({MR_URL: json_response(moved)})
+        e = self.assertRaises(HeadChanged, mp.post_review, HEAD_REVISION, body="Hi")
+        self.assertEqual((HEAD_REVISION, NEW_REVISION), (e.expected, e.actual))
+
+    def test_existing_draft_notes(self):
+        _, mp = self.make_proposal(
+            {MR_URL + "/draft_notes?page=1": json_response([{"id": 9}])}
+        )
+        self.assertRaises(
+            UnpublishedDraftNotes, mp.post_review, HEAD_REVISION, body="Hi"
+        )
+
+    def test_failure_deletes_drafts(self):
+        transport, mp = self.make_proposal(
+            {
+                MR_URL + "/draft_notes": [
+                    json_response({"id": 1}, 201),
+                    json_response({"message": "bad position"}, 400),
+                ],
+                MR_URL + "/draft_notes/1": FakeResponse(204),
+            }
+        )
+        self.assertRaises(
+            UnexpectedHttpStatus,
+            mp.post_review,
+            HEAD_REVISION,
+            body="Hi",
+            comments=[InlineComment("foo", 3, DiffSide.NEW, "why?")],
+        )
+        self.assertEqual(("DELETE", MR_URL + "/draft_notes/1"), transport.calls[-1])
+
+    def test_empty(self):
+        transport, mp = self.make_proposal({})
+        self.assertRaises(ValueError, mp.post_review, HEAD_REVISION)
         self.assertEqual([], transport.calls)

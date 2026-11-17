@@ -28,6 +28,7 @@ from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
 from ...forge import (
     DiffRefs,
+    DiffSide,
     Forge,
     ForgeLoginRequired,
     HeadChanged,
@@ -38,8 +39,10 @@ from ...forge import (
     PrerequisiteBranchUnsupported,
     ProposalEvent,
     ProposalEventKind,
+    ReviewOutcome,
     SourceNotDerivedFromTarget,
     UnsupportedForge,
+    check_review,
     determine_title,
 )
 from ...git.urls import git_url_to_bzr_url
@@ -196,6 +199,24 @@ class GitLabUnprocessable(errors.BzrError):
         errors.BzrError.__init__(self)
         self.error = error
         self.full_response = full_response
+
+
+class UnpublishedDraftNotes(errors.BzrError):
+    """Raised when a review would publish draft notes posted earlier."""
+
+    _fmt = (
+        "%(url)s already has %(count)d unpublished draft note(s); "
+        "publish or delete them first."
+    )
+
+    def __init__(self, url, count):
+        """Initialize the exception.
+
+        Args:
+            url: Web URL of the merge request
+            count: Number of existing draft notes
+        """
+        errors.BzrError.__init__(self, url=url, count=count)
 
 
 class DifferentGitLabInstances(errors.BzrError):
@@ -1043,6 +1064,131 @@ class GitLabMergeProposal(MergeProposal):
         events.sort(key=lambda event: event.timestamp)
         return events
 
+    def post_review(
+        self,
+        revision,
+        *,
+        body=None,
+        comments=(),
+        replies=(),
+        outcome=ReviewOutcome.COMMENT,
+    ):
+        """Post a review, with inline comments and replies to threads.
+
+        The body, comments and replies are posted as draft notes and then
+        published together. Inline comments are positioned using the diff
+        refs of the latest version of the merge request. APPROVE then
+        approves the merge request; REQUEST_CHANGES marks the current user's
+        review as requesting changes.
+
+        The notes are published before approving or requesting changes, so
+        if the ``/approve`` call or the REQUEST_CHANGES mutation fails the
+        notes stay published without an outcome. GitLab has no bulk-unpublish
+        endpoint, so this cannot be rolled back.
+
+        Returns:
+            None, since GitLab has no URL for a review as such.
+
+        Raises:
+            UnpublishedDraftNotes: If the current user already has draft
+                notes on the merge request, which publishing would include.
+        """
+        from ...git.mapping import default_mapping, sha_to_revid
+
+        check_review(body, comments, replies, outcome)
+        head_sha = default_mapping.revision_id_bzr_to_foreign(revision)[0].decode(
+            "ascii"
+        )
+        project_id, iid = self._mr["project_id"], self._mr["iid"]
+        self._mr = self.gl._get_merge_request(project_id, iid)
+        refs = self._mr["diff_refs"]
+        if refs["head_sha"] != head_sha:
+            raise HeadChanged(revision, sha_to_revid(refs["head_sha"]))
+        path = f"projects/{urlutils.quote(str(project_id), '')}/merge_requests/{iid}"
+        existing = list(self.gl._list_paged(f"{path}/draft_notes"))
+        if existing:
+            raise UnpublishedDraftNotes(self.url, len(existing))
+        notes = []
+        for c in comments:
+            old_line, new_line = c.old_line, c.new_line
+            if old_line is None and new_line is None:
+                if c.side == DiffSide.OLD:
+                    old_line = c.line
+                else:
+                    new_line = c.line
+            position = {
+                "position_type": "text",
+                "base_sha": refs["base_sha"],
+                "start_sha": refs["start_sha"],
+                "head_sha": head_sha,
+                "old_path": c.old_path or c.path,
+                "new_path": c.path,
+                "old_line": old_line,
+                "new_line": new_line,
+            }
+            notes.append({"note": c.body, "position": position})
+        for reply in replies:
+            # Thread ids from the GraphQL API carry a gid:// prefix, while
+            # a numeric id from a REST listing does not; the REST endpoint
+            # only accepts the numeric form.
+            notes.append(
+                {
+                    "note": reply.body,
+                    "in_reply_to_discussion_id": reply.thread_id.removeprefix(
+                        "gid://gitlab/Discussion/"
+                    ),
+                }
+            )
+        if body:
+            notes.append({"note": body})
+        if notes:
+            draft_ids = []
+            try:
+                for note in notes:
+                    draft = self.gl._json_request("POST", f"{path}/draft_notes", note)
+                    draft_ids.append(draft["id"])
+                self.gl._json_request("POST", f"{path}/draft_notes/bulk_publish", {})
+            except BaseException:
+                # BaseException so Ctrl-C still deletes the drafts, which
+                # would otherwise block any further review.
+                for draft_id in draft_ids:
+                    try:
+                        self.gl._json_request(
+                            "DELETE", f"{path}/draft_notes/{draft_id}"
+                        )
+                    except Exception:
+                        mutter("failed to delete draft note %s", draft_id)
+                raise
+        if outcome == ReviewOutcome.APPROVE:
+            try:
+                self.gl._json_request("POST", f"{path}/approve", {"sha": head_sha})
+            except GitLabConflict as e:
+                # 409 also covers e.g. "already approved" and approval-rule
+                # conflicts, so only raise HeadChanged when GitLab says the
+                # SHA does not match. Note that bulk_publish has already run
+                # by this point, so the comments are already public.
+                if e.reason and "SHA" in e.reason:
+                    self._mr = self.gl._get_merge_request(project_id, iid)
+                    actual = self.get_source_revision()
+                    if actual != revision:
+                        raise HeadChanged(revision, actual) from e
+                raise
+        elif outcome == ReviewOutcome.REQUEST_CHANGES:
+            project_path = parse_gitlab_merge_request_url(self.url)[1]
+            data = self.gl._graphql_request(
+                """
+mutation ($path: ID!, $iid: String!) {
+  mergeRequestRequestChanges(input: {projectPath: $path, iid: $iid}) { errors }
+}
+""",
+                path=project_path,
+                iid=str(iid),
+            )
+            failures = data["mergeRequestRequestChanges"]["errors"]
+            if failures:
+                raise GitLabError(failures, data)
+        return None
+
 
 def gitlab_url_to_bzr_url(url, name):
     """Convert a GitLab repository URL to a Breezy URL with branch name.
@@ -1137,6 +1283,45 @@ class GitLab(Forge):
             fields=fields,
             body=body,
         )
+
+    def _json_request(self, method, path, data=None):
+        """Make an API request with a JSON body, returning the decoded reply.
+
+        Args:
+            method: HTTP method
+            path: API path relative to /api/v4/
+            data: Optional object to send as JSON
+
+        Returns:
+            The decoded JSON response, or None if it has no body
+
+        Raises:
+            GitLabConflict: On HTTP 409
+            PermissionDenied: On HTTP 403
+            UnexpectedHttpStatus: On other unsuccessful responses
+        """
+        response = self.transport.request(
+            method,
+            urlutils.join(self.base_url, "api", "v4", path),
+            headers={**self.headers, "Content-Type": "application/json"},
+            body=None if data is None else json.dumps(data).encode("utf-8"),
+        )
+        if response.status == 409:
+            try:
+                message = json.loads(response.data).get("message")
+            except ValueError:
+                message = response.text
+            raise GitLabConflict(message)
+        if response.status == 403:
+            raise transport_errors.PermissionDenied(response.text)
+        if response.status not in (200, 201, 204):
+            _unexpected_status(path, response)
+        if not response.data:
+            return None
+        try:
+            return json.loads(response.data)
+        except ValueError:
+            return None
 
     def _graphql_request(self, query, **variables):
         """Make a GraphQL request.

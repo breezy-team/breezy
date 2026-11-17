@@ -20,8 +20,12 @@ from .. import errors, registry, tests, urlutils
 from .. import forge as _mod_forge
 from ..forge import (
     Forge,
+    InlineComment,
     MergeProposal,
+    ReviewOutcome,
+    ThreadReply,
     UnsupportedForge,
+    check_review,
     determine_title,
     get_forge,
     get_proposal_by_url,
@@ -181,3 +185,26 @@ class IterForgeInstancesTests(tests.TestCase):
             forge_registry=self.make_registry(OtherErrorForge)
         )
         self.assertRaises(errors.BzrError, list, instances)
+
+
+class CheckReviewTests(tests.TestCase):
+    def test_empty_comment(self):
+        self.assertRaises(ValueError, check_review, None, (), (), ReviewOutcome.COMMENT)
+
+    def test_empty_request_changes(self):
+        self.assertRaises(
+            ValueError, check_review, "", (), (), ReviewOutcome.REQUEST_CHANGES
+        )
+
+    def test_empty_approve(self):
+        check_review(None, (), (), ReviewOutcome.APPROVE)
+
+    def test_body(self):
+        check_review("Looks good", (), (), ReviewOutcome.COMMENT)
+
+    def test_comment(self):
+        comment = InlineComment("foo", 1, _mod_forge.DiffSide.NEW, "why?")
+        check_review(None, [comment], (), ReviewOutcome.REQUEST_CHANGES)
+
+    def test_reply(self):
+        check_review(None, (), [ThreadReply("t1", "done")], ReviewOutcome.COMMENT)

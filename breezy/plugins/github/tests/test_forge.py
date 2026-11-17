@@ -23,10 +23,14 @@ from dromedary.errors import UnexpectedHttpStatus
 
 from ....forge import (
     DiffRefs,
+    DiffSide,
     HeadChanged,
+    InlineComment,
     NoSuchProject,
     ProposalEvent,
     ProposalEventKind,
+    ReviewOutcome,
+    ThreadReply,
 )
 from ....git.mapping import default_mapping
 from ....tests import TestCase
@@ -245,9 +249,10 @@ NEW_REVISION = default_mapping.revision_id_foreign_to_bzr(NEW_SHA.encode("ascii"
 GRAPHQL_URL = "https://api.github.com/graphql"
 
 
-def make_proposal(responses):
-    transport = FakeTransport(responses)
-    pr = {"url": PR_URL, "node_id": "PR_1", "head": {"sha": HEAD_SHA}}
+def make_proposal(responses, *, pr=None, transport_cls=FakeTransport):
+    transport = transport_cls(responses)
+    if pr is None:
+        pr = {"url": PR_URL, "node_id": "PR_1", "head": {"sha": HEAD_SHA}}
     return GitHubMergeProposal(GitHub(transport), pr), transport
 
 
@@ -576,3 +581,128 @@ class LabelsTests(TestCase):
         mp.add_label("new")
         self.assertEqual(["new"], mp.get_labels())
         self.assertEqual("Title", mp.get_title())
+
+
+class SequenceTransport(FakeTransport):
+    """A FakeTransport answering repeated requests with successive responses."""
+
+    def request(self, method, url, headers=None, body=None, retries=None):
+        self.requests.append((method, url, headers, body))
+        return self.responses[(method, url)].pop(0)
+
+
+REVIEW_PR = dict(PR, node_id="PR_1")
+
+
+def graphql_response(data):
+    return FakeResponse(200, {"data": data})
+
+
+def graphql_variables(request):
+    return json.loads(request[3])["variables"]
+
+
+class PostReviewTests(TestCase):
+    def make_proposal(self, responses):
+        return make_proposal(responses, pr=REVIEW_PR, transport_cls=SequenceTransport)
+
+    def test_review(self):
+        mp, transport = self.make_proposal(
+            {
+                ("GET", PR_URL): [FakeResponse(200, REVIEW_PR)],
+                ("POST", GRAPHQL_URL): [
+                    graphql_response(
+                        {"addPullRequestReview": {"pullRequestReview": {"id": "R_1"}}}
+                    ),
+                    graphql_response(
+                        {"addPullRequestReviewThreadReply": {"comment": {"id": "C_1"}}}
+                    ),
+                    graphql_response(
+                        {
+                            "submitPullRequestReview": {
+                                "pullRequestReview": {"url": "https://review"}
+                            }
+                        }
+                    ),
+                ],
+            }
+        )
+        url = mp.post_review(
+            HEAD_REVISION,
+            body="Some remarks",
+            comments=[
+                InlineComment("foo", 3, DiffSide.NEW, "why?"),
+                InlineComment("bar", 5, DiffSide.OLD, "gone?"),
+            ],
+            replies=[ThreadReply("PRRT_1", "done")],
+            outcome=ReviewOutcome.REQUEST_CHANGES,
+        )
+        self.assertEqual("https://review", url)
+        self.assertEqual(
+            [
+                ("GET", PR_URL),
+                ("POST", GRAPHQL_URL),
+                ("POST", GRAPHQL_URL),
+                ("POST", GRAPHQL_URL),
+            ],
+            [(m, u) for (m, u, h, b) in transport.requests],
+        )
+        self.assertEqual(
+            {
+                "pull": "PR_1",
+                "commit": HEAD_SHA,
+                "threads": [
+                    {"path": "foo", "line": 3, "side": "RIGHT", "body": "why?"},
+                    {"path": "bar", "line": 5, "side": "LEFT", "body": "gone?"},
+                ],
+            },
+            graphql_variables(transport.requests[1]),
+        )
+        self.assertEqual(
+            {"review": "R_1", "thread": "PRRT_1", "text": "done"},
+            graphql_variables(transport.requests[2]),
+        )
+        self.assertEqual(
+            {"review": "R_1", "event": "REQUEST_CHANGES", "text": "Some remarks"},
+            graphql_variables(transport.requests[3]),
+        )
+
+    def test_head_changed(self):
+        mp, transport = self.make_proposal(
+            {
+                ("GET", PR_URL): [
+                    FakeResponse(200, dict(REVIEW_PR, head={"sha": NEW_SHA}))
+                ]
+            }
+        )
+        e = self.assertRaises(
+            HeadChanged, mp.post_review, HEAD_REVISION, outcome=ReviewOutcome.APPROVE
+        )
+        self.assertEqual((HEAD_REVISION, NEW_REVISION), (e.expected, e.actual))
+        self.assertEqual(1, len(transport.requests))
+
+    def test_failure_deletes_pending_review(self):
+        mp, transport = self.make_proposal(
+            {
+                ("GET", PR_URL): [FakeResponse(200, REVIEW_PR)],
+                ("POST", GRAPHQL_URL): [
+                    graphql_response(
+                        {"addPullRequestReview": {"pullRequestReview": {"id": "R_1"}}}
+                    ),
+                    FakeResponse(200, {"errors": [{"message": "Can not approve"}]}),
+                    graphql_response(
+                        {"deletePullRequestReview": {"clientMutationId": None}}
+                    ),
+                ],
+            }
+        )
+        self.assertRaises(
+            GraphqlErrors, mp.post_review, HEAD_REVISION, outcome=ReviewOutcome.APPROVE
+        )
+        self.assertEqual(4, len(transport.requests))
+        self.assertEqual({"review": "R_1"}, graphql_variables(transport.requests[3]))
+
+    def test_empty(self):
+        mp, transport = self.make_proposal({})
+        self.assertRaises(ValueError, mp.post_review, HEAD_REVISION)
+        self.assertEqual([], transport.requests)
