@@ -40,6 +40,10 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * ``brz status`` no longer fails with ``No such file`` for the shelf
+   directory in a working tree the user cannot write to.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
