@@ -28,6 +28,7 @@ lazy_import(
 from breezy import (
     merge,
     transform,
+    transport as _mod_transport,
 )
 from breezy.bzr import (
     pack,
@@ -518,8 +519,12 @@ class ShelfManager:
 
     def active_shelves(self):
         """Return a list of shelved changes."""
-        active = sorted(self.get_shelf_ids(self.transport.list_dir(".")))
-        return active
+        try:
+            filenames = self.transport.list_dir(".")
+        except _mod_transport.NoSuchFile:
+            # A read-only tree has no shelf directory.
+            return []
+        return sorted(self.get_shelf_ids(filenames))
 
     def last_shelf(self):
         """Return the id of the last-created shelved change."""
