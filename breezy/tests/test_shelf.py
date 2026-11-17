@@ -742,6 +742,12 @@ class TestShelfManager(tests.TestCaseWithTransport):
         shelf_file.close()
         self.assertEqual([1], manager.active_shelves())
 
+    def test_active_shelves_no_shelf_dir(self):
+        manager = self.get_manager()
+        manager.transport.rmdir(".")
+        self.assertEqual([], manager.active_shelves())
+        self.assertIs(None, manager.last_shelf())
+
     def test_delete_shelf(self):
         manager = self.get_manager()
         _shelf_id, shelf_file = manager.new_shelf()
