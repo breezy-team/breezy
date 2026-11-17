@@ -87,6 +87,10 @@ Bug Fixes
 .. Fixes for situations where brz would previously crash or give incorrect
    or undesirable results.
 
+ * When ``brz.log`` cannot be opened, for example when ``BRZ_LOG`` names a
+   directory that does not exist, commands show their messages again and
+   no longer end with ``TypeError`` and exit code 3. (Zainab Mehmut)
+
  * github: Pull requests found by searching, as with
    ``brz my-merge-proposals``, no longer fail with ``TypeError`` when
    their keys, values or items are listed after the full pull request
