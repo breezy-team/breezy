@@ -67,6 +67,10 @@ New Features
    at a revision through the forge API, with
    ``MergeProposal.get_file_text``. (Jelmer Vernooĳ)
 
+ * forge: Add ``MergeProposal.iter_comments`` and
+   ``MergeProposal.iter_reviews``, implemented for GitHub and GitLab.
+   (Jelmer Vernooĳ)
+
 Improvements
 ************
 

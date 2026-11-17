@@ -23,8 +23,11 @@ from breezy.forge import (
     DiffRefs,
     HeadChanged,
     NoSuchProject,
+    ProposalComment,
     ProposalEvent,
     ProposalEventKind,
+    ProposalReview,
+    ReviewVerdict,
 )
 from breezy.git.mapping import default_mapping
 from breezy.tests import TestCase
@@ -91,15 +94,25 @@ class ParseTimestringTests(TestCase):
 
 
 class FakeResponse:
-    def __init__(self, status, data=b""):
+    def __init__(self, status, data=b"", headers=None):
         self.status = status
         self.data = data
+        self.headers = headers or {}
 
-    def getheader(self, name):
-        return None
+    @property
+    def text(self):
+        return self.data.decode("utf-8")
 
     def getheaders(self):
-        return {}
+        return self.headers
+
+    def getheader(self, name):
+        return self.headers.get(name)
+
+
+def json_response(data, next_page=None):
+    headers = {"X-Next-Page": next_page} if next_page else {}
+    return FakeResponse(200, json.dumps(data).encode("utf-8"), headers)
 
 
 class FakeTransport:
@@ -274,10 +287,14 @@ def mr_response(**mr):
     return FakeResponse(200, json.dumps(data).encode("utf-8"))
 
 
+MR_WEB = "https://gitlab.example.com/foo/bar/-/merge_requests/7"
+
+
 def make_proposal(responses):
     transport = FakeTransport(responses)
     mp = GitLabMergeProposal(
-        GitLab(transport, "token"), {"project_id": 3, "iid": 7, "sha": HEAD_SHA}
+        GitLab(transport, "token"),
+        {"project_id": 3, "iid": 7, "sha": HEAD_SHA, "web_url": MR_WEB},
     )
     return mp, transport
 
@@ -325,10 +342,6 @@ class RebaseTests(TestCase):
         self.assertEqual(1, len(transport.calls))
 
 
-def json_response(payload):
-    return FakeResponse(200, json.dumps(payload).encode("utf-8"))
-
-
 def notes_page(nodes, cursor=None):
     return json_response(
         {
@@ -349,7 +362,7 @@ def notes_page(nodes, cursor=None):
     )
 
 
-def note(created_at, username, action=None, bot=False):
+def graphql_note(created_at, username, action=None, bot=False):
     return {
         "system": action is not None,
         "createdAt": created_at,
@@ -384,17 +397,19 @@ class IterEventsTests(TestCase):
                 self.GRAPHQL_URL: [
                     notes_page(
                         [
-                            note("2026-01-01T11:00:00Z", "ci", bot=True),
-                            note("2026-01-01T12:00:00Z", "alice", "requested_changes"),
-                            note("2026-01-03T10:00:00Z", "bob", "commit"),
+                            graphql_note("2026-01-01T11:00:00Z", "ci", bot=True),
+                            graphql_note(
+                                "2026-01-01T12:00:00Z", "alice", "requested_changes"
+                            ),
+                            graphql_note("2026-01-03T10:00:00Z", "bob", "commit"),
                         ],
                         cursor="c1",
                     ),
                     notes_page(
                         [
-                            note("2026-01-04T10:00:00Z", "alice", "approved"),
-                            note("2026-01-04T11:00:00Z", None),
-                            note("2026-01-05T10:00:00Z", "alice", "unapproved"),
+                            graphql_note("2026-01-04T10:00:00Z", "alice", "approved"),
+                            graphql_note("2026-01-04T11:00:00Z", None),
+                            graphql_note("2026-01-05T10:00:00Z", "alice", "unapproved"),
                         ]
                     ),
                 ],
@@ -542,3 +557,196 @@ class GetFileTextTests(TestCase):
         self.assertRaises(
             UnexpectedHttpStatus, mp.get_file_text, "sub/README", HEAD_REVISION
         )
+
+
+def note(id, body, created_at, username="alice", system=False, type=None):
+    return {
+        "id": id,
+        "type": type,
+        "body": body,
+        "author": {"username": username},
+        "created_at": created_at,
+        "system": system,
+    }
+
+
+class IterCommentsTests(TestCase):
+    def test_comments(self):
+        mp, _ = make_proposal(
+            {
+                MR_URL + "/discussions?per_page=50&page=1": json_response(
+                    [
+                        {
+                            "notes": [
+                                note(1, "First", "2024-01-01T00:00:00.000Z"),
+                                note(4, "Reply", "2024-01-04T00:00:00.000Z", "bob"),
+                            ]
+                        },
+                        {
+                            "notes": [
+                                note(
+                                    2,
+                                    "On a line",
+                                    "2024-01-02T00:00:00.000Z",
+                                    type="DiffNote",
+                                ),
+                            ]
+                        },
+                    ],
+                    next_page="2",
+                ),
+                MR_URL + "/discussions?per_page=50&page=2": json_response(
+                    [
+                        {
+                            "notes": [
+                                note(
+                                    3,
+                                    "added 1 commit",
+                                    "2024-01-03T00:00:00.000Z",
+                                    system=True,
+                                ),
+                            ]
+                        },
+                        {
+                            "notes": [
+                                note(5, "Later", "2024-01-03T12:00:00.000Z", "carol"),
+                            ]
+                        },
+                    ]
+                ),
+            }
+        )
+        self.assertEqual(
+            [
+                ProposalComment(
+                    author="alice",
+                    body="First",
+                    created_at=datetime(2024, 1, 1),
+                    url=MR_WEB + "#note_1",
+                ),
+                ProposalComment(
+                    author="carol",
+                    body="Later",
+                    created_at=datetime(2024, 1, 3, 12),
+                    url=MR_WEB + "#note_5",
+                ),
+                ProposalComment(
+                    author="bob",
+                    body="Reply",
+                    created_at=datetime(2024, 1, 4),
+                    url=MR_WEB + "#note_4",
+                ),
+            ],
+            list(mp.iter_comments()),
+        )
+
+
+class IterReviewsTests(TestCase):
+    def test_approvals_only(self):
+        mp, _ = make_proposal(
+            {
+                MR_URL + "/approvals": json_response(
+                    {
+                        "approved_by": [
+                            {
+                                "user": {"username": "alice"},
+                                "approved_at": "2024-01-02T00:00:00.000Z",
+                            }
+                        ]
+                    }
+                ),
+                MR_URL + "/reviewers": json_response(
+                    [
+                        {
+                            "user": {"username": "alice"},
+                            "state": "approved",
+                            "created_at": "2024-01-01T00:00:00.000Z",
+                        }
+                    ]
+                ),
+            }
+        )
+        self.assertEqual(
+            [
+                ProposalReview(
+                    author="alice",
+                    verdict=ReviewVerdict.APPROVED,
+                    body=None,
+                    submitted_at=datetime(2024, 1, 2),
+                    revision=None,
+                )
+            ],
+            list(mp.iter_reviews()),
+        )
+
+    def requested_changes_responses(self, notes):
+        return {
+            MR_URL + "/approvals": json_response(
+                {
+                    "approved_by": [
+                        {
+                            "user": {"username": "alice"},
+                            "approved_at": "2024-01-05T00:00:00.000Z",
+                        }
+                    ]
+                }
+            ),
+            MR_URL + "/reviewers": json_response(
+                [
+                    {
+                        "user": {"username": "bob"},
+                        "state": "requested_changes",
+                        "created_at": "2024-01-01T00:00:00.000Z",
+                    }
+                ]
+            ),
+            MR_URL + "/notes?sort=asc&order_by=created_at&per_page=50&page=1": (
+                json_response(notes)
+            ),
+        }
+
+    def test_requested_changes(self):
+        mp, _ = make_proposal(
+            self.requested_changes_responses(
+                [
+                    note(
+                        1,
+                        "requested changes",
+                        "2024-01-02T00:00:00.000Z",
+                        "bob",
+                        system=True,
+                    ),
+                    note(2, "requested changes", "2024-01-03T00:00:00.000Z", "bob"),
+                    note(
+                        3,
+                        "requested changes",
+                        "2024-01-04T00:00:00.000Z",
+                        "bob",
+                        system=True,
+                    ),
+                ]
+            )
+        )
+        self.assertEqual(
+            [
+                ProposalReview(
+                    author="bob",
+                    verdict=ReviewVerdict.CHANGES_REQUESTED,
+                    body=None,
+                    submitted_at=datetime(2024, 1, 4),
+                    revision=None,
+                ),
+                ProposalReview(
+                    author="alice",
+                    verdict=ReviewVerdict.APPROVED,
+                    body=None,
+                    submitted_at=datetime(2024, 1, 5),
+                    revision=None,
+                ),
+            ],
+            list(mp.iter_reviews()),
+        )
+
+    def test_requested_changes_without_note(self):
+        mp, _ = make_proposal(self.requested_changes_responses([]))
+        self.assertRaises(GitLabError, mp.iter_reviews)

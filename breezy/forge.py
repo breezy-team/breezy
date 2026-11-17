@@ -16,6 +16,7 @@
 
 """Helper functions for proposing merges."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -242,6 +243,48 @@ class ProposalEvent:
     actor_is_bot: bool = False
 
 
+@dataclass(frozen=True)
+class ProposalComment:
+    """A comment on a merge proposal."""
+
+    author: str | None
+    body: str
+    created_at: datetime
+    url: str | None = None
+
+
+class ReviewVerdict(Enum):
+    """The verdict of a review of a merge proposal.
+
+    Not every backend emits every verdict. ``COMMENTED`` and ``DISMISSED``
+    are GitHub-specific; GitLab only emits ``APPROVED`` and
+    ``CHANGES_REQUESTED``.
+    """
+
+    APPROVED = "approved"
+    CHANGES_REQUESTED = "changes-requested"
+    # GitHub: review submitted with comments but no verdict.
+    COMMENTED = "commented"
+    # GitHub: an earlier approval or request was dismissed.
+    DISMISSED = "dismissed"
+
+
+@dataclass(frozen=True)
+class ProposalReview:
+    """A review of a merge proposal.
+
+    Attributes:
+      revision: Revision id of the head the review applied to, when known
+    """
+
+    author: str | None
+    verdict: ReviewVerdict
+    body: str | None
+    submitted_at: datetime
+    revision: bytes | None
+    url: str | None = None
+
+
 class MergeProposal:
     """A merge proposal.
 
@@ -414,6 +457,24 @@ class MergeProposal:
           body: Body of the comment
         """
         raise NotImplementedError(self.post_comment)
+
+    def iter_comments(self) -> Iterator[ProposalComment]:
+        """Iterate over the comments on the proposal as a whole.
+
+        Comments on specific lines of the diff are not included.
+
+        Returns:
+          Iterator over ProposalComment objects, oldest first
+        """
+        raise NotImplementedError(self.iter_comments)
+
+    def iter_reviews(self) -> Iterator[ProposalReview]:
+        """Iterate over the submitted reviews of the proposal.
+
+        Returns:
+          Iterator over ProposalReview objects
+        """
+        raise NotImplementedError(self.iter_reviews)
 
     def reopen(self):
         """Reopen this merge proposal."""

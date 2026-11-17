@@ -36,8 +36,11 @@ from ...forge import (
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
+    ProposalComment,
     ProposalEvent,
     ProposalEventKind,
+    ProposalReview,
+    ReviewVerdict,
     SourceNotDerivedFromTarget,
     UnsupportedForge,
     determine_title,
@@ -471,6 +474,13 @@ def parse_gitlab_merge_request_url(url):
         raise NotMergeRequestUrl(host, url)
     project_name = "/".join(parts[:-3]) if parts[-3] == "-" else "/".join(parts[:-2])
     return host, project_name, int(parts[-1])
+
+
+def _username(user):
+    """Return the username of a GitLab user object, or None if unknown."""
+    if user is None:
+        return None
+    return user["username"]
 
 
 def _unexpected_status(path, response):
@@ -1064,6 +1074,91 @@ class GitLabMergeProposal(MergeProposal):
             _unexpected_status(api_path, response)
         return response.data
 
+    def _api_path(self, suffix):
+        return "projects/{}/merge_requests/{}/{}".format(
+            urlutils.quote(str(self._mr["project_id"]), ""), self._mr["iid"], suffix
+        )
+
+    def _note_comment(self, note):
+        return ProposalComment(
+            author=_username(note["author"]),
+            body=note["body"],
+            created_at=parse_timestring(note["created_at"]),
+            url="{}#note_{}".format(self._mr["web_url"], note["id"]),
+        )
+
+    def iter_comments(self):
+        """Iterate over the comments on this merge request as a whole.
+
+        System notes and notes in discussions on the diff are not included.
+        """
+        comments = []
+        for discussion in self.gl._list_paged(
+            self._api_path("discussions"), per_page=DEFAULT_PAGE_SIZE
+        ):
+            notes = discussion["notes"]
+            if notes and notes[0]["type"] == "DiffNote":
+                continue
+            comments.extend(
+                self._note_comment(note) for note in notes if not note["system"]
+            )
+        # Replies in a discussion can be newer than later discussions.
+        comments.sort(key=lambda c: c.created_at)
+        return iter(comments)
+
+    def iter_reviews(self):
+        """Iterate over the reviews of this merge request.
+
+        GitLab has no reviews as such. Current approvals are reported as
+        APPROVED reviews, and reviewers whose state is "requested changes"
+        as CHANGES_REQUESTED reviews, dated by their most recent
+        "requested changes" system note. Neither has a body or revision.
+        Withdrawn approvals and earlier verdicts are not reported.
+        """
+        approvals = self.gl._get_json(self._api_path("approvals"))
+        reviews = [
+            ProposalReview(
+                author=_username(approval["user"]),
+                verdict=ReviewVerdict.APPROVED,
+                body=None,
+                submitted_at=parse_timestring(approval["approved_at"]),
+                revision=None,
+            )
+            for approval in approvals["approved_by"]
+        ]
+        requesting = [
+            reviewer["user"]["username"]
+            for reviewer in self.gl._get_json(self._api_path("reviewers"))
+            if reviewer["state"] == "requested_changes"
+        ]
+        if requesting:
+            requested_at = {}
+            for note in self.gl._list_paged(
+                self._api_path("notes"),
+                {"sort": "asc", "order_by": "created_at"},
+                per_page=DEFAULT_PAGE_SIZE,
+            ):
+                if note["system"] and note["body"] == "requested changes":
+                    requested_at[note["author"]["username"]] = note["created_at"]
+            for username in requesting:
+                try:
+                    timestamp = requested_at[username]
+                except KeyError as e:
+                    raise GitLabError(
+                        f"no 'requested changes' note by {username}", None
+                    ) from e
+                reviews.append(
+                    ProposalReview(
+                        author=username,
+                        verdict=ReviewVerdict.CHANGES_REQUESTED,
+                        body=None,
+                        submitted_at=parse_timestring(timestamp),
+                        revision=None,
+                    )
+                )
+        reviews.sort(key=lambda r: r.submitted_at)
+        return iter(reviews)
+
 
 def gitlab_url_to_bzr_url(url, name):
     """Convert a GitLab repository URL to a Breezy URL with branch name.
@@ -1479,6 +1574,20 @@ class GitLab(Forge):
                 _unexpected_status(path, response)
             page = response.getheader("X-Next-Page")
             yield from json.loads(response.data)
+
+    def _get_json(self, path):
+        """Retrieve and decode a JSON object from the API.
+
+        Raises:
+            PermissionDenied: If access is denied to the resource
+            UnexpectedHttpStatus: If the API request fails
+        """
+        response = self._api_request("GET", path)
+        if response.status == 403:
+            raise transport_errors.PermissionDenied(response.text)
+        if response.status != 200:
+            _unexpected_status(path, response)
+        return json.loads(response.data)
 
     def _list_merge_requests(self, author=None, project=None, state=None):
         """List merge requests with optional filtering.
