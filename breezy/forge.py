@@ -727,6 +727,47 @@ class Forge:
         """
         raise NotImplementedError(self.iter_my_proposals)
 
+    def iter_my_review_requests(self, status="open"):
+        """Iterate over proposals the current user is asked to review.
+
+        This includes proposals where the review was requested from a team
+        the current user is a member of.
+
+        :param status: Only yield proposals with this status
+            (one of: 'open', 'closed', 'merged', 'all')
+        :return: Iterator over MergeProposal objects
+        :raise ForgeLoginRequired: Action requires a forge login, but none is
+            known.
+        """
+        raise NotImplementedError(self.iter_my_review_requests)
+
+    def iter_my_reviewed_proposals(self, status="open"):
+        """Iterate over proposals the current user has reviewed.
+
+        Some forges drop the review request once the review is submitted,
+        so these are not necessarily included in iter_my_review_requests.
+
+        :param status: Only yield proposals with this status
+            (one of: 'open', 'closed', 'merged', 'all')
+        :return: Iterator over MergeProposal objects
+        :raise ForgeLoginRequired: Action requires a forge login, but none is
+            known.
+        """
+        raise NotImplementedError(self.iter_my_reviewed_proposals)
+
+    def iter_proposals_in_my_projects(self, status="open", exclude=()):
+        """Iterate over proposals in projects the current user maintains.
+
+        :param status: Only yield proposals with this status
+            (one of: 'open', 'closed', 'merged', 'all')
+        :param exclude: Path prefixes of projects to leave out, e.g.
+            "org" or "org/project"
+        :return: Iterator over MergeProposal objects
+        :raise ForgeLoginRequired: Action requires a forge login, but none is
+            known.
+        """
+        raise NotImplementedError(self.iter_proposals_in_my_projects)
+
     def iter_my_forks(self, owner=None):
         """Iterate over the currently logged in users' forks.
 
@@ -761,6 +802,19 @@ class Forge:
     def get_user_url(self, user):
         """Rerieve the web URL for a user."""
         raise NotImplementedError(self.get_user_url)
+
+
+def under_path_prefix(path, prefixes):
+    """Check whether a path is one of prefixes or below one of them.
+
+    :param path: Path such as "org/project"
+    :param prefixes: Path prefixes such as "org" or "org/project"
+    """
+    for prefix in prefixes:
+        prefix = prefix.rstrip("/")
+        if path == prefix or path.startswith(prefix + "/"):
+            return True
+    return False
 
 
 def determine_title(description):
