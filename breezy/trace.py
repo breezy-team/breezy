@@ -185,11 +185,9 @@ def enable_default_logging():
     :return: A memento from push_log_file for restoring the log state.
     """
     brz_log_file = _open_brz_log()
-    # TODO: What should happen if we fail to open the trace file?  Maybe the
-    # objects should be pointed at /dev/null or the equivalent?  Currently
-    # returns None which will cause failures later.
     if brz_log_file is None:
-        return None
+        # brz.log could not be opened; still show messages on stderr.
+        brz_log_file = _cmd_rs.open_or_create_log_file(os.devnull)
     memento = push_log_file(brz_log_file, short=False)
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding. DEBUG-level
