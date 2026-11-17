@@ -104,7 +104,7 @@ def get_user_ignores():
         try:
             _set_user_ignores(USER_DEFAULTS)
         except OSError as e:
-            if e.errno not in (errno.EPERM, errno.ENOENT):
+            if e.errno not in (errno.EPERM, errno.EACCES, errno.EROFS, errno.ENOENT):
                 raise
         return patterns
 
