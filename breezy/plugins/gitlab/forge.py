@@ -857,8 +857,9 @@ class GitLab(Forge):
     def _retrieve_user(self):
         if self._current_user:
             return
+        url = self._api_url("user")
         try:
-            response = self._api_request("GET", "user")
+            response = self._api_request("GET", url)
         except errors.UnexpectedHttpStatus as e:
             if e.code == 401:
                 raise GitLabLoginMissing(self.base_url)
@@ -871,7 +872,7 @@ class GitLab(Forge):
                 raise GitLabLoginMissing(self.base_url)
             else:
                 raise GitlabLoginError(response.text)
-        raise UnsupportedForge(self.base_url)
+        _unexpected_status(url, response)
 
     @classmethod
     def probe_from_hostname(cls, hostname, possible_transports=None):

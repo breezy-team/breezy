@@ -201,6 +201,13 @@ class UnexpectedStatusTests(TestCase):
         self.assertEqual(url + "api/v4/projects/foo%2Fbar", e.path)
         self.assertEqual(403, e.code)
 
+    def test_current_user(self):
+        url = self._start_server({"/api/v4/user": 403})
+        gl = GitLab(get_transport(url), "token")
+        e = self.assertRaises(UnexpectedHttpStatus, gl.get_current_user)
+        self.assertEqual(url + "api/v4/user", e.path)
+        self.assertEqual(403, e.code)
+
     def test_full_url_on_redirect_check(self):
         url = self._start_server({"/api/v4/projects/foo%2Fbar": 404, "/foo/bar": 403})
         gl = GitLab(get_transport(url), "token")
