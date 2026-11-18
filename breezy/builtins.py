@@ -3104,7 +3104,7 @@ class cmd_added(Command):  # noqa: D101
         self.enter_context(wt.lock_read())
         basis = wt.basis_tree()
         self.enter_context(basis.lock_read())
-        for path in wt.all_versioned_paths():
+        for path in sorted(wt.all_versioned_paths()):
             if basis.has_filename(path):
                 continue
             if path == "":

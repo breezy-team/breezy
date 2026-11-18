@@ -478,6 +478,11 @@ class RevisionSpec_revno(RevisionSpec):
             # the user has overriden the branch to look in.
             branch = Branch.open(branch_spec)
 
+        if revno_spec == "":
+            # An empty revno names the tip of the branch.
+            revno, revision_id = branch.last_revision_info()
+            return branch, revno, revision_id
+
         if dotted:
             try:
                 revision_id = branch.dotted_revno_to_revision_id(

@@ -1324,7 +1324,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return None
         if not ps[-1].is_exclude:
             return None
-        return bytes(ps[-1])
+        return bytes(ps[-1]).decode("utf-8", "replace")
 
     def _get_ignore_manager(self):
         ignoremanager = getattr(self, "_ignoremanager", None)
