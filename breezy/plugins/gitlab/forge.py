@@ -27,6 +27,8 @@ from dromedary import errors as transport_errors
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
 from ...forge import (
+    MERGE_METHOD_MERGE,
+    MERGE_METHOD_SQUASH,
     DiffRefs,
     Forge,
     ForgeLoginRequired,
@@ -810,12 +812,21 @@ class GitLabMergeProposal(MergeProposal):
         """
         self._update(state_event="close")
 
-    def merge(self, commit_message=None, auto=False):
+    def merge(
+        self,
+        commit_message=None,
+        auto=False,
+        method=None,
+        remove_source_branch=False,
+    ):
         """Merge this merge request.
 
         Args:
             commit_message: Optional commit message for the merge commit
             auto: If True, merge automatically when pipeline succeeds
+            method: The merge method to use (merge or squash); None uses the
+                project's default.
+            remove_source_branch: If True, delete the source branch after merge
 
         Raises:
             PermissionDenied: If user lacks permission to merge
@@ -825,6 +836,14 @@ class GitLabMergeProposal(MergeProposal):
             Updates the internal merge request data with the response from GitLab.
             See GitLab API documentation: https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
         """
+        if method in (None, MERGE_METHOD_MERGE):
+            squash = False
+        elif method == MERGE_METHOD_SQUASH:
+            squash = True
+        else:
+            raise NotImplementedError(
+                "merge method %s not supported by GitLab accept-mr" % method
+            )
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
         ret = self.gl._merge_mr(
             self._mr["project_id"],
@@ -832,6 +851,8 @@ class GitLabMergeProposal(MergeProposal):
             kwargs={
                 "merge_commit_message": commit_message,
                 "merge_when_pipeline_succeeds": auto,
+                "squash": squash,
+                "should_remove_source_branch": remove_source_branch,
             },
         )
         self._mr.update(ret)

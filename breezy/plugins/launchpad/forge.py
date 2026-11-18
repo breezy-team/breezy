@@ -23,6 +23,7 @@ import tempfile
 from ... import branch as _mod_branch
 from ... import controldir, errors, urlutils
 from ...forge import (
+    MERGE_METHOD_MERGE,
     AutoMergeUnsupported,
     Forge,
     LabelsUnsupported,
@@ -369,29 +370,45 @@ class LaunchpadMergeProposal(MergeProposal):
         """
         return self._mp.date_merged
 
-    def merge(self, commit_message=None, auto=False):
+    def merge(
+        self,
+        commit_message=None,
+        auto=False,
+        method=None,
+        remove_source_branch=False,
+    ):
         """Merge the source branch into the target branch.
 
         Args:
             commit_message: Optional commit message to use. If None, uses
                 the merge proposal's commit message.
             auto: If True, attempt auto-merge (not supported by Launchpad).
+            method: The merge method to use; only the default merge is supported.
+            remove_source_branch: If True, delete the source branch after merge.
+                Only supported for Bazaar merge proposals.
 
         Raises:
             AutoMergeUnsupported: If auto=True, as Launchpad doesn't support auto-merge.
         """
         if auto:
             raise AutoMergeUnsupported(self)
+        if method is not None and method != MERGE_METHOD_MERGE:
+            raise NotImplementedError("merge method %s unsupported" % method)
+        if remove_source_branch and not self._mp.source_branch:
+            raise NotImplementedError(
+                "removing source branch of a Git merge proposal is not supported"
+            )
         target_branch = _mod_branch.Branch.open(self.get_target_branch_url())
         source_branch = _mod_branch.Branch.open(self.get_source_branch_url())
         # TODO(jelmer): Ideally this would use a memorytree, but merge doesn't
         # support that yet.
         # tree = target_branch.create_memorytree()
         with tempfile.TemporaryDirectory() as tmpdir:
-            tree = target_branch.create_checkout(
-                to_location=tmpdir, lightweight=True)
+            tree = target_branch.create_checkout(to_location=tmpdir, lightweight=True)
             tree.merge_from_branch(source_branch)
             tree.commit(commit_message or self._mp.commit_message)
+        if remove_source_branch:
+            self._mp.source_branch.lp_delete()
 
     def post_comment(self, body):
         """Post a comment on this merge proposal.

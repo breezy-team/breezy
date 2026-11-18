@@ -27,6 +27,9 @@ from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
 from ...config import AuthenticationConfig
 from ...forge import (
+    MERGE_METHOD_MERGE,
+    MERGE_METHOD_REBASE,
+    MERGE_METHOD_SQUASH,
     AutoMergeUnavailable,
     DiffRefs,
     Forge,
@@ -536,13 +539,34 @@ mutation ($pullRequestId: ID!, $expectedHeadOid: GitObjectID) {
             raise
         return True
 
-    def merge(self, commit_message=None, auto=False):
+    _MERGE_METHOD_REST = {
+        MERGE_METHOD_MERGE: "merge",
+        MERGE_METHOD_REBASE: "rebase",
+        MERGE_METHOD_SQUASH: "squash",
+    }
+
+    _MERGE_METHOD_GRAPHQL = {
+        MERGE_METHOD_MERGE: "MERGE",
+        MERGE_METHOD_REBASE: "REBASE",
+        MERGE_METHOD_SQUASH: "SQUASH",
+    }
+
+    def merge(
+        self,
+        commit_message=None,
+        auto=False,
+        method=None,
+        remove_source_branch=False,
+    ):
         """Merge this pull request.
 
         Args:
             commit_message: Optional custom commit message for the merge.
             auto: If True, enable auto-merge instead of immediately merging.
                  Auto-merge will merge the PR automatically when all conditions are met.
+            method: The merge method to use (merge, rebase or squash), or
+                None to use GitHub's default.
+            remove_source_branch: If True, delete the source branch after merge.
 
         Raises:
             AutoMergeUnavailable: If auto-merge is requested but not available.
@@ -550,12 +574,36 @@ mutation ($pullRequestId: ID!, $expectedHeadOid: GitObjectID) {
             ValidationFailed: If GitHub returns a 422 status (validation error).
             UnexpectedHttpStatus: If GitHub returns an unexpected status code.
         """
+        if method is not None and method not in self._MERGE_METHOD_REST:
+            raise ValueError("unknown merge method %r" % method)
+        if auto and remove_source_branch:
+            raise AutoMergeUnavailable(
+                "remove_source_branch is not supported with auto-merge"
+            )
         if auto:
+            if commit_message:
+                lines = commit_message.splitlines(True)
+                commit_headline = lines[0]
+                commit_body = "".join(lines[1:])
+            else:
+                commit_headline = None
+                commit_body = None
+            merge_method = (
+                self._MERGE_METHOD_GRAPHQL[method] if method is not None else None
+            )
+
             graphql_query = """
-mutation ($pullRequestId: ID!) {
+mutation (
+  $pullRequestId: ID!,
+  $mergeMethod: PullRequestMergeMethod,
+  $commitHeadline: String,
+  $commitBody: String
+) {
   enablePullRequestAutoMerge(input: {
     pullRequestId: $pullRequestId,
-    mergeMethod: MERGE
+    mergeMethod: $mergeMethod,
+    commitHeadline: $commitHeadline,
+    commitBody: $commitBody
   }) {
     pullRequest {
       autoMergeRequest {
@@ -570,7 +618,11 @@ mutation ($pullRequestId: ID!) {
 """
             try:
                 self._gh._graphql_request(
-                    graphql_query, pullRequestId=self._pr["node_id"]
+                    graphql_query,
+                    pullRequestId=self._pr["node_id"],
+                    mergeMethod=merge_method,
+                    commitHeadline=commit_headline,
+                    commitBody=commit_body,
                 )
             except GraphqlErrors as e:
                 mutter("graphql errors: %r", e.errors)
@@ -591,6 +643,8 @@ mutation ($pullRequestId: ID!) {
             data = {}
             if commit_message:
                 data["commit_message"] = commit_message
+            if method is not None:
+                data["merge_method"] = self._MERGE_METHOD_REST[method]
             response = self._gh._api_request(
                 "PUT", self._pr["url"] + "/merge", body=json.dumps(data).encode("utf-8")
             )
@@ -600,6 +654,24 @@ mutation ($pullRequestId: ID!) {
                 raise UnexpectedHttpStatus(
                     self._pr["url"], response.status, headers=response.getheaders()
                 )
+        if remove_source_branch:
+            self._delete_source_ref()
+
+    def _delete_source_ref(self):
+        head = self._pr["head"]
+        if head["repo"] is None:
+            raise errors.BzrError(
+                "cannot delete source branch: source repository is gone"
+            )
+        path = "repos/{full_name}/git/refs/heads/{ref}".format(
+            full_name=head["repo"]["full_name"],
+            ref=urlutils.quote(head["ref"], safe="/"),
+        )
+        response = self._gh._api_request("DELETE", path)
+        if response.status != 204:
+            raise UnexpectedHttpStatus(
+                path, response.status, headers=response.getheaders()
+            )
 
     def get_author(self):
         """Return the login of who opened this pull request, or None."""

@@ -25,6 +25,9 @@ from dromedary import errors as transport_errors
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
 from ...forge import (
+    MERGE_METHOD_MERGE,
+    MERGE_METHOD_REBASE,
+    MERGE_METHOD_SQUASH,
     Forge,
     ForgeLoginRequired,
     MergeProposal,
@@ -336,12 +339,28 @@ class GiteaMergeProposal(MergeProposal):
             {"state": "closed"},
         )
 
-    def merge(self, commit_message=None, auto=False):
+    _MERGE_METHOD_DO = {
+        MERGE_METHOD_MERGE: "merge",
+        MERGE_METHOD_REBASE: "rebase",
+        MERGE_METHOD_SQUASH: "squash",
+    }
+
+    def merge(
+        self,
+        commit_message=None,
+        auto=False,
+        method=None,
+        remove_source_branch=False,
+    ):
         """Merge the pull request."""
+        if method is not None and method not in self._MERGE_METHOD_DO:
+            raise ValueError("unknown merge method %r" % method)
         self.gitea._merge_pull(
             self._pr["base"]["repo"]["full_name"],
             self._pr["number"],
             commit_message=commit_message,
+            do=self._MERGE_METHOD_DO[method] if method is not None else None,
+            delete_branch_after_merge=remove_source_branch,
         )
         self._pr = self.gitea._get_pull(
             self._pr["base"]["repo"]["full_name"], self._pr["number"]
@@ -470,11 +489,20 @@ class Gitea(Forge):
             _unexpected_status(self._api_url(path), response)
         return json.loads(response.data)
 
-    def _merge_pull(self, full_name, index, commit_message=None):
+    def _merge_pull(
+        self,
+        full_name,
+        index,
+        commit_message=None,
+        do=None,
+        delete_branch_after_merge=False,
+    ):
         path = f"repos/{full_name}/pulls/{index}/merge"
-        data = {"Do": "merge"}
+        data = {"Do": do or "merge"}
         if commit_message is not None:
             data["MergeMessageField"] = commit_message
+        if delete_branch_after_merge:
+            data["delete_branch_after_merge"] = True
         response = self._api_json_request("POST", path, data)
         if response.status == 403:
             raise transport_errors.PermissionDenied(response.text)
