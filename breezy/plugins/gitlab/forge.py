@@ -77,7 +77,8 @@ _SYSTEM_NOTE_EVENT_KINDS = {
 
 _MAINTAINER_ACCESS = 40
 # Reviewer states of reviewers that have submitted a review.
-_REVIEWED_STATES = {"reviewed", "requested_changes", "approved", "unapproved"}
+_REVIEWED_STATES = {"reviewed", "requested_changes", "approved"}
+
 SCHEME_MAP = {
     "git+ssh": "ssh_url_to_repo",
     "ssh": "ssh_url_to_repo",
@@ -2256,9 +2257,9 @@ class GitLab(Forge):
             yield GitLabMergeProposal(self, mr)
 
     def _get_merge_request_reviewers(self, project_id, iid):
-        path = "projects/%s/merge_requests/%d/reviewers" % (
-            urlutils.quote(str(project_id), ""),
-            iid,
+        path = (
+            f"projects/{urlutils.quote(str(project_id), '')}"
+            f"/merge_requests/{iid:d}/reviewers"
         )
         response = self._api_request("GET", path)
         if response.status == 403:
@@ -2272,6 +2273,9 @@ class GitLab(Forge):
 
         These are the merge requests where the user is a reviewer and has
         submitted a review, approved or requested changes.
+
+        This issues one extra request per candidate merge request to read
+        its reviewer states; GitLab does not expose this in the list.
         """
         username = self.get_current_user()
         for mr in self._list_review_requests(status):
@@ -2288,14 +2292,14 @@ class GitLab(Forge):
     def iter_proposals_in_my_projects(self, status="open", exclude=()):
         """Iterate over merge requests in projects the current user maintains.
 
-        These are the non-archived projects in groups where the user has at
-        least Maintainer access. Projects in the user's own namespace are
-        not included.
+        These are the non-archived projects owned by the user, and those in
+        groups where the user has at least Maintainer access.
 
         Args:
             status: The status to filter by ("open", "closed", "merged", "all")
             exclude: Path prefixes of groups or projects to leave out
         """
+        state = mp_status_to_status(status)
         groups = list(
             self._list_paged(
                 "groups",
@@ -2313,12 +2317,25 @@ class GitLab(Forge):
                 continue
             for mr in self._list_paged(
                 f"groups/{group['id']}/merge_requests",
-                {"state": mp_status_to_status(status), "non_archived": "true"},
+                {"state": state, "non_archived": "true"},
                 per_page=DEFAULT_PAGE_SIZE,
             ):
                 project = mr["references"]["full"].rpartition("!")[0]
                 if not under_path_prefix(project, exclude):
                     yield GitLabMergeProposal(self, mr)
+        for project in self._list_paged(
+            "projects",
+            {"owned": "true", "archived": "false"},
+            per_page=DEFAULT_PAGE_SIZE,
+        ):
+            if under_path_prefix(project["path_with_namespace"], exclude):
+                continue
+            for mr in self._list_paged(
+                f"projects/{project['id']}/merge_requests",
+                {"state": state},
+                per_page=DEFAULT_PAGE_SIZE,
+            ):
+                yield GitLabMergeProposal(self, mr)
 
     def iter_my_forks(self, owner: str | None = None):
         """Iterate over forked projects for a user.

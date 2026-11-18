@@ -833,6 +833,15 @@ class ProposalListingTests(TestCase):
                 ),
                 API_URL + "groups/4/merge_requests?state=opened&non_archived=true"
                 "&per_page=50&page=1": json_response([mr(12, 3, "other/baz")]),
+                API_URL + "projects?owned=true&archived=false"
+                "&per_page=50&page=1": json_response(
+                    [
+                        {"id": 20, "path_with_namespace": "jelmer/own"},
+                        {"id": 21, "path_with_namespace": "jelmer/skip"},
+                    ]
+                ),
+                API_URL + "projects/20/merge_requests?state=opened"
+                "&per_page=50&page=1": json_response([mr(20, 4, "jelmer/own")]),
             }
         )
         gl = GitLab(transport, "token")
@@ -840,11 +849,12 @@ class ProposalListingTests(TestCase):
             [
                 "https://gitlab.example.com/debian/foo/-/merge_requests/1",
                 "https://gitlab.example.com/other/baz/-/merge_requests/3",
+                "https://gitlab.example.com/jelmer/own/-/merge_requests/4",
             ],
             [
                 mp.url
                 for mp in gl.iter_proposals_in_my_projects(
-                    exclude=["excluded", "debian/skip"]
+                    exclude=["excluded", "debian/skip", "jelmer/skip"]
                 )
             ],
         )

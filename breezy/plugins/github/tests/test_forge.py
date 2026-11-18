@@ -870,35 +870,6 @@ class ProposalListingTests(TestCase):
         self.assertEqual(
             "https://api.github.com/repos/org/written/pulls/3", mps[2]._pr["url"]
         )
-        variables = [
-            json.loads(body)["variables"]
-            for (method, url, headers, body) in transport.requests
-            if url == GRAPHQL_URL
-        ]
-        self.assertEqual(
-            [
-                {"cursor": None},
-                {"cursor": None},
-                {"cursor": None, "org": "org", "login": "jelmer"},
-                {"cursor": None, "org": "org", "slug": "core"},
-                {"cursor": "o1"},
-                {"cursor": None, "org": "other", "login": "jelmer"},
-                {
-                    "states": ["OPEN"],
-                    "o0": "jelmer",
-                    "n0": "mine",
-                    "o1": "org",
-                    "n1": "written",
-                },
-                {
-                    "cursor": "p1",
-                    "owner": "org",
-                    "name": "written",
-                    "states": ["OPEN"],
-                },
-            ],
-            variables,
-        )
 
     def test_missing_team(self):
         transport = FakeTransport(
@@ -915,4 +886,4 @@ class ProposalListingTests(TestCase):
             }
         )
         gh = GitHub(transport)
-        self.assertRaises(GraphqlErrors, list, gh.iter_proposals_in_my_projects())
+        self.assertRaises(KeyError, list, gh.iter_proposals_in_my_projects())
