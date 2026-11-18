@@ -182,6 +182,13 @@ class SourceNotDerivedFromTarget(errors.BzrError):
         )
 
 
+MERGE_METHOD_MERGE = "merge"
+MERGE_METHOD_REBASE = "rebase"
+MERGE_METHOD_SQUASH = "squash"
+
+MERGE_METHODS = [MERGE_METHOD_MERGE, MERGE_METHOD_REBASE, MERGE_METHOD_SQUASH]
+
+
 @dataclass(frozen=True)
 class DiffRefs:
     """The revisions a merge proposal's diff was made from.
@@ -396,8 +403,22 @@ class MergeProposal:
         """
         raise NotImplementedError(self.is_closed)
 
-    def merge(self, commit_message=None, auto=False):
-        """Merge this merge proposal."""
+    def merge(
+        self,
+        commit_message=None,
+        auto=False,
+        method=None,
+        remove_source_branch: bool = False,
+    ):
+        """Merge this merge proposal.
+
+        Args:
+            commit_message: Optional custom commit message.
+            auto: If True, enable auto-merge.
+            method: One of the MERGE_METHOD_* constants, or None to let the
+                forge or repository default decide.
+            remove_source_branch: If True, delete the source branch after merge.
+        """
         raise NotImplementedError(self.merge)
 
     def rebase(self, expected_revision=None):
