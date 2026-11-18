@@ -15,10 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import json
+import os
 from datetime import datetime
 
 from dromedary.errors import NoSuchFile, RedirectRequested, UnexpectedHttpStatus
 
+from breezy import bedding, errors
 from breezy.forge import (
     DiffRefs,
     HeadChanged,
@@ -30,7 +32,7 @@ from breezy.forge import (
     ReviewVerdict,
 )
 from breezy.git.mapping import default_mapping
-from breezy.tests import TestCase
+from breezy.tests import TestCase, TestCaseInTempDir
 
 from ..forge import (
     GitLab,
@@ -38,6 +40,7 @@ from ..forge import (
     GitLabMergeProposal,
     NotGitLabUrl,
     NotMergeRequestUrl,
+    iter_tokens,
     parse_gitlab_merge_request_url,
     parse_timestring,
 )
@@ -750,3 +753,14 @@ class IterReviewsTests(TestCase):
     def test_requested_changes_without_note(self):
         mp, _ = make_proposal(self.requested_changes_responses([]))
         self.assertRaises(GitLabError, mp.iter_reviews)
+
+
+class IterTokensTests(TestCaseInTempDir):
+    def test_unparseable_file_is_a_user_error(self):
+        bedding.ensure_config_dir_exists()
+        with open(os.path.join(bedding.config_dir(), "gitlab.conf"), "w") as f:
+            f.write("url = https://salsa.debian.org/\n")
+        e = self.assertRaises(errors.BzrError, list, iter_tokens())
+        self.assertContainsRe(
+            str(e), r"(?s)^Unable to parse forge configuration: .*gitlab\.conf"
+        )
