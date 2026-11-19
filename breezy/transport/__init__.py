@@ -30,6 +30,8 @@ __all__ = [
     "Server",
     "Transport",
     "TransportHooks",
+    "UnsupportedProtocol",
+    "UnusableRedirect",
     "_file_streams",
     "do_catching_redirections",
     "get_transport_from_path",
@@ -99,6 +101,8 @@ from dromedary import _bedding, _config, _ui
 from dromedary.errors import (
     FileExists,
     NoSuchFile,
+    UnsupportedProtocol,
+    UnusableRedirect,
 )
 from dromedary.http import (
     set_auth_header_trace,
