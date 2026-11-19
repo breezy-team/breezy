@@ -23,6 +23,8 @@ from dromedary import errors as transport_errors
 from breezy import bedding
 from breezy.forge import NoSuchProject, UnsupportedForge
 from breezy.tests import TestCase, TestCaseInTempDir
+from breezy.tests.http_utils import TestCaseWithWebserver
+from breezy.transport import get_transport
 
 from ..forge import (
     DEFAULT_PAGE_SIZE,
@@ -30,6 +32,7 @@ from ..forge import (
     GiteaMergeProposal,
     NotGiteaUrl,
     NotMergeRequestUrl,
+    _is_gitea,
     iter_tokens,
     parse_gitea_merge_request_url,
     parse_gitea_url,
@@ -333,6 +336,27 @@ class IterTokensTests(GiteaConfigTestCase):
             UnsupportedForge, Gitea.probe_from_hostname, "gitea.example.com"
         )
         self.assertEqual([], list(iter_tokens()))
+
+
+class IsGiteaTests(TestCaseWithWebserver):
+    def is_gitea(self, version=None):
+        if version is not None:
+            self.build_tree_contents(
+                [("api/",), ("api/v1/",), ("api/v1/version", version)]
+            )
+        return _is_gitea(get_transport(self.get_readonly_url()))
+
+    def test_version(self):
+        self.assertTrue(self.is_gitea(b'{"version": "1.24.6"}'))
+
+    def test_not_found(self):
+        self.assertFalse(self.is_gitea())
+
+    def test_not_json(self):
+        self.assertFalse(self.is_gitea(b"<html></html>"))
+
+    def test_no_version(self):
+        self.assertFalse(self.is_gitea(b'{"name": "x"}'))
 
 
 class GetAuthorTests(TestCase):
