@@ -1394,7 +1394,7 @@ def _filter_revisions_touching_path(branch, path, view_revisions, include_merges
     # the file.
     graph = branch.repository.get_file_graph()
     start_tree = branch.repository.revision_tree(view_revisions[0][0])
-    file_id = start_tree.path2id(path)
+    file_id = start_tree._path2id(path)
     get_parent_map = graph.get_parent_map
     text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revisions]
     next_keys = None
