@@ -528,7 +528,7 @@ class NotBranchError(BzrError):
     Raised when an operation expects a branch but the location does not contain one.
     """
 
-    _fmt = 'Not a branch: "%(path)s"%(detail)s.'
+    _fmt = 'Not a branch: "%(path)s": %(detail)s.'
 
     def __init__(self, path, detail=None, controldir=None):
         """Initialize with path and optional detail information.
@@ -542,7 +542,7 @@ class NotBranchError(BzrError):
 
         BzrError.__init__(self)
         self.path = urlutils.unescape_for_display(path, "ascii")
-        self.detail = ": " + detail if detail is not None else detail
+        self.detail = detail
         self.controldir = controldir
 
     def __repr__(self):
@@ -553,6 +553,10 @@ class NotBranchError(BzrError):
         # GZ 2017-06-08: Not the best place to lazy fill detail in.
         if self.detail is None:
             self.detail = self._get_detail()
+        if not self.detail:
+            from .i18n import gettext
+
+            return gettext('Not a branch: "%(path)s".')
         return super()._get_format_string()
 
     def _get_detail(self):
@@ -569,9 +573,9 @@ class NotBranchError(BzrError):
                 # trying to str() that error.  All this error really cares
                 # about that there's no working repository there, and if
                 # open_repository() fails, there probably isn't.
-                return ": " + e.__class__.__name__
+                return e.__class__.__name__
             else:
-                return ": location is a repository"
+                return "location is a repository"
         return ""
 
 
