@@ -46,6 +46,7 @@ from ...forge import (
     SourceNotDerivedFromTarget,
     UnsupportedForge,
     determine_title,
+    under_path_prefix,
 )
 from ...git.urls import git_url_to_bzr_url
 from ...trace import mutter
@@ -75,6 +76,10 @@ _SYSTEM_NOTE_EVENT_KINDS = {
     "unapproved": ProposalEventKind.UNAPPROVAL,
     "requested_changes": ProposalEventKind.UNAPPROVAL,
 }
+
+_MAINTAINER_ACCESS = 40
+# Reviewer states of reviewers that have submitted a review.
+_REVIEWED_STATES = {"reviewed", "requested_changes", "approved"}
 
 SCHEME_MAP = {
     "git+ssh": "ssh_url_to_repo",
@@ -2250,6 +2255,108 @@ class GitLab(Forge):
         state = mp_status_to_status(status)
         for mp in self._list_merge_requests(author=author, state=state):
             yield GitLabMergeProposal(self, mp)
+
+    def _list_review_requests(self, status):
+        """List the merge requests the current user is a reviewer of."""
+        return self._list_paged(
+            "merge_requests",
+            {
+                "scope": "all",
+                "state": mp_status_to_status(status),
+                "reviewer_username": urlutils.quote(self.get_current_user(), ""),
+            },
+            per_page=DEFAULT_PAGE_SIZE,
+        )
+
+    def iter_my_review_requests(self, status="open"):
+        """Iterate over merge requests the current user is a reviewer of.
+
+        GitLab keeps the user as a reviewer after they have submitted a
+        review, so this includes merge requests they have already reviewed.
+        """
+        for mr in self._list_review_requests(status):
+            yield GitLabMergeProposal(self, mr)
+
+    def _get_merge_request_reviewers(self, project_id, iid):
+        path = (
+            f"projects/{urlutils.quote(str(project_id), '')}"
+            f"/merge_requests/{iid:d}/reviewers"
+        )
+        response = self._api_request("GET", path)
+        if response.status == 403:
+            raise transport_errors.PermissionDenied(response.text)
+        if response.status != 200:
+            _unexpected_status(path, response)
+        return json.loads(response.data)
+
+    def iter_my_reviewed_proposals(self, status="open"):
+        """Iterate over merge requests the current user has reviewed.
+
+        These are the merge requests where the user is a reviewer and has
+        submitted a review, approved or requested changes.
+
+        This issues one extra request per candidate merge request to read
+        its reviewer states; GitLab does not expose this in the list.
+        """
+        username = self.get_current_user()
+        for mr in self._list_review_requests(status):
+            for reviewer in self._get_merge_request_reviewers(
+                mr["project_id"], mr["iid"]
+            ):
+                if (
+                    reviewer["user"]["username"] == username
+                    and reviewer["state"] in _REVIEWED_STATES
+                ):
+                    yield GitLabMergeProposal(self, mr)
+                    break
+
+    def iter_proposals_in_my_projects(self, status="open", exclude=()):
+        """Iterate over merge requests in projects the current user maintains.
+
+        These are the non-archived projects owned by the user, and those in
+        groups where the user has at least Maintainer access.
+
+        Args:
+            status: The status to filter by ("open", "closed", "merged", "all")
+            exclude: Path prefixes of groups or projects to leave out
+        """
+        state = mp_status_to_status(status)
+        groups = list(
+            self._list_paged(
+                "groups",
+                {"min_access_level": str(_MAINTAINER_ACCESS)},
+                per_page=DEFAULT_PAGE_SIZE,
+            )
+        )
+        paths = [group["full_path"] for group in groups]
+        for group in groups:
+            path = group["full_path"]
+            if under_path_prefix(path, exclude):
+                continue
+            # The merge requests of a group include those of its subgroups.
+            if under_path_prefix(path, [p for p in paths if p != path]):
+                continue
+            for mr in self._list_paged(
+                f"groups/{group['id']}/merge_requests",
+                {"state": state, "non_archived": "true"},
+                per_page=DEFAULT_PAGE_SIZE,
+            ):
+                project = mr["references"]["full"].rpartition("!")[0]
+                if not under_path_prefix(project, exclude):
+                    yield GitLabMergeProposal(self, mr)
+        for project in self._list_paged(
+            "projects",
+            {"owned": "true", "archived": "false"},
+            per_page=DEFAULT_PAGE_SIZE,
+        ):
+            if under_path_prefix(project["path_with_namespace"], exclude):
+                continue
+            for mr in self._list_paged(
+                f"projects/{project['id']}/merge_requests",
+                {"state": state},
+                per_page=DEFAULT_PAGE_SIZE,
+            ):
+                yield GitLabMergeProposal(self, mr)
 
     def iter_my_forks(self, owner: str | None = None):
         """Iterate over forked projects for a user.

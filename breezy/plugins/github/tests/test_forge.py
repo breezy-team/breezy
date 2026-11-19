@@ -21,6 +21,7 @@ from datetime import datetime
 
 from dromedary.errors import NoSuchFile, UnexpectedHttpStatus
 
+from .... import urlutils
 from ....forge import (
     DiffRefs,
     HeadChanged,
@@ -719,3 +720,170 @@ class IterReviewsTests(TestCase):
             ],
             list(mp.iter_reviews()),
         )
+
+
+def graphql_page(path, items, has_next=False, cursor=None, key="nodes"):
+    connection = {
+        key: items,
+        "pageInfo": {"hasNextPage": has_next, "endCursor": cursor},
+    }
+    for name in reversed(path):
+        connection = {name: connection}
+    return FakeResponse(200, {"data": connection})
+
+
+def search_responses(query, pulls):
+    url = "https://api.github.com/search/issues?q={};per_page=100;page={}"
+    return {
+        ("GET", url.format(urlutils.quote(query), 1)): FakeResponse(
+            200, {"items": [{"pull_request": pull} for pull in pulls]}
+        ),
+        ("GET", url.format(urlutils.quote(query), 2)): FakeResponse(200, {"items": []}),
+    }
+
+
+class ProposalListingTests(TestCase):
+    def test_review_requests(self):
+        shared = {
+            "url": "https://api.github.com/repos/foo/bar/pulls/1",
+            "html_url": "https://github.com/foo/bar/pull/1",
+        }
+        team_only = {
+            "url": "https://api.github.com/repos/foo/bar/pulls/2",
+            "html_url": "https://github.com/foo/bar/pull/2",
+        }
+        responses = {}
+        responses.update(
+            search_responses(
+                "is:pr is:open archived:false review-requested:@me", [shared]
+            )
+        )
+        responses.update(
+            search_responses(
+                "is:pr is:open archived:false team-review-requested:@me",
+                [shared, team_only],
+            )
+        )
+        mps = list(GitHub(FakeTransport(responses)).iter_my_review_requests())
+        self.assertEqual(
+            [
+                "https://github.com/foo/bar/pull/1",
+                "https://github.com/foo/bar/pull/2",
+            ],
+            [mp.get_web_url() for mp in mps],
+        )
+
+    def test_reviewed(self):
+        transport = FakeTransport(
+            search_responses(
+                "is:pr is:merged archived:false reviewed-by:@me",
+                [
+                    {
+                        "url": "https://api.github.com/repos/foo/bar/pulls/2",
+                        "html_url": "https://github.com/foo/bar/pull/2",
+                    }
+                ],
+            )
+        )
+        [mp] = GitHub(transport).iter_my_reviewed_proposals(status="merged")
+        self.assertEqual("https://github.com/foo/bar/pull/2", mp.get_web_url())
+
+    def test_proposals_in_my_projects(self):
+        def repo(name, archived=False):
+            return {"nameWithOwner": name, "isArchived": archived}
+
+        def pull(name, number):
+            return {"number": number, "url": f"https://github.com/{name}/pull/{number}"}
+
+        transport = FakeTransport(
+            {
+                ("GET", "https://api.github.com/user"): FakeResponse(
+                    200, {"login": "jelmer"}
+                ),
+                ("POST", GRAPHQL_URL): [
+                    graphql_page(
+                        ["viewer", "repositories"],
+                        [
+                            repo("jelmer/mine"),
+                            repo("jelmer/old", archived=True),
+                        ],
+                    ),
+                    graphql_page(
+                        ["viewer", "organizations"], [{"login": "org"}], True, "o1"
+                    ),
+                    graphql_page(
+                        ["organization", "teams"], [{"slug": "core"}, {"slug": "x"}]
+                    ),
+                    graphql_page(
+                        ["organization", "team", "repositories"],
+                        [
+                            {"permission": "WRITE", "node": repo("org/written")},
+                            {"permission": "READ", "node": repo("org/read")},
+                            {"permission": "ADMIN", "node": repo("org/excluded")},
+                            {"permission": "MAINTAIN", "node": repo("jelmer/mine")},
+                        ],
+                        key="edges",
+                    ),
+                    graphql_page(["viewer", "organizations"], [{"login": "other"}]),
+                    graphql_page(["organization", "teams"], []),
+                    FakeResponse(
+                        200,
+                        {
+                            "data": {
+                                "r0": {
+                                    "pullRequests": {
+                                        "nodes": [pull("jelmer/mine", 1)],
+                                        "pageInfo": {
+                                            "hasNextPage": False,
+                                            "endCursor": None,
+                                        },
+                                    }
+                                },
+                                "r1": {
+                                    "pullRequests": {
+                                        "nodes": [pull("org/written", 2)],
+                                        "pageInfo": {
+                                            "hasNextPage": True,
+                                            "endCursor": "p1",
+                                        },
+                                    }
+                                },
+                            }
+                        },
+                    ),
+                    graphql_page(
+                        ["repository", "pullRequests"], [pull("org/written", 3)]
+                    ),
+                ],
+            }
+        )
+        gh = GitHub(transport)
+        mps = list(gh.iter_proposals_in_my_projects(exclude=["org/x", "org/excluded"]))
+        self.assertEqual(
+            [
+                "https://github.com/jelmer/mine/pull/1",
+                "https://github.com/org/written/pull/2",
+                "https://github.com/org/written/pull/3",
+            ],
+            [mp.get_web_url() for mp in mps],
+        )
+        self.assertEqual(
+            "https://api.github.com/repos/org/written/pulls/3", mps[2]._pr["url"]
+        )
+
+    def test_missing_team(self):
+        transport = FakeTransport(
+            {
+                ("GET", "https://api.github.com/user"): FakeResponse(
+                    200, {"login": "jelmer"}
+                ),
+                ("POST", GRAPHQL_URL): [
+                    graphql_page(["viewer", "repositories"], []),
+                    graphql_page(["viewer", "organizations"], [{"login": "org"}]),
+                    graphql_page(["organization", "teams"], [{"slug": "core"}]),
+                    FakeResponse(200, {"data": {"organization": {"team": None}}}),
+                ],
+            }
+        )
+        gh = GitHub(transport)
+        self.assertRaises(KeyError, list, gh.iter_proposals_in_my_projects())

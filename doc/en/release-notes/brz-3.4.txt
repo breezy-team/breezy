@@ -71,6 +71,12 @@ New Features
    ``MergeProposal.iter_reviews``, implemented for GitHub and GitLab.
    (Jelmer Vernooĳ)
 
+ * Forges can now list the proposals the current user is asked to
+   review (``iter_my_review_requests``), has reviewed
+   (``iter_my_reviewed_proposals``) and those in projects they maintain
+   (``iter_proposals_in_my_projects``). Implemented for GitHub and GitLab.
+   (Jelmer Vernooĳ)
+
 Improvements
 ************
 

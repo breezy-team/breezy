@@ -48,6 +48,7 @@ from ...forge import (
     ReviewVerdict,
     UnsupportedForge,
     determine_title,
+    under_path_prefix,
 )
 from ...git.mapping import sha_to_revid
 from ...git.urls import git_url_to_bzr_url
@@ -89,6 +90,61 @@ _REVIEW_EVENT_KINDS = {
     # Dismissed reviews no longer count, so skip them.
     "DISMISSED": None,
 }
+
+# Repositories whose pull requests are listed in a single GraphQL query.
+# 50 x 100 pull requests is 5000 nodes, well under GitHub's cost cap of
+# 500,000 nodes per request.
+_REPOSITORIES_PER_QUERY = 50
+
+_PAGE_INFO = "pageInfo { hasNextPage endCursor }"
+
+_ORGANIZATIONS_QUERY = f"""
+query($cursor: String) {{
+  viewer {{ organizations(first: 100, after: $cursor) {{
+    {_PAGE_INFO} nodes {{ login }}
+  }} }}
+}}"""
+
+_TEAMS_QUERY = f"""
+query($org: String!, $login: String!, $cursor: String) {{
+  organization(login: $org) {{
+    teams(first: 100, after: $cursor, userLogins: [$login]) {{
+      {_PAGE_INFO} nodes {{ slug }}
+    }}
+  }}
+}}"""
+
+_TEAM_REPOSITORIES_QUERY = f"""
+query($org: String!, $slug: String!, $cursor: String) {{
+  organization(login: $org) {{ team(slug: $slug) {{
+    repositories(first: 100, after: $cursor) {{
+      {_PAGE_INFO}
+      edges {{ permission node {{ nameWithOwner isArchived }} }}
+    }}
+  }} }}
+}}"""
+
+_OWN_REPOSITORIES_QUERY = f"""
+query($cursor: String) {{
+  viewer {{
+    repositories(
+      first: 100, after: $cursor,
+      affiliations: [OWNER, COLLABORATOR]
+    ) {{
+      {_PAGE_INFO} nodes {{ nameWithOwner isArchived }}
+    }}
+  }}
+}}"""
+
+_PULLS_FIELDS = f"{{ {_PAGE_INFO} nodes {{ number url }} }}"
+
+_REPOSITORY_PULLS_QUERY = f"""
+query($owner: String!, $name: String!, $states: [PullRequestState!],
+      $cursor: String) {{
+  repository(owner: $owner, name: $name) {{
+    pullRequests(states: $states, first: 100, after: $cursor) {_PULLS_FIELDS}
+  }}
+}}"""
 
 SCHEME_FIELD_MAP = {
     "ssh": "ssh_url",
@@ -1910,15 +1966,36 @@ class GitHub(Forge):
         """
         yield cls(get_transport(API_GITHUB_URL))
 
-    def iter_my_proposals(self, status="open", author=None):
-        """Iterate over pull requests authored by a user.
+    def _lazy_proposal(self, summary):
+        """Create a merge proposal from a summary of a pull request.
+
+        The rest of the pull request is retrieved when it is first needed.
 
         Args:
+            summary: Dictionary with at least the API URL of the pull request
+                under "url".
+        """
+        url = summary["url"]
+
+        def retrieve_full():
+            response = self._api_request("GET", url)
+            if response.status != 200:
+                raise UnexpectedHttpStatus(
+                    url, response.status, headers=response.getheaders()
+                )
+            return json.loads(response.text)
+
+        return GitHubMergeProposal(self, _LazyDict(summary, retrieve_full))
+
+    def _search_summaries(self, qualifiers, status):
+        """Search for pull request summaries.
+
+        Args:
+            qualifiers: Search qualifiers, e.g. ["author:jelmer"].
             status: The status filter ('open', 'closed', 'merged', or 'all').
-            author: Optional author username. If None, uses the current authenticated user.
 
         Yields:
-            GitHubMergeProposal instances representing the user's pull requests.
+            Pull request summary dicts as returned by the search API.
         """
         query = ["is:pr"]
         if status == "open":
@@ -1930,31 +2007,207 @@ class GitHub(Forge):
             query.append("is:closed")
         elif status == "merged":
             query.append("is:merged")
+        query.extend(qualifiers)
+        for issue in self._search_issues(query=" ".join(query)):
+            yield issue["pull_request"]
+
+    def _search_proposals(self, qualifiers, status):
+        """Search for pull requests.
+
+        Args:
+            qualifiers: Search qualifiers, e.g. ["author:jelmer"].
+            status: The status filter ('open', 'closed', 'merged', or 'all').
+
+        Yields:
+            GitHubMergeProposal instances.
+        """
+        for summary in self._search_summaries(qualifiers, status):
+            yield self._lazy_proposal(summary)
+
+    def iter_my_proposals(self, status="open", author=None):
+        """Iterate over pull requests authored by a user.
+
+        Args:
+            status: The status filter ('open', 'closed', 'merged', or 'all').
+            author: Optional author username. If None, uses the current authenticated user.
+
+        Yields:
+            GitHubMergeProposal instances representing the user's pull requests.
+        """
         if author is None:
             author = self.current_user["login"]
-        query.append(f"author:{author}")
-        for issue in self._search_issues(query=" ".join(query)):
+        yield from self._search_proposals([f"author:{author}"], status)
 
-            def retrieve_full():
-                """Lazy loader function to retrieve full pull request data.
+    def iter_my_review_requests(self, status="open"):
+        """Iterate over pull requests the current user is asked to review.
 
-                Returns:
-                    Complete pull request data from GitHub's API.
+        This includes review requests for teams the user is a member of.
+        Pull requests in archived repositories are left out.
+        """
+        seen = set()
+        for qualifier in ("review-requested:@me", "team-review-requested:@me"):
+            for summary in self._search_summaries(["archived:false", qualifier], status):
+                if summary["url"] in seen:
+                    continue
+                seen.add(summary["url"])
+                yield self._lazy_proposal(summary)
 
-                Raises:
-                    UnexpectedHttpStatus: If the API request fails.
-                """
-                response = self._api_request("GET", issue["pull_request"]["url"])  # noqa: B023
-                if response.status != 200:
-                    raise UnexpectedHttpStatus(
-                        issue["pull_request"]["url"],  # noqa: B023
-                        response.status,
-                        headers=response.getheaders(),
-                    )
-                return json.loads(response.text)
+    def iter_my_reviewed_proposals(self, status="open"):
+        """Iterate over pull requests the current user has reviewed.
 
-            yield GitHubMergeProposal(
-                self, _LazyDict(issue["pull_request"], retrieve_full)
+        Pull requests in archived repositories are left out.
+        """
+        return self._search_proposals(["archived:false", "reviewed-by:@me"], status)
+
+    def _graphql_paged(self, query, path, items="nodes", cursor=None, **variables):
+        """Iterate over a connection in a GraphQL query, following its pages.
+
+        Args:
+            query: GraphQL query that takes a $cursor variable.
+            path: Keys leading from the result to the connection, which
+                must include pageInfo { hasNextPage endCursor }.
+            items: Name of the connection field to yield from ("nodes" or
+                "edges").
+            cursor: Cursor to start after.
+            **variables: Other variables for the query.
+        """
+        while True:
+            connection = self._graphql_request(query, cursor=cursor, **variables)
+            for key in path:
+                connection = connection[key]
+                if connection is None:
+                    raise KeyError(key)
+            yield from connection[items]
+            if not connection["pageInfo"]["hasNextPage"]:
+                return
+            cursor = connection["pageInfo"]["endCursor"]
+
+    def _iter_my_teams(self):
+        """Iterate over the teams of the current user as (org, slug)."""
+        login = self.current_user["login"]
+        for org in self._graphql_paged(
+            _ORGANIZATIONS_QUERY, ["viewer", "organizations"]
+        ):
+            for team in self._graphql_paged(
+                _TEAMS_QUERY, ["organization", "teams"], org=org["login"], login=login
+            ):
+                yield org["login"], team["slug"]
+
+    def _my_repositories(self, exclude):
+        """List the repositories the current user maintains.
+
+        These are the repositories the user owns or is a direct collaborator
+        on, plus those that teams the user is a member of have write access
+        to. Archived repositories are left out.
+
+        Args:
+            exclude: Path prefixes of repositories and teams ("org/team") to
+                leave out.
+
+        Returns:
+            Sorted list of repository names (owner/repo).
+        """
+        repos = list(
+            self._graphql_paged(_OWN_REPOSITORIES_QUERY, ["viewer", "repositories"])
+        )
+        for org, slug in self._iter_my_teams():
+            if under_path_prefix(f"{org}/{slug}", exclude):
+                continue
+            edges = self._graphql_paged(
+                _TEAM_REPOSITORIES_QUERY,
+                ["organization", "team", "repositories"],
+                items="edges",
+                org=org,
+                slug=slug,
+            )
+            repos.extend(
+                edge["node"]
+                for edge in edges
+                if edge["permission"] in ("ADMIN", "MAINTAIN", "WRITE")
+            )
+        return sorted(
+            {
+                repo["nameWithOwner"]
+                for repo in repos
+                if not repo["isArchived"]
+                and not under_path_prefix(repo["nameWithOwner"], exclude)
+            }
+        )
+
+    def _iter_repository_pulls(self, repos, states):
+        """Iterate over the pull requests of repositories.
+
+        Args:
+            repos: Repository names (owner/repo).
+            states: GraphQL pull request states to include.
+
+        Yields:
+            Tuples of repository name and pull request node.
+        """
+        for i in range(0, len(repos), _REPOSITORIES_PER_QUERY):
+            batch = repos[i : i + _REPOSITORIES_PER_QUERY]
+            params = ["$states: [PullRequestState!]"]
+            fields = []
+            variables = {"states": states}
+            for j, repo in enumerate(batch):
+                variables[f"o{j}"], variables[f"n{j}"] = repo.split("/", 1)
+                params.append(f"$o{j}: String!, $n{j}: String!")
+                fields.append(
+                    f"r{j}: repository(owner: $o{j}, name: $n{j}) {{ "
+                    f"pullRequests(states: $states, first: 100) {_PULLS_FIELDS} }}"
+                )
+            query = f"query({', '.join(params)}) {{ {' '.join(fields)} }}"
+            data = self._graphql_request(query, **variables)
+            for j, repo in enumerate(batch):
+                # A repository can disappear between listing and this query.
+                if data[f"r{j}"] is None:
+                    continue
+                pulls = data[f"r{j}"]["pullRequests"]
+                for pr in pulls["nodes"]:
+                    yield repo, pr
+                if not pulls["pageInfo"]["hasNextPage"]:
+                    continue
+                for pr in self._graphql_paged(
+                    _REPOSITORY_PULLS_QUERY,
+                    ["repository", "pullRequests"],
+                    cursor=pulls["pageInfo"]["endCursor"],
+                    owner=variables[f"o{j}"],
+                    name=variables[f"n{j}"],
+                    states=states,
+                ):
+                    yield repo, pr
+
+    def iter_proposals_in_my_projects(self, status="open", exclude=()):
+        """Iterate over pull requests in repositories the current user maintains.
+
+        These are the repositories the user owns or is a direct collaborator
+        on, plus those that teams the user is a member of have write access
+        to. Archived repositories are left out.
+
+        The list of repositories is gathered up front, so the first pull
+        request is yielded only after all orgs and teams have been walked.
+
+        Args:
+            status: The status filter ('open', 'closed', 'merged', or 'all').
+            exclude: Path prefixes of repositories ("org", "org/repo") or teams
+                ("org/team") to leave out.
+
+        Yields:
+            GitHubMergeProposal instances.
+        """
+        states = {
+            "open": ["OPEN"],
+            "closed": ["CLOSED"],
+            "merged": ["MERGED"],
+            "all": ["OPEN", "CLOSED", "MERGED"],
+        }[status]
+        repos = self._my_repositories(exclude)
+        for repo, pr in self._iter_repository_pulls(repos, states):
+            api_url = urlutils.join(
+                self.transport.base, f"repos/{repo}/pulls/{pr['number']}"
+            )
+            yield self._lazy_proposal(
+                {"url": api_url, "html_url": pr["url"], "number": pr["number"]}
             )
 
     def get_proposal_by_url(self, url):
