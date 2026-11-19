@@ -370,6 +370,7 @@ class Merger:
         self._base_is_other_ancestor = None
         self._is_criss_cross = None
         self._lca_trees = None
+        self.run_hooks = True
 
     def cache_trees_with_revision_ids(self, trees):
         """Cache any tree in trees if it has a revision_id."""
@@ -728,6 +729,7 @@ class Merger:
             "this_branch": self.this_branch,
             "other_branch": self.other_branch,
             "do_merge": False,
+            "run_hooks": self.run_hooks,
         }
         if self.merge_type.requires_base:
             kwargs["base_tree"] = self.base_tree
@@ -766,11 +768,13 @@ class Merger:
         merge = self.make_merger()
         if self.other_branch is not None:
             self.other_branch.update_references(self.this_branch)
-        for hook in Merger.hooks["pre_merge"]:
-            hook(merge)
+        if self.run_hooks:
+            for hook in Merger.hooks["pre_merge"]:
+                hook(merge)
         merge.do_merge()
-        for hook in Merger.hooks["post_merge"]:
-            hook(merge)
+        if self.run_hooks:
+            for hook in Merger.hooks["post_merge"]:
+                hook(merge)
         if self.recurse == "down":
             for relpath in self.this_tree.iter_references():
                 sub_tree = self.this_tree.get_nested_tree(relpath)
@@ -786,6 +790,7 @@ class Merger:
                 else:
                     sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
                     sub_merge.merge_type = self.merge_type
+                    sub_merge.run_hooks = self.run_hooks
                     sub_merge.set_other_revision(other_revision, other_branch)
                     base_tree_path = _mod_tree.find_previous_path(
                         self.this_tree, self.base_tree, relpath
@@ -908,6 +913,7 @@ class Merge3Merger:
         lca_trees=None,
         this_branch=None,
         other_branch=None,
+        run_hooks=True,
     ):
         """Initialize the merger object and perform the merge.
 
@@ -930,6 +936,7 @@ class Merge3Merger:
         :param lca_trees: Can be set to a dictionary of {revision_id:rev_tree}
             if the ancestry was found to include a criss-cross merge.
             Otherwise should be None.
+        :param run_hooks: If False, skip the merge_file_content hooks.
         """
         object.__init__(self)
         if this_branch is None:
@@ -953,6 +960,7 @@ class Merge3Merger:
         #     self._lca_trees = [self.base_tree]
         self.change_reporter = change_reporter
         self.cherrypick = cherrypick
+        self.run_hooks = run_hooks
         if do_merge:
             self.do_merge()
 
@@ -995,7 +1003,7 @@ class Merge3Merger:
             entries = list(self._entries_lca())
             resolver = self._lca_multi_way
         # Prepare merge hooks
-        factories = Merger.hooks["merge_file_content"]
+        factories = Merger.hooks["merge_file_content"] if self.run_hooks else []
         # One hook for each registered one plus our default merger
         hooks = [factory(self) for factory in factories] + [self]
         self.active_hooks = [hook for hook in hooks if hook is not None]
