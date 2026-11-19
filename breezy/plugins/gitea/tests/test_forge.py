@@ -23,6 +23,8 @@ from dromedary import errors as transport_errors
 from breezy import bedding
 from breezy.forge import NoSuchProject, UnsupportedForge
 from breezy.tests import TestCase, TestCaseInTempDir
+from breezy.tests.http_utils import TestCaseWithWebserver
+from breezy.transport import get_transport
 
 from ..forge import (
     DEFAULT_PAGE_SIZE,
@@ -34,6 +36,7 @@ from ..forge import (
     parse_gitea_merge_request_url,
     parse_gitea_url,
     parse_timestring,
+    store_gitea_token,
 )
 
 
@@ -55,6 +58,19 @@ class ParseGiteaUrlTests(TestCase):
 
     def test_missing_host(self):
         self.assertRaises(NotGiteaUrl, parse_gitea_url, "https:///jelmer/x")
+
+    def test_root_path(self):
+        self.assertEqual(
+            ("example.com", "jelmer/example"),
+            parse_gitea_url("https://example.com/gitea/jelmer/example.git", "gitea"),
+        )
+        self.assertEqual(
+            ("example.com", "jelmer/example"),
+            parse_gitea_url("git+ssh://git@example.com/jelmer/example.git", "gitea"),
+        )
+        self.assertRaises(
+            NotGiteaUrl, parse_gitea_url, "https://example.com/jelmer/example", "gitea"
+        )
 
 
 class ParseGiteaMergeRequestUrlTests(TestCase):
@@ -333,6 +349,36 @@ class IterTokensTests(GiteaConfigTestCase):
             UnsupportedForge, Gitea.probe_from_hostname, "gitea.example.com"
         )
         self.assertEqual([], list(iter_tokens()))
+
+
+class SubpathTests(TestCaseWithWebserver):
+    def setUp(self):
+        super().setUp()
+        self.root = self.get_readonly_url("gitea/")
+        pull = {"html_url": self.root + "alice/demo/pulls/1"}
+        self.build_tree_contents(
+            [
+                ("gitea/",),
+                ("gitea/api/",),
+                ("gitea/api/v1/",),
+                ("gitea/api/v1/user", b'{"login": "alice"}'),
+                ("gitea/api/v1/repos/",),
+                ("gitea/api/v1/repos/alice/",),
+                ("gitea/api/v1/repos/alice/demo/",),
+                ("gitea/api/v1/repos/alice/demo/pulls/",),
+                ("gitea/api/v1/repos/alice/demo/pulls/1", json.dumps(pull).encode()),
+            ]
+        )
+        store_gitea_token("local", self.root, "sekrit")
+
+    def test_probe_from_url(self):
+        forge = Gitea.probe_from_url(self.root + "alice/demo.git")
+        self.assertEqual(self.root, forge.base_url)
+
+    def test_get_proposal_by_url(self):
+        forge = Gitea(get_transport(self.root), "sekrit")
+        mp = forge.get_proposal_by_url(self.root + "alice/demo/pulls/1")
+        self.assertEqual(self.root + "alice/demo/pulls/1", mp.url)
 
 
 class GetAuthorTests(TestCase):
