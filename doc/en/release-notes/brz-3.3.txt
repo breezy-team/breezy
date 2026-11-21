@@ -40,6 +40,11 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * propose: ``brz forges`` and ``brz my-proposals`` go on past a forge
+   that cannot be reached and exit with code 3 at the end, instead of
+   stopping there. ``brz forges`` also skips a forge that needs a login.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
