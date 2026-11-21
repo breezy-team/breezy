@@ -1248,6 +1248,43 @@ class TestHttpProxyWhiteBox(tests.TestCase):
         request = self._proxied_request()
         self.assertFalse("Proxy-authorization" in request.headers)
 
+    def test_ipv6_proxy_without_port(self):
+        self.overrideEnv("http_proxy", "http://[::1]")
+        request = self._proxied_request()
+        connection = urllib.ConnectionHandler().create_connection(
+            request, HTTPConnection
+        )
+        self.assertEqual(("::1", 80), (connection.host, connection.port))
+
+    def _proxy_address(self, proxy, scheme, connection_class):
+        self.overrideEnv(scheme + "_proxy", proxy)
+        request = Request("GET", scheme + "://baz/buzzle")
+        ProxyHandler().set_proxy(request, scheme)
+        connection = urllib.ConnectionHandler().create_connection(
+            request, connection_class
+        )
+        return (connection.host, connection.port)
+
+    def test_http_proxy_url_without_port(self):
+        self.assertEqual(
+            ("proxy_host", 80),
+            self._proxy_address("http://proxy_host", "http", HTTPConnection),
+        )
+        self.assertEqual(
+            ("proxy_host", 80),
+            self._proxy_address("http://proxy_host", "https", HTTPSConnection),
+        )
+
+    def test_https_proxy_url_without_port(self):
+        self.assertEqual(
+            ("proxy_host", 443),
+            self._proxy_address("https://proxy_host", "http", HTTPConnection),
+        )
+        self.assertEqual(
+            ("proxy_host", 443),
+            self._proxy_address("https://proxy_host", "https", HTTPSConnection),
+        )
+
     def test_invalid_proxy(self):
         """A proxy env variable without scheme."""
         self.overrideEnv("http_proxy", "host:1234")
