@@ -119,6 +119,10 @@ Bug Fixes
    library is not installed, such as Launchpad without launchpadlib,
    instead of failing. (Zainab Mehmut)
 
+ * ``brz forges`` and ``brz my-merge-proposals`` now skip a forge that
+   fails with a transport error, such as one that cannot be reached.
+   Other errors still stop the command. (Zainab Mehmut)
+
 Documentation
 *************
 
