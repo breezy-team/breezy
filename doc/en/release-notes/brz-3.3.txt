@@ -40,6 +40,11 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * launchpad: ``get_forge_by_hostname`` now finds Launchpad for
+   ``code.launchpad.net``, the host of merge proposal URLs. It used to
+   raise ``UnsupportedForge``.
+   (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
