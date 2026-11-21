@@ -688,7 +688,7 @@ class cmd_revision_info(Command):
             try:
                 dotted_revno = b.revision_id_to_dotted_revno(revision_id)
                 revno = ".".join(str(i) for i in dotted_revno)
-            except errors.NoSuchRevision:
+            except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
                 revno = "???"
             maxlen = max(maxlen, len(revno))
             revinfos.append((revno, revision_id))
@@ -6110,8 +6110,13 @@ class cmd_uncommit(Command):
             # but breezy.uncommit.uncommit() actually uncommits
             # the revisions that are supplied.
             # So we need to offset it by one
-            revno = revision[0].in_history(b).revno + 1
-            if revno <= last_revno:
+            info = revision[0].in_history(b)
+            if info.revno is None:
+                raise errors.CommandError(
+                    gettext("Cannot uncommit past the start of a shallow history")
+                )
+            revno = info.revno + 1
+            if last_revno is not None and revno <= last_revno:
                 rev_id = b.get_rev_id(revno)
 
         if rev_id is None or _mod_revision.is_null(rev_id):

@@ -392,6 +392,12 @@ class cmd_replay(Command):
                 to_revno, to_revid = revision[1].in_history(from_branch)
                 if to_revid is None:
                     to_revno = from_branch.revno()
+                if from_revno is None or to_revno is None:
+                    raise CommandError(
+                        gettext(
+                            "Cannot replay a range of non-revision-history revisions"
+                        )
+                    )
                 todo = []
                 for revno in range(from_revno, to_revno + 1):
                     todo.append(from_branch.get_rev_id(revno))

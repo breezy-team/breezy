@@ -40,6 +40,11 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * Cope with a branch that has no revision count, such as a shallow git
+   clone, in ``-r -N``, ``-r last:``, ``brz uncommit``, ``brz annotate``,
+   ``brz switch`` and ``brz revision-info``. The new
+   ``Branch.get_rev_id_from_tip`` needs no count. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
