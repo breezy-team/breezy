@@ -18,7 +18,7 @@
 
 import threading
 
-from breezy import errors, transport
+from breezy import errors, transport, urlutils
 from breezy.bzr.bzrdir import BzrDir
 from breezy.bzr.smart import request
 from breezy.tests import TestCase, TestCaseWithMemoryTransport
@@ -209,6 +209,22 @@ class TestRequestHanderErrorTranslation(TestCase):
 
     def test_MemoryError(self):
         self.assertTranslationEqual((b"MemoryError",), MemoryError())
+
+    def test_PermissionDenied(self):
+        # The detail goes without the ": " that PathError.extra adds.
+        self.assertTranslationEqual(
+            (b"PermissionDenied", b"path", b"detail"),
+            errors.PermissionDenied("path", "detail"),
+        )
+        self.assertTranslationEqual(
+            (b"PermissionDenied", b"path", b""), errors.PermissionDenied("path")
+        )
+
+    def test_InvalidURL(self):
+        self.assertTranslationEqual(
+            (b"InvalidURL", b"bzr://host/x", b"detail"),
+            urlutils.InvalidURL("bzr://host/x", "detail"),
+        )
 
     def test_GhostRevisionsHaveNoRevno(self):
         self.assertTranslationEqual(

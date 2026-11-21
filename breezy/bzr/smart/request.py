@@ -409,6 +409,11 @@ class SmartServerRequestHandler:
         pass
 
 
+def _path_error_detail(err):
+    # The client adds the ": " back when it raises the error.
+    return err.extra.removeprefix(": ")
+
+
 def _translate_error(err):
     if isinstance(err, _mod_transport.NoSuchFile):
         return (b"NoSuchFile", err.path.encode("utf-8"))
@@ -479,7 +484,7 @@ def _translate_error(err):
         return (
             b"PermissionDenied",
             err.path.encode("utf-8"),
-            err.extra.encode("utf-8"),
+            _path_error_detail(err).encode("utf-8"),
         )
     elif isinstance(err, errors.TokenMismatch):
         return (b"TokenMismatch", err.given_token, err.lock_token)
@@ -488,7 +493,11 @@ def _translate_error(err):
     elif isinstance(err, errors.GhostRevisionsHaveNoRevno):
         return (b"GhostRevisionsHaveNoRevno", err.revision_id, err.ghost_revision_id)
     elif isinstance(err, urlutils.InvalidURL):
-        return (b"InvalidURL", err.path.encode("utf-8"), err.extra.encode("ascii"))
+        return (
+            b"InvalidURL",
+            err.path.encode("utf-8"),
+            _path_error_detail(err).encode("ascii"),
+        )
     elif isinstance(err, MemoryError):
         # GZ 2011-02-24: Copy breezy.trace -Dmem_dump functionality here?
         return (b"MemoryError",)
