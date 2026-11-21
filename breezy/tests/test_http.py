@@ -472,6 +472,40 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             socket.setdefaulttimeout(default_timeout)
 
 
+class TestHTTPSThroughProxy(tests.TestCaseInTempDir):
+    def test_ipv6_host(self):
+        self.requireFeature(features.HTTPSServerFeature)
+        from . import https_server, ssl_certs
+
+        self.build_tree_contents([("foo", b"contents of foo\n")])
+        server = https_server.HTTPSServer()
+        self.start_server(server)
+        # The proxy tunnels to the server whatever host CONNECT names
+        proxy = http_utils.TunnellingProxyServer((server.host, server.port))
+        self.start_server(proxy)
+        self.overrideEnv("https_proxy", proxy.get_url())
+        t = HttpTransport(
+            "https://[::1]:{}/".format(server.port),
+            ca_certs=ssl_certs.build_path("ca.crt"),
+        )
+        self.assertEqual(b"contents of foo\n", t.get("foo").read())
+
+    def test_reconnect(self):
+        self.requireFeature(features.HTTPSServerFeature)
+        from . import https_server, ssl_certs
+
+        self.build_tree_contents([("foo", b"foo\n"), ("bar", b"bar\n")])
+        # The server closes the connection after each answer
+        server = https_server.HTTPSServer(protocol_version="HTTP/1.0")
+        self.start_server(server)
+        proxy = http_utils.TunnellingProxyServer((server.host, server.port))
+        self.start_server(proxy)
+        self.overrideEnv("https_proxy", proxy.get_url())
+        t = HttpTransport(server.get_url(), ca_certs=ssl_certs.build_path("ca.crt"))
+        self.assertEqual(b"foo\n", t.get("foo").read())
+        self.assertEqual(b"bar\n", t.get("bar").read())
+
+
 class TestHttpTransportRegistration(tests.TestCase):
     """Test registrations of various http implementations."""
 

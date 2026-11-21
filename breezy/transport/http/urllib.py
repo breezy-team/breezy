@@ -336,7 +336,7 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
         config_stack = config.GlobalStack()
         cert_reqs = config_stack.get("ssl.cert_reqs")
         if self.proxied_host is not None:
-            host = self.proxied_host.split(":", 1)[0]
+            host = splitport(self.proxied_host)[0].strip("[]")
         else:
             host = self.host
         if cert_reqs == ssl.CERT_NONE:
@@ -803,6 +803,10 @@ class HTTPSHandler(AbstractHTTPHandler):
     https_request = AbstractHTTPHandler.http_request
 
     def https_open(self, request):
+        return self.do_open(HTTPSConnection, request)
+
+    def do_open(self, http_class, request, first_try=True):
+        # A retry reconnects here too, so it needs a new CONNECT as well
         connection = request.connection
         if (
             connection.sock is None
@@ -821,7 +825,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             # - reconnection on errors
             # - connection persistence behaviour (including reconnection)
 
-            # We are about to connect for the first time via a proxy, we must
+            # We are about to connect via a proxy, we must
             # issue a CONNECT request first to establish the encrypted link
             connect = _ConnectRequest(request)
             response = self.parent.open(connect)
@@ -837,7 +841,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             connection.connect_to_origin()
             # Propagate the connection to the original request
             request.connection = connection
-        return self.do_open(HTTPSConnection, request)
+        return super().do_open(http_class, request, first_try)
 
 
 class HTTPRedirectHandler(urllib.request.HTTPRedirectHandler):
