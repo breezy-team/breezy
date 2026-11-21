@@ -16,16 +16,20 @@
 
 from datetime import datetime
 
+from breezy.config import GlobalStack
 from breezy.errors import RedirectRequested, UnexpectedHttpStatus
 from breezy.forge import NoSuchProject
 from breezy.plugins.gitlab.forge import (
     GitLab,
     NotGitLabUrl,
     NotMergeRequestUrl,
+    _https_url,
+    get_credentials_by_url,
     parse_gitlab_merge_request_url,
     parse_timestring,
+    store_gitlab_token,
 )
-from breezy.tests import TestCase, http_server
+from breezy.tests import TestCase, TestCaseInTempDir, features, http_server
 from breezy.transport import get_transport
 
 
@@ -207,3 +211,52 @@ class UnexpectedStatusTests(TestCase):
         e = self.assertRaises(UnexpectedHttpStatus, gl._get_project, "foo/bar")
         self.assertEqual(url + "foo/bar", e.path)
         self.assertEqual(403, e.code)
+
+
+class HttpsUrlTests(TestCaseInTempDir):
+    def test_hostname(self):
+        self.assertEqual("https://gitlab.com/", _https_url("gitlab.com"))
+
+    def test_ipv4(self):
+        self.assertEqual("https://127.0.0.1/", _https_url("127.0.0.1"))
+
+    def test_host_port(self):
+        self.assertEqual("https://127.0.0.1:8443/", _https_url("127.0.0.1:8443"))
+
+    def test_ipv6(self):
+        self.assertEqual("https://[::1]/", _https_url("::1"))
+
+    def test_ipv6_port(self):
+        self.assertEqual("https://[::1]:8443/", _https_url("::1", 8443))
+
+    def test_ipv6_bracketed(self):
+        self.assertEqual("https://[::1]/", _https_url("[::1]"))
+
+    def test_ipv6_stored_login(self):
+        store_gitlab_token("local", "https://[::1]", "token")
+        credentials = get_credentials_by_url(_https_url("::1"))
+        self.assertEqual("token", credentials["private_token"])
+
+
+class ProbeFromUrlTests(TestCaseInTempDir):
+    _test_needs_features = [features.HTTPSServerFeature]
+
+    def test_https_port(self):
+        from breezy.tests import https_server, ssl_certs
+
+        class RequestHandler(http_server.TestingHTTPRequestHandler):
+            def do_GET(self):
+                body = b'{"username": "test"}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        server = https_server.HTTPSServer(RequestHandler)
+        self.start_server(server)
+        url = server.get_url()
+        GlobalStack().set("ssl.ca_certs", ssl_certs.build_path("ca.crt"))
+        store_gitlab_token("local", url, "token")
+        gl = GitLab.probe_from_url(url + "foo/bar.git")
+        self.assertEqual(url, gl.base_url)

@@ -191,6 +191,15 @@ def iter_tokens():
                 yield name, creds
 
 
+def _https_url(host, port=None):
+    # A bare IPv6 address needs brackets in a URL.
+    if host.count(":") > 1 and not host.startswith("["):
+        host = "[{}]".format(host)
+    if port is not None:
+        host = "{}:{}".format(host, port)
+    return "https://{}/".format(host)
+
+
 def get_credentials_by_url(url):
     for _name, credentials in iter_tokens():
         if credentials["url"].rstrip("/") == url.rstrip("/"):
@@ -875,7 +884,7 @@ class GitLab(Forge):
 
     @classmethod
     def probe_from_hostname(cls, hostname, possible_transports=None):
-        base_url = "https://{}".format(hostname)
+        base_url = _https_url(hostname)
         credentials = get_credentials_by_url(base_url)
         if credentials is not None:
             transport = get_transport(base_url, possible_transports=possible_transports)
@@ -893,9 +902,10 @@ class GitLab(Forge):
             (host, project) = parse_gitlab_url(url)
         except NotGitLabUrl:
             raise UnsupportedForge(url)
-        transport = get_transport(
-            "https://{}".format(host), possible_transports=possible_transports
-        )
+        (scheme, _user, _password, _host, port, _path) = urlutils.parse_url(url)
+        # Only an https URL carries the port of the web interface.
+        base_url = _https_url(host, port if scheme == "https" else None)
+        transport = get_transport(base_url, possible_transports=possible_transports)
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
             instance = cls(transport, credentials.get("private_token"))
@@ -904,8 +914,8 @@ class GitLab(Forge):
         try:
             resp = transport.request(
                 "GET",
-                "https://{}/api/v4/projects/{}".format(
-                    host, urlutils.quote(str(project), "")
+                "{}api/v4/projects/{}".format(
+                    base_url, urlutils.quote(str(project), "")
                 ),
             )
         except errors.UnexpectedHttpStatus:
@@ -917,7 +927,7 @@ class GitLab(Forge):
             if not resp.getheader("X-Gitlab-Feature-Category"):
                 raise UnsupportedForge(url)
             if resp.status in (200, 401):
-                raise GitLabLoginMissing("https://{}/".format(host))
+                raise GitLabLoginMissing(base_url)
             raise UnsupportedForge(url)
 
     @classmethod
