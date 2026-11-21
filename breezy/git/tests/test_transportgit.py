@@ -23,6 +23,7 @@ from dulwich.tests.test_object_store import PackBasedObjectStoreTests
 from dulwich.tests.utils import make_object
 
 from ...tests import TestCaseWithTransport
+from ...transport import memory
 from ..transportgit import (
     TransportGitFile,
     TransportObjectStore,
@@ -115,6 +116,11 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         other.add_objects([(blob, None)])
         self.assertEqual([pack._basename], [p._basename for p in other.packs])
         self.assertEqual(b"data", other[blob.id].data)
+
+
+class MemoryTransportObjectStoreTests(TransportObjectStoreTests):
+    # Packs are written to a temporary file in memory rather than on disk.
+    transport_server = memory.MemoryServer
 
 
 # FIXME: Unfortunately RefsContainerTests requires on a specific set of refs existing.
