@@ -22,6 +22,7 @@ from dulwich.objects import Blob
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests
 from dulwich.tests.utils import make_object
 
+from ...errors import LockBroken, LockContention
 from ...tests import TestCaseWithTransport
 from ..transportgit import (
     TransportGitFile,
@@ -138,3 +139,13 @@ class TransportRefContainerTests(TestCaseWithTransport):
             {b"refs/heads/master": b"2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee"},
             self._refs.get_packed_refs(),
         )
+
+    def test_lock_ref(self):
+        lock = self._refs.lock_ref(b"refs/heads/master")
+        self.assertTrue(self.get_transport().has("refs/heads/master.lock"))
+        self.assertRaises(LockContention, self._refs.lock_ref, b"refs/heads/master")
+        lock.unlock()
+        self.assertFalse(self.get_transport().has("refs/heads/master.lock"))
+        lock = self._refs.lock_ref(b"refs/heads/master")
+        self.get_transport().delete("refs/heads/master.lock")
+        self.assertRaises(LockBroken, lock.unlock)
