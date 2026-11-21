@@ -40,6 +40,11 @@ brz 3.3.26
    ``AttributeError`` rather than the write error.
    (Zainab Mehmut)
 
+ * ``brz propose`` without ``--description`` no longer fails with "not
+   supported by the Git smart server protocol" after pushing to a git
+   forge. The unmerged log for the description is now read from the local
+   branch. (Zainab Mehmut)
+
 brz 3.3.25
 ##########
 
