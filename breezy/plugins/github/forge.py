@@ -1974,7 +1974,9 @@ class GitHub(Forge):
         """
         seen = set()
         for qualifier in ("review-requested:@me", "team-review-requested:@me"):
-            for summary in self._search_summaries(["archived:false", qualifier], status):
+            for summary in self._search_summaries(
+                ["archived:false", qualifier], status
+            ):
                 if summary["url"] in seen:
                     continue
                 seen.add(summary["url"])
