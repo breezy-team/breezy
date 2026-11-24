@@ -342,6 +342,9 @@ class RebaseTests(TestCase):
         self.assertEqual(1, len(transport.calls))
 
 
+API_URL = "https://gitlab.example.com/api/v4/"
+
+
 def notes_page(nodes, cursor=None):
     return json_response(
         {
@@ -750,3 +753,108 @@ class IterReviewsTests(TestCase):
     def test_requested_changes_without_note(self):
         mp, _ = make_proposal(self.requested_changes_responses([]))
         self.assertRaises(GitLabError, mp.iter_reviews)
+
+
+def mr(project_id, iid, project):
+    return {
+        "project_id": project_id,
+        "iid": iid,
+        "web_url": f"https://gitlab.example.com/{project}/-/merge_requests/{iid}",
+        "references": {"full": f"{project}!{iid}"},
+    }
+
+
+class ProposalListingTests(TestCase):
+    def test_review_requests(self):
+        transport = FakeTransport(
+            {
+                API_URL + "user": json_response({"username": "jelmer"}),
+                API_URL + "merge_requests?scope=all&state=opened"
+                "&reviewer_username=jelmer&per_page=50&page=1": json_response(
+                    [mr(1, 2, "foo/bar")]
+                ),
+            }
+        )
+        [mp] = GitLab(transport, "token").iter_my_review_requests()
+        self.assertEqual(
+            "https://gitlab.example.com/foo/bar/-/merge_requests/2", mp.url
+        )
+
+    def test_reviewed(self):
+        transport = FakeTransport(
+            {
+                API_URL + "user": json_response({"username": "jelmer"}),
+                API_URL + "merge_requests?scope=all&state=all"
+                "&reviewer_username=jelmer&per_page=50&page=1": json_response(
+                    [mr(1, 2, "foo/bar"), mr(1, 3, "foo/bar")]
+                ),
+                API_URL + "projects/1/merge_requests/2/reviewers": json_response(
+                    [
+                        {"user": {"username": "other"}, "state": "unreviewed"},
+                        {"user": {"username": "jelmer"}, "state": "approved"},
+                    ]
+                ),
+                API_URL + "projects/1/merge_requests/3/reviewers": json_response(
+                    [
+                        {"user": {"username": "jelmer"}, "state": "review_started"},
+                        {"user": {"username": "other"}, "state": "reviewed"},
+                    ]
+                ),
+            }
+        )
+        gl = GitLab(transport, "token")
+        self.assertEqual(
+            ["https://gitlab.example.com/foo/bar/-/merge_requests/2"],
+            [mp.url for mp in gl.iter_my_reviewed_proposals(status="all")],
+        )
+
+    def test_proposals_in_my_projects(self):
+        transport = FakeTransport(
+            {
+                API_URL + "groups?min_access_level=40&per_page=50&page=1": (
+                    FakeResponse(
+                        200,
+                        json.dumps(
+                            [
+                                {"id": 1, "full_path": "debian"},
+                                {"id": 2, "full_path": "debian/sub"},
+                                {"id": 3, "full_path": "excluded"},
+                            ]
+                        ).encode("utf-8"),
+                        headers={"X-Next-Page": "2"},
+                    )
+                ),
+                API_URL + "groups?min_access_level=40&per_page=50&page=2": (
+                    json_response([{"id": 4, "full_path": "other"}])
+                ),
+                API_URL + "groups/1/merge_requests?state=opened&non_archived=true"
+                "&per_page=50&page=1": json_response(
+                    [mr(10, 1, "debian/foo"), mr(11, 2, "debian/skip/bar")]
+                ),
+                API_URL + "groups/4/merge_requests?state=opened&non_archived=true"
+                "&per_page=50&page=1": json_response([mr(12, 3, "other/baz")]),
+                API_URL + "projects?owned=true&archived=false"
+                "&per_page=50&page=1": json_response(
+                    [
+                        {"id": 20, "path_with_namespace": "jelmer/own"},
+                        {"id": 21, "path_with_namespace": "jelmer/skip"},
+                    ]
+                ),
+                API_URL + "projects/20/merge_requests?state=opened"
+                "&per_page=50&page=1": json_response([mr(20, 4, "jelmer/own")]),
+            }
+        )
+        gl = GitLab(transport, "token")
+        self.assertEqual(
+            [
+                "https://gitlab.example.com/debian/foo/-/merge_requests/1",
+                "https://gitlab.example.com/other/baz/-/merge_requests/3",
+                "https://gitlab.example.com/jelmer/own/-/merge_requests/4",
+            ],
+            [
+                mp.url
+                for mp in gl.iter_proposals_in_my_projects(
+                    exclude=["excluded", "debian/skip", "jelmer/skip"]
+                )
+            ],
+        )

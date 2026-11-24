@@ -26,6 +26,7 @@ from ..forge import (
     get_forge,
     get_proposal_by_url,
     iter_forge_instances,
+    under_path_prefix,
 )
 
 
@@ -181,3 +182,16 @@ class IterForgeInstancesTests(tests.TestCase):
             forge_registry=self.make_registry(OtherErrorForge)
         )
         self.assertRaises(errors.BzrError, list, instances)
+
+
+class UnderPathPrefixTests(tests.TestCase):
+    def test_match(self):
+        self.assertTrue(under_path_prefix("org", ["org"]))
+        self.assertTrue(under_path_prefix("org/repo", ["other", "org"]))
+        self.assertTrue(under_path_prefix("org/repo", ["org/"]))
+        self.assertTrue(under_path_prefix("org/repo", ["org/repo"]))
+
+    def test_no_match(self):
+        self.assertFalse(under_path_prefix("org", []))
+        self.assertFalse(under_path_prefix("organisation/repo", ["org"]))
+        self.assertFalse(under_path_prefix("org", ["org/repo"]))
