@@ -472,3 +472,13 @@ class TestTraceConfiguration(TestCaseInTempDir):
             config.__exit__(None, None, None)
             # Should have exited and cleaned up.
             self.assertEqual(None, trace.get_brz_log_filename())
+
+    def test_default_config_log_cannot_be_opened(self):
+        self.overrideEnv("BRZ_LOG", "/no-such-dir/brz.log")
+        old_brz_log_filename = trace.get_brz_log_filename()
+        self.addCleanup(trace.set_brz_log_filename, old_brz_log_filename)
+        trace.set_brz_log_filename(None)
+        self.overrideAttr(sys, "stderr", StringIO())
+        with trace.DefaultConfig():
+            trace.note("hello")
+        self.assertEqual("hello\n", sys.stderr.getvalue())
