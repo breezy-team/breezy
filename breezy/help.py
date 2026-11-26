@@ -55,6 +55,17 @@ def help(topic=None, outfile=None):
     except NoHelpTopic:
         if alias is None:
             raise
+        # The topic is a user-defined alias that is not itself a known
+        # help topic. Resolve it to its target command so the output is
+        # consistent with builtin aliases (``brz help st``).
+        alias_target = alias[0] if alias else None
+        if alias_target is not None:
+            try:
+                target_topics = indices.search(alias_target)
+            except NoHelpTopic:
+                target_topics = []
+            if target_topics:
+                outfile.write(target_topics[0][1].get_help_text([]))
 
     if alias is not None:
         outfile.write(
