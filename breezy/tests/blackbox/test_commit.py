@@ -281,6 +281,28 @@ brz: ERROR: No changes to commit.\
         rev = a_tree.branch.repository.get_revision(rev_id)
         self.assertEqualDiff("a string\n\nwith mixed\n\nendings\n", rev.message)
 
+    def test_commit_file_with_message_encoding(self):
+        # --message-encoding lets --file read messages in an encoding
+        # other than the user encoding (see bug #520604).
+        tree = self.make_branch_and_tree("a")
+        self.build_tree(["a/b"])
+        tree.add("b")
+        with open("a/msg.u16", "wb") as f:
+            f.write("hello world\n".encode("utf-16"))
+        # Without --message-encoding the default (utf-8) decode fails.
+        _out, err = self.run_bzr(
+            ["commit", "--file", "msg.u16"], working_dir="a", retcode=3
+        )
+        self.assertContainsRe(err, "not valid")
+        self.assertContainsRe(err, "message-encoding")
+        self.run_bzr(
+            ["commit", "--file", "msg.u16", "--message-encoding", "utf-16"],
+            working_dir="a",
+        )
+        rev_id = tree.branch.last_revision()
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual("hello world\n", rev.message)
+
     def test_commit_merge_reports_all_modified_files(self):
         # the commit command should show all the files that are shown by
         # brz diff or brz status when committing, even when they were not
