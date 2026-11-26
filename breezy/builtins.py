@@ -5544,15 +5544,30 @@ class cmd_revert(Command):
         Option(
             "forget-merges", "Remove pending merge marker, without changing any files."
         ),
+        Option(
+            "ignore-unversioned",
+            "Silently skip paths that are not versioned instead of erroring.",
+        ),
     ]
     takes_args = ["file*"]
 
-    def run(self, revision=None, no_backup=False, file_list=None, forget_merges=None):
+    def run(
+        self,
+        revision=None,
+        no_backup=False,
+        file_list=None,
+        forget_merges=None,
+        ignore_unversioned=False,
+    ):
         tree, file_list = WorkingTree.open_containing_paths(file_list)
         self.enter_context(tree.lock_tree_write())
         if forget_merges:
             tree.set_parent_ids(tree.get_parent_ids()[:1])
         else:
+            if ignore_unversioned and file_list:
+                file_list = [f for f in file_list if tree.is_versioned(f)]
+                if not file_list:
+                    return
             self._revert_tree_to_revision(tree, revision, file_list, no_backup)
 
     @staticmethod
