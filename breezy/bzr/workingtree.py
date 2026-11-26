@@ -480,7 +480,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                             new_status = "?"
                         # XXX: Really should be a more abstract reporter
                         # interface
-                        kind_ch = osutils.kind_marker(self.kind(f))
+                        try:
+                            kind = self.kind(f)
+                        except _mod_transport.NoSuchFile:
+                            # File has already been deleted from disk;
+                            # fall back to the kind recorded in the tree.
+                            kind = self.stored_kind(f)
+                        kind_ch = osutils.kind_marker(kind)
                         to_file.write(new_status + "       " + f + kind_ch + "\n")
                     # Unversion file
                     inv_delta.append((f, None, fid, None))
