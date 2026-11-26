@@ -548,6 +548,7 @@ class LabelsTests(TestCase):
         transport, mp = self.make_proposal({})
         self.assertRaises(ValueError, mp.add_label, "a,b")
         self.assertRaises(ValueError, mp.remove_label, "a,b")
+        self.assertEqual([], transport.calls)
 
 
 REVIEW_MR = {
