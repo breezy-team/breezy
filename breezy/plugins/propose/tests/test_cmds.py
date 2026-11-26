@@ -20,8 +20,8 @@ from io import StringIO
 
 from dromedary import errors as transport_errors
 
+from .... import errors, registry
 from .... import forge as _mod_forge
-from .... import registry
 from ....forge import Forge, ForgeLoginRequired, MergeProposal
 from ....tests import TestCase
 from ..cmds import cmd_forges, cmd_my_merge_proposals
@@ -130,15 +130,15 @@ class BrokenUserUrlForge(SampleForge):
 
 
 class BuggyForge(SampleForge):
-    """Forge with a plain bug in it."""
+    """Forge that hits an internal breezy error."""
 
     forge_name = "buggy"
 
     def get_current_user(self):
-        raise ValueError("this is a bug, not a forge error")
+        raise errors.InternalBzrError("this is a bug, not a forge error")
 
     def iter_my_proposals(self, status="open", author=None):
-        raise ValueError("this is a bug, not a forge error")
+        raise errors.InternalBzrError("this is a bug, not a forge error")
 
 
 class ForgeWalkTestCase(TestCase):
@@ -211,7 +211,7 @@ class CmdForgesTests(ForgeWalkTestCase):
 
     def test_does_not_hide_a_bug(self):
         self.register(BuggyForge, SampleForge)
-        self.assertRaises(ValueError, self.run_command, cmd_forges())
+        self.assertRaises(errors.InternalBzrError, self.run_command, cmd_forges())
 
 
 class CmdMyMergeProposalsTests(ForgeWalkTestCase):
@@ -241,4 +241,6 @@ class CmdMyMergeProposalsTests(ForgeWalkTestCase):
 
     def test_does_not_hide_a_bug(self):
         self.register(BuggyForge, SampleForge)
-        self.assertRaises(ValueError, self.run_command, cmd_my_merge_proposals())
+        self.assertRaises(
+            errors.InternalBzrError, self.run_command, cmd_my_merge_proposals()
+        )
