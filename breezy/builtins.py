@@ -331,6 +331,10 @@ class cmd_status(Command):  # noqa: D101
     kind changed
         File kind has been changed (e.g. from file to directory).
 
+    missing
+        Added or versioned in the working copy but no longer present on
+        disk (e.g. after ``brz add FILE`` followed by ``rm FILE``).
+
     unknown
         Not versioned and not matching an ignore pattern.
 

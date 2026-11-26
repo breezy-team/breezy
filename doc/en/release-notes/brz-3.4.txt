@@ -138,6 +138,10 @@ Documentation
  * The user guide has a section on shell completion, replacing the README of
    the former ``bash_completion`` plugin. (Jelmer Vernooĳ)
 
+ * ``brz help status`` now lists the ``missing`` state (reported when
+   an added file is removed from disk before commit) alongside the
+   other possible states. (#1074166, Jelmer Vernooĳ)
+
 API Changes
 ***********
 
