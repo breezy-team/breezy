@@ -196,10 +196,9 @@ Configuration files
 Location
 ~~~~~~~~
 
-Configuration files are located in ``$HOME/.bazaar`` on Unix and
-``C:\Documents and Settings\<username>\Application Data\Breezy\2.0`` on
-Windows. (You can check the location for your system by using
-``brz version``.)
+Configuration files are located in ``$HOME/.config/breezy`` on Unix and
+``%APPDATA%\breezy`` on Windows. (You can check the location for your
+system by using ``brz version``.)
 
 There are three primary configuration files in this location:
 

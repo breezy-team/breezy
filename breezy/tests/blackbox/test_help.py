@@ -89,6 +89,12 @@ class TestHelp(tests.TestCaseWithTransport):
         expected = help_as_plain_text(_status_flags)
         self.assertEqual(expected, out)
 
+    def test_help_configuration_paths(self):
+        """'brz help configuration' describes current, not legacy, config paths."""
+        out, _err = self.run_bzr("help configuration")
+        self.assertNotContainsRe(out, r"Documents and Settings")
+        self.assertNotContainsRe(out, r"\.bazaar")
+
     def test_help_commands(self):
         dash_help = self.run_bzr("--help commands")[0]
         commands = self.run_bzr("help commands")[0]
