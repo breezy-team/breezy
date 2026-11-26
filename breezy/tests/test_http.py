@@ -472,6 +472,25 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             socket.setdefaulttimeout(default_timeout)
 
 
+class TestHTTPSThroughProxy(tests.TestCaseInTempDir):
+    def test_ipv6_host(self):
+        self.requireFeature(features.HTTPSServerFeature)
+        from . import https_server, ssl_certs
+
+        self.build_tree_contents([("foo", b"contents of foo\n")])
+        server = https_server.HTTPSServer()
+        self.start_server(server)
+        # The proxy tunnels to the server whatever host CONNECT names
+        proxy = http_utils.TunnellingProxyServer((server.host, server.port))
+        self.start_server(proxy)
+        self.overrideEnv("https_proxy", proxy.get_url())
+        t = HttpTransport(
+            "https://[::1]:{}/".format(server.port),
+            ca_certs=ssl_certs.build_path("ca.crt"),
+        )
+        self.assertEqual(b"contents of foo\n", t.get("foo").read())
+
+
 class TestHttpTransportRegistration(tests.TestCase):
     """Test registrations of various http implementations."""
 
