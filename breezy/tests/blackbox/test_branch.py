@@ -288,6 +288,22 @@ class TestBranch(tests.TestCaseWithTransport):
             strip_trailing_slash(local_path_to_url(expected_repo_path)),
         )
 
+    def test_branch_uncommitted_applies_source_changes(self):
+        # bug #608851: 'brz branch --uncommitted FROM TO' applies
+        # uncommitted changes from FROM to TO's working tree.
+        source = self.example_branch("source")
+        self.build_tree_contents([("source/hello", b"uncommitted content")])
+        self.run_bzr("branch --uncommitted source target")
+        with open("target/hello", "rb") as f:
+            self.assertEqual(b"uncommitted content", f.read())
+
+    def test_branch_uncommitted_requires_tree(self):
+        self.example_branch("source")
+        out, err = self.run_bzr(
+            "branch --uncommitted --no-tree source target", retcode=3
+        )
+        self.assertContainsRe(err, "requires a working tree")
+
     def test_branch_no_tree(self):
         self.example_branch("source")
         self.run_bzr("branch --no-tree source target")

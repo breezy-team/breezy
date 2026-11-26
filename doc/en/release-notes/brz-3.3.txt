@@ -83,6 +83,12 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * ``brz branch --uncommitted FROM TO`` also applies uncommitted
+   changes from the source tree to the new branch's working tree,
+   as a one shot for ``brz branch`` followed by
+   ``brz merge --uncommitted``.
+   (#608851, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
