@@ -3362,6 +3362,7 @@ class cmd_ls(Command):
         "show-ids",
         "directory",
     ]
+    aliases = ["dir"]
 
     @display_command
     def run(

@@ -59,6 +59,9 @@ brz 3.3.26
    paramiko on Windows, and PuTTY/plink.
    (#662448, Jelmer Vernooĳ)
 
+ * ``brz dir`` is now an alias for ``brz ls``, for Windows users used
+   to that spelling. (#403766, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

@@ -44,6 +44,12 @@ class TestLS(tests.TestCaseWithTransport):
         self.assertEqual("", err)
         self.assertEqualDiff(value, out)
 
+    def test_dir_alias(self):
+        """'brz dir' is an alias for 'brz ls'."""
+        out, err = self.run_bzr("dir")
+        self.assertEqual("", err)
+        self.assertEqual(".bzrignore\na\n", out)
+
     def test_ls_null_verbose(self):
         # Can't supply both
         self.run_bzr_error(
