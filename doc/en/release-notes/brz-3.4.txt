@@ -107,6 +107,10 @@ Bug Fixes
    request. It held only the API path, such as ``repos/owner/repo/pulls``.
    (Zainab Mehmut)
 
+ * gitea: An instance served under a subpath, such as
+   ``https://example.com/gitea/``, now works once logged in with that URL.
+   The subpath was read as part of the repository name. (Zainab Mehmut)
+
  * launchpad: Fix authorization engine creation against newer
    launchpadlib, which made ``Launchpad.authorization_engine_factory``
    take keyword arguments only. Enumerating forges raised ``TypeError``
