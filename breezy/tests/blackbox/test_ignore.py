@@ -90,10 +90,31 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr_error(
             (
                 "brz: ERROR: ignore requires at least one "
-                "NAME_PATTERN or --default-rules.\n",
+                "NAME_PATTERN, --default-rules or --unknowns.\n",
             ),
             "ignore",
         )
+
+    def test_ignore_unknowns(self):
+        """'ignore --unknowns' adds every unknown file to .bzrignore."""
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["tracked", "extra1", "extra2"])
+        tree.add(["tracked"])
+        tree.commit("init")
+        self.run_bzr(["ignore", "--unknowns"])
+        with open(".bzrignore") as f:
+            lines = sorted(line.strip() for line in f if line.strip())
+        self.assertEqual(["./extra1", "./extra2"], lines)
+
+    def test_ignore_unknowns_nothing_to_do(self):
+        """'ignore --unknowns' is a no-op when the tree has no unknowns."""
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["tracked"])
+        tree.add(["tracked"])
+        tree.commit("init")
+        out, err = self.run_bzr(["ignore", "--unknowns"])
+        self.assertEqual("", out)
+        self.assertPathDoesNotExist(".bzrignore")
 
     def test_ignore_default_rules(self):
         out, err = self.run_bzr(["ignore", "--default-rules"])
