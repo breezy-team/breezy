@@ -191,6 +191,18 @@ brz: ERROR: No changes to commit.\
         _out, err = self.run_bzr("commit -m one two")
         self.assertContainsRe(err, "The commit message is a file name")
 
+    def test_commit_message_matching_directory_no_warning(self):
+        """A commit -m value that happens to be a directory is not flagged.
+
+        --file cannot take its input from a directory, so the "is a file
+        name" warning is misleading when the match is a directory.
+        """
+        wt = self.make_branch_and_tree(".")
+        self.build_tree(["dir/"])
+        wt.add(["dir"])
+        _out, err = self.run_bzr("commit -m dir")
+        self.assertNotContainsString(err, "The commit message is a file name")
+
     def test_verbose_commit_renamed(self):
         # Verbose commit of renamed file should say so
         wt = self.prepare_simple_history()
