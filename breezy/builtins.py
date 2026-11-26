@@ -4011,6 +4011,12 @@ class cmd_commit(Command):
             "system do not push data that can not be natively "
             "represented.",
         ),
+        Option(
+            "edit",
+            short_name="e",
+            help="Open the editor on the message supplied via "
+            "--message or --file instead of using it unchanged.",
+        ),
     ]
     aliases = ["ci", "checkin"]
 
@@ -4074,6 +4080,7 @@ class cmd_commit(Command):
         exclude=None,
         commit_time=None,
         lossy=False,
+        edit=False,
     ):
         import itertools
 
@@ -4152,6 +4159,22 @@ class cmd_commit(Command):
             elif message is not None:
                 my_message = message
             else:
+                my_message = None
+            if my_message is not None and edit:
+                my_message = edit_commit_message_encoded(
+                    make_commit_message_template_encoded(
+                        tree,
+                        selected_list,
+                        diff=show_diff,
+                        output_encoding=osutils.get_user_encoding(),
+                    ),
+                    start_message=my_message.encode(osutils.get_user_encoding()),
+                )
+                if not my_message:
+                    raise errors.CommandError(
+                        gettext("Empty commit message specified.")
+                    )
+            if my_message is None:
                 # No message supplied: make one up.
                 # text is the status of the tree
                 text = make_commit_message_template_encoded(

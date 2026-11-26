@@ -50,6 +50,11 @@ brz 3.3.26
    of the historical ``.bazaar`` path and the Windows XP-era
    ``Documents and Settings`` path. (#508680, Jelmer Vernooĳ)
 
+ * ``brz commit`` accepts ``--edit``/``-e`` to open the editor on the
+   message supplied via ``--message`` or ``--file`` instead of using
+   it unchanged, matching git's ``commit -e``.
+   (#1222470, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

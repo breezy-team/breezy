@@ -893,6 +893,22 @@ altered in u2
         )
         self.assertEqual(expected, tree.last_revision())
 
+    def test_commit_edit_with_message(self):
+        # 'brz commit -m MSG --edit' opens the editor pre-filled with MSG.
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/hello.txt"])
+        tree.add("hello.txt")
+        # Editor that prepends "edited: " to the first line.
+        if sys.platform == "win32":
+            self.skipTest("editor shell script not portable to Windows")
+        with open("edit.sh", "wb") as f:
+            f.write(b'#!/bin/sh\nsed -i "1s/^/edited: /" "$1"\n')
+        os.chmod("edit.sh", 0o755)
+        self.overrideEnv("BRZ_EDITOR", os.path.abspath("edit.sh"))
+        self.run_bzr(["commit", "tree/hello.txt", "-m", "initial", "--edit"])
+        rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual("edited: initial\n", rev.message)
+
     def test_set_commit_message(self):
         msgeditor.hooks.install_named_hook(
             "set_commit_message", lambda commit_obj, msg: "save me some typing\n", None
