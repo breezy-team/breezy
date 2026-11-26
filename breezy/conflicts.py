@@ -107,6 +107,12 @@ class cmd_resolve(commands.Command):
     Once you have fixed a problem, use "brz resolve" to automatically mark
     text conflicts as fixed, "brz resolve FILE" to mark a specific conflict as
     resolved, or "brz resolve --all" to mark all conflicts as resolved.
+
+    The ``--action`` option selects how the conflict is resolved. The
+    standalone switches ``--done``, ``--take-this`` and ``--take-other`` are
+    shorthands for ``--action=done``, ``--action=take-this`` and
+    ``--action=take-other`` respectively. ``--done`` is the default. See
+    ``brz help conflict-types`` for what each action does.
     """
     aliases = ["resolved"]
     takes_args = ["file*"]
