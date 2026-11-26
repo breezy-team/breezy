@@ -214,6 +214,7 @@ def load_tests(loader, basic_tests, pattern):
         "test_fetch",
         "test_git_remote_helper",
         "test_hg",
+        "test_interrepo",
         "test_mapping",
         "test_memorytree",
         "test_merge",
