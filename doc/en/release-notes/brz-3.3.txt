@@ -45,6 +45,11 @@ brz 3.3.26
    login was never found and the API request went to the wrong host.
    (Zainab Mehmut)
 
+ * ``brz ignore --unknowns`` adds every currently unknown file in the
+   tree to ``.bzrignore``, as a one shot alternative to
+   ``brz unknowns | xargs -n 1 brz ignore``.
+   (#516674, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

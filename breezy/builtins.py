@@ -3561,9 +3561,19 @@ class cmd_ignore(Command):
     takes_options = [
         "directory",
         Option("default-rules", help="Display the default ignore rules that brz uses."),
+        Option(
+            "unknowns",
+            help="Add all currently unknown files to the ignore list.",
+        ),
     ]
 
-    def run(self, name_pattern_list=None, default_rules=None, directory="."):
+    def run(
+        self,
+        name_pattern_list=None,
+        default_rules=None,
+        directory=".",
+        unknowns=False,
+    ):
         from breezy import ignores
 
         if default_rules is not None:
@@ -3571,9 +3581,21 @@ class cmd_ignore(Command):
             for pattern in ignores.USER_DEFAULTS:
                 self.outf.write("{}\n".format(pattern))
             return
+        if unknowns:
+            tree, _relpath = WorkingTree.open_containing(directory)
+            with tree.lock_read():
+                unknown_paths = sorted(tree.unknowns())
+            if not unknown_paths:
+                return
+            name_pattern_list = (name_pattern_list or []) + [
+                "./" + p for p in unknown_paths
+            ]
         if not name_pattern_list:
             raise errors.CommandError(
-                gettext("ignore requires at least one NAME_PATTERN or --default-rules.")
+                gettext(
+                    "ignore requires at least one NAME_PATTERN, "
+                    "--default-rules or --unknowns."
+                )
             )
         name_pattern_list = [globbing.normalize_pattern(p) for p in name_pattern_list]
         bad_patterns = ""
