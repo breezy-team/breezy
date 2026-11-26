@@ -46,3 +46,14 @@ class TestIgnored(TestCaseWithTransport):
         )
         out, _err = self.run_bzr(["ignored", "--directory=a"])
         self.assertStartsWith(out, "README")
+
+    def test_ignored_with_path(self):
+        """'brz ignored PATH' lists only ignored files under PATH."""
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([(".bzrignore", b"*.o\n")])
+        self.build_tree(["sub/", "sub/keep", "sub/a.o", "other/", "other/b.o"])
+        tree.add([".bzrignore", "sub", "sub/keep", "other"])
+        tree.commit("init")
+        out, _err = self.run_bzr(["ignored", "sub"])
+        self.assertIn("sub/a.o", out)
+        self.assertNotIn("other/b.o", out)

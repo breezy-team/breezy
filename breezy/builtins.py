@@ -3628,6 +3628,10 @@ class cmd_ignored(Command):
     List all the ignored files and the ignore pattern that caused the file to
     be ignored.
 
+    If PATH is given, only ignored files below that path are listed. PATH is
+    interpreted relative to the current directory (and may itself be below a
+    different tree directory specified with -d).
+
     Alternatively, to list just the files::
 
         brz ls --ignored
@@ -3635,18 +3639,25 @@ class cmd_ignored(Command):
 
     encoding_type = "replace"
     _see_also = ["ignore", "ls"]
+    takes_args = ["path?"]
     takes_options = ["directory"]
 
     @display_command
-    def run(self, directory="."):
+    def run(self, path=None, directory="."):
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
-        for path, file_class, _kind, _entry in tree.list_files():
+        if path is not None:
+            prefix = tree.relpath(osutils.pathjoin(directory, path))
+        else:
+            prefix = None
+        for p, file_class, _kind, _entry in tree.list_files():
             if file_class != "I":
                 continue
+            if prefix and p != prefix and not p.startswith(prefix + "/"):
+                continue
             # XXX: Slightly inefficient since this was already calculated
-            pat = tree.is_ignored(path)
-            self.outf.write(f"{path:<50} {pat}\n")
+            pat = tree.is_ignored(p)
+            self.outf.write(f"{p:<50} {pat}\n")
 
 
 class cmd_lookup_revision(Command):

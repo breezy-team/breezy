@@ -45,6 +45,10 @@ brz 3.3.26
    login was never found and the API request went to the wrong host.
    (Zainab Mehmut)
 
+ * ``brz ignored`` accepts an optional PATH argument to restrict the
+   listing to ignored files below that path.
+   (#674192, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
