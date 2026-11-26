@@ -4122,7 +4122,10 @@ class cmd_commit(Command):
 
         if message is not None:
             try:
-                file_exists = osutils.lexists(message)
+                # Only warn about regular files: --file cannot take its input
+                # from a directory, so a path that happens to be a directory
+                # never means "the user meant --file".
+                file_exists = os.path.isfile(message)
             except UnicodeError:
                 # The commit message contains unicode characters that can't be
                 # represented in the filesystem encoding, so that can't be a

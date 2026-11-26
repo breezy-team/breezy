@@ -45,6 +45,11 @@ brz 3.3.26
    login was never found and the API request went to the wrong host.
    (Zainab Mehmut)
 
+ * ``brz commit -m DIR`` no longer prints "The commit message is a file
+   name" when ``DIR`` happens to be an existing directory: ``--file``
+   cannot read its input from a directory so the suggestion was
+   misleading. (#1012115, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
