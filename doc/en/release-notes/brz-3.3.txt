@@ -83,6 +83,9 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * ``brz status`` accepts ``--all`` / ``-A`` to also list versioned
+   files that have not changed. (#507737, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

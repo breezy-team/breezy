@@ -109,6 +109,7 @@ def show_tree_status(
     versioned=False,
     classify=True,
     show_long_callback=_mod_delta.report_delta,
+    want_unchanged=False,
 ):
     """Display summary of changes.
 
@@ -195,6 +196,7 @@ def show_tree_status(
                 reporter,
                 show_long_callback,
                 short=short,
+                want_unchanged=want_unchanged,
                 want_unversioned=want_unversioned,
                 show_ids=show_ids,
                 classify=classify,
