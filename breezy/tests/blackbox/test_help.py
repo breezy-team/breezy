@@ -173,8 +173,12 @@ cat=cat
         expected = original + "'brz cat' is an alias for 'brz cat'.\n"
         self.assertEqual(expected, self.run_bzr("help cat")[0])
 
+        # For a user alias that is not itself a command name we show the
+        # target command's help as well as the "alias for" line, to match
+        # the behaviour of builtin aliases (``brz help st`` -> ``status``).
         self.assertEqual(
-            "'brz c' is an alias for 'brz cat'.\n", self.run_bzr("help c")[0]
+            original + "'brz c' is an alias for 'brz cat'.\n",
+            self.run_bzr("help c")[0],
         )
 
 

@@ -45,6 +45,11 @@ brz 3.3.26
    login was never found and the API request went to the wrong host.
    (Zainab Mehmut)
 
+ * ``brz help <user-alias>`` now shows the help of the aliased command
+   as well as the ``'brz <user-alias>' is an alias for ...`` line,
+   matching the behaviour of builtin aliases like ``brz help st``.
+   (#621643, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
