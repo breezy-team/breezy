@@ -1374,7 +1374,8 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         log.show_branch_change(tree.branch, s, 3, b"3a")
         self.assertContainsRe(
             s.getvalue(),
-            "[*]{60}\nRemoved Revisions:\n(.|\n)*2a(.|\n)*3a(.|\n)*"
+            "[*]{60}\n[^\n]*no longer on the mainline"
+            "(.|\n)*2a(.|\n)*3a(.|\n)*"
             "[*]{60}\n\nAdded Revisions:\n(.|\n)*2b(.|\n)*3b",
         )
 
@@ -1389,14 +1390,14 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         s = StringIO()
         log.show_branch_change(tree.branch, s, 2, b"2b")
         self.assertContainsRe(s.getvalue(), "Added Revisions:")
-        self.assertNotContainsRe(s.getvalue(), "Removed Revisions:")
+        self.assertNotContainsRe(s.getvalue(), "no longer on the mainline")
 
     def test_show_branch_change_no_new(self):
         tree = self.setup_ab_tree()
         tree.branch.set_last_revision_info(2, b"2b")
         s = StringIO()
         log.show_branch_change(tree.branch, s, 3, b"3b")
-        self.assertContainsRe(s.getvalue(), "Removed Revisions:")
+        self.assertContainsRe(s.getvalue(), "no longer on the mainline")
         self.assertNotContainsRe(s.getvalue(), "Added Revisions:")
 
 
