@@ -65,6 +65,11 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "https://")
         self.assertContainsRe(out, "sftp://")
 
+    def test_help_urlspec_mentions_bzr_ssh_remote_version(self):
+        """Help for urlspec notes the minimum remote end for bzr+ssh://."""
+        out, _err = self.run_bzr("help urlspec")
+        self.assertContainsRe(out, "bzr\\+ssh://.*remote end")
+
     def test_help_repositories(self):
         """Smoke test for 'brz help repositories'."""
         out, _err = self.run_bzr("help repositories")

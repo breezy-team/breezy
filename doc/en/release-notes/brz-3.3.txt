@@ -45,6 +45,11 @@ brz 3.3.26
    login was never found and the API request went to the wrong host.
    (Zainab Mehmut)
 
+ * ``brz help urlspec`` now notes that ``bzr+ssh://`` URLs require a
+   ``brz`` (or ``bzr`` 2.1 or later) executable on the remote end, and
+   points at ``BZR_REMOTE_PATH``/``bzr_remote_path`` for non-``$PATH``
+   installs. (#583938, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
