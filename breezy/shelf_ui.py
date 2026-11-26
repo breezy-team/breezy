@@ -395,7 +395,12 @@ class Unshelver:
 
     @classmethod
     def from_args(
-        klass, shelf_id=None, action="apply", directory=".", write_diff_to=None
+        klass,
+        shelf_id=None,
+        action="apply",
+        directory=".",
+        write_diff_to=None,
+        show_base=False,
     ):
         """Create an unshelver from commandline arguments.
 
@@ -407,6 +412,8 @@ class Unshelver:
             'delete', 'preview'.
         :param directory: The directory to unshelve changes into.
         :param write_diff_to: See Unshelver.__init__().
+        :param show_base: If True, show the base revision text in text
+            conflicts when applying the shelved changes.
         """
         tree, _path = workingtree.WorkingTree.open_containing(directory)
         tree.lock_tree_write()
@@ -450,6 +457,7 @@ class Unshelver:
             read_shelf,
             show_diff,
             write_diff_to,
+            show_base=show_base,
         )
 
     def __init__(
@@ -462,6 +470,7 @@ class Unshelver:
         read_shelf=True,
         show_diff=False,
         write_diff_to=None,
+        show_base=False,
     ):
         """Constructor.
 
@@ -477,6 +486,8 @@ class Unshelver:
         :param write_diff_to: A file-like object where the diff will be
             written to. If None, ui.ui_factory.make_output_stream() will
             be used.
+        :param show_base: If True, include the base revision text in any
+            text conflicts produced when applying the shelved changes.
         """
         self.tree = tree
         manager = tree.get_shelf_manager()
@@ -487,6 +498,7 @@ class Unshelver:
         self.read_shelf = read_shelf
         self.show_diff = show_diff
         self.write_diff_to = write_diff_to
+        self.show_base = show_base
 
     def run(self):
         """Perform the unshelving operation."""
@@ -501,6 +513,8 @@ class Unshelver:
                 change_reporter = delta._ChangeReporter()
                 merger = unshelver.make_merger()
                 merger.change_reporter = change_reporter
+                if self.show_base:
+                    merger.show_base = True
                 if self.apply_changes:
                     merger.do_merge()
                 elif self.show_diff:

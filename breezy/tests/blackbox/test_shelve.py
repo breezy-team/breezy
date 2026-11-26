@@ -105,6 +105,21 @@ contents of file
 """,
         )
 
+    def test_unshelve_show_base(self):
+        # https://bugs.launchpad.net/bzr/+bug/1011641
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("file", b"line1\nline2\nline3\n")])
+        tree.add(["file"])
+        tree.commit("init")
+        self.build_tree_contents([("file", b"line1\nshelved\nline3\n")])
+        self.run_bzr(["shelve", "--all", "-m", "test"])
+        self.build_tree_contents([("file", b"line1\nconflict\nline3\n")])
+        out, err = self.run_bzr(["unshelve", "--show-base"])
+        with open("file", "rb") as f:
+            contents = f.read()
+        self.assertIn(b"||||||| BASE-REVISION", contents)
+        self.assertIn(b"line2", contents)
+
 
 class TestUnshelvePreview(TestCaseWithTransport):
     def test_non_ascii(self):
