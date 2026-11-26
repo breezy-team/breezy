@@ -30,6 +30,7 @@ from ..forge import (
     GiteaMergeProposal,
     NotGiteaUrl,
     NotMergeRequestUrl,
+    UnknownLabels,
     iter_tokens,
     parse_gitea_merge_request_url,
     parse_gitea_url,
@@ -283,6 +284,55 @@ class DeleteProjectTests(TestCase):
         e = self.assertRaises(transport_errors.UnexpectedHttpStatus, self.delete, 500)
         self.assertEqual("https://gitea.example.com/api/v1/repos/me/fork", e.path)
         self.assertEqual(500, e.code)
+
+
+class CreatePullTests(TestCase):
+    def create(self, labels, org_labels=None):
+        transport = FakeTransport(
+            {
+                ("GET", "repos/other/repo/labels?limit=50&page=1"): FakeResponse(
+                    200, [{"id": 3, "name": "bug"}, {"id": 7, "name": "lintian-fixes"}]
+                ),
+                ("GET", "orgs/other/labels?limit=50&page=1"): (
+                    FakeResponse(404, {"message": "GetOrgByName"})
+                    if org_labels is None
+                    else FakeResponse(200, org_labels)
+                ),
+                ("POST", "repos/other/repo/pulls"): FakeResponse(201, {"number": 1}),
+            }
+        )
+        Gitea(transport, "secret")._create_pull(
+            "other/repo", "Title", "me:fix", "main", "Body", labels=labels
+        )
+        return json.loads(transport.bodies[-1])
+
+    def test_labels(self):
+        self.assertEqual(
+            {
+                "title": "Title",
+                "head": "me:fix",
+                "base": "main",
+                "body": "Body",
+                "labels": [7, 3],
+            },
+            self.create(["lintian-fixes", "bug"]),
+        )
+
+    def test_organization_labels(self):
+        org_labels = [{"id": 4, "name": "bug"}, {"id": 9, "name": "team-label"}]
+        self.assertEqual(
+            [9, 3], self.create(["team-label", "bug"], org_labels)["labels"]
+        )
+
+    def test_no_labels(self):
+        self.assertEqual(
+            {"title": "Title", "head": "me:fix", "base": "main", "body": "Body"},
+            self.create(None),
+        )
+
+    def test_unknown_label(self):
+        e = self.assertRaises(UnknownLabels, self.create, ["bug", "nope"])
+        self.assertEqual("No such labels in other/repo: nope", str(e))
 
 
 class GiteaConfigTestCase(TestCaseInTempDir):
