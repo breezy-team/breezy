@@ -112,14 +112,10 @@ class TestPush(tests.TestCaseWithTransport):
 
         # test implicit --remember when no push location set, push fails
         out = self.run_bzr("push ../branch_b", working_dir="branch_a", retcode=3)
-        self.assertEqual(
-            out,
-            (
-                "",
-                "brz: ERROR: These branches have diverged.  "
-                'See "brz help diverged-branches" for more information.\n',
-            ),
-        )
+        self.assertContainsRe(out[1], "These branches have diverged")
+        self.assertContainsRe(out[1], "branch_a")
+        self.assertContainsRe(out[1], "branch_b")
+        self.assertContainsRe(out[1], "--overwrite")
         # Refresh the branch as 'push' modified it
         branch_a = branch_a.controldir.open_branch()
         self.assertEqual(

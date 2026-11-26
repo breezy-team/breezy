@@ -83,6 +83,12 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * The "branches have diverged" error from ``brz push`` now names
+   both the local and remote branches and suggests ``brz missing``,
+   ``brz merge`` and ``brz push --overwrite`` as next steps, instead
+   of just pointing at the diverged-branches help topic.
+   (#316592, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

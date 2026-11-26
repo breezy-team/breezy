@@ -175,10 +175,19 @@ def _show_push_branch(
         except errors.DivergedBranches:
             raise errors.CommandError(
                 gettext(
-                    "These branches have diverged."
-                    '  See "brz help diverged-branches"'
-                    " for more information."
+                    "These branches have diverged:\n"
+                    "  local:  %(local)s\n"
+                    "  remote: %(remote)s\n"
+                    "Use 'brz missing %(remote)s' to see the differences, "
+                    "'brz merge %(remote)s' to reconcile them, or "
+                    "'brz push --overwrite %(remote)s' to overwrite the "
+                    'remote. See "brz help diverged-branches" for more '
+                    "information."
                 )
+                % {
+                    "local": br_from.user_url,
+                    "remote": dir_to.user_url,
+                }
             )
         except errors.NoRoundtrippingSupport as e:
             raise errors.CommandError(
