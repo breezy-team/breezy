@@ -11,3 +11,4 @@ path = "src/main.rs"
 
 [dependencies]
 pyo3 = { workspace = true, features = ["abi3"] }
+libc = "0.2"
