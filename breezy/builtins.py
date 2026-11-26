@@ -3647,17 +3647,16 @@ class cmd_ignored(Command):
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
         if path is not None:
-            prefix = tree.relpath(osutils.pathjoin(directory, path))
+            from_dir = tree.relpath(osutils.pathjoin(directory, path))
         else:
-            prefix = None
-        for p, file_class, _kind, _entry in tree.list_files():
+            from_dir = None
+        for p, file_class, _kind, _entry in tree.list_files(from_dir=from_dir):
             if file_class != "I":
                 continue
-            if prefix and p != prefix and not p.startswith(prefix + "/"):
-                continue
+            full_path = osutils.pathjoin(from_dir, p) if from_dir else p
             # XXX: Slightly inefficient since this was already calculated
-            pat = tree.is_ignored(p)
-            self.outf.write(f"{p:<50} {pat}\n")
+            pat = tree.is_ignored(full_path)
+            self.outf.write(f"{full_path:<50} {pat}\n")
 
 
 class cmd_lookup_revision(Command):
