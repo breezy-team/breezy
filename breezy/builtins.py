@@ -7519,13 +7519,16 @@ class cmd_unshelve(Command):
             delete_only="Delete changes without applying them.",
             keep="Apply changes but don't delete them.",
         ),
+        Option("show-base", help="Show base revision text in conflicts."),
     ]
     _see_also = ["shelve"]
 
-    def run(self, shelf_id=None, action="apply", directory="."):
+    def run(self, shelf_id=None, action="apply", directory=".", show_base=False):
         from .shelf_ui import Unshelver
 
-        unshelver = Unshelver.from_args(shelf_id, action, directory=directory)
+        unshelver = Unshelver.from_args(
+            shelf_id, action, directory=directory, show_base=show_base
+        )
         try:
             unshelver.run()
         finally:

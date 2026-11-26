@@ -45,6 +45,11 @@ brz 3.3.26
    login was never found and the API request went to the wrong host.
    (Zainab Mehmut)
 
+ * ``brz unshelve`` now accepts ``--show-base`` to include the base
+   revision text in any text conflicts it produces, matching the
+   option already supported by ``brz update`` and ``brz merge``.
+   (#1011641, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
