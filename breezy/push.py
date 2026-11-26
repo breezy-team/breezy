@@ -168,6 +168,31 @@ def _show_push_branch(
                 "Ignoring request for a stacked branch as repository "
                 "already exists at the destination location."
             )
+        # Warn when pushing a branch directly into the root of a shared
+        # repository. That silently turns the shared repo's control
+        # directory into a branch, which hides every other branch in
+        # the repo (see bug #641109).
+        try:
+            existing_branch = dir_to.open_branch()
+        except errors.NotBranchError:
+            existing_branch = None
+        if existing_branch is None:
+            try:
+                existing_repo = dir_to.open_repository()
+            except errors.NoRepositoryPresent:
+                existing_repo = None
+            if existing_repo is not None and existing_repo.is_shared():
+                warning(
+                    gettext(
+                        "Pushing a branch into the root of a shared "
+                        "repository at %s. This hides existing branches "
+                        "in that repository; push into a subdirectory "
+                        "instead, e.g. '%s/%s', to avoid this."
+                    ),
+                    location,
+                    location.rstrip("/"),
+                    br_from.nick or "branch",
+                )
         try:
             push_result = dir_to.push_branch(
                 br_from, revision_id, overwrite, remember, create_prefix, lossy=lossy

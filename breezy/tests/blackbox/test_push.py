@@ -49,6 +49,15 @@ class TestPush(tests.TestCaseWithTransport):
             ["http does not support mkdir"], ["push", public_url], working_dir="source"
         )
 
+    def test_push_warns_shared_repo_root(self):
+        """'brz push' warns when pushing into a shared repo root."""
+        # bug #641109
+        self.make_repository("repo", shared=True)
+        self.make_branch_and_tree("trunk").commit("init")
+        _out, err = self.run_bzr(["push", "../repo"], working_dir="trunk")
+        self.assertContainsRe(err, "shared repository")
+        self.assertContainsRe(err, "hides existing branches")
+
     def test_push_suggests_parent_alias(self):
         """Push suggests using :parent if there is a known parent branch."""
         tree_a = self.make_branch_and_tree("a")
