@@ -62,6 +62,10 @@ brz 3.3.26
  * ``brz dir`` is now an alias for ``brz ls``, for Windows users used
    to that spelling. (#403766, Jelmer Vernooĳ)
 
+ * ``brz branches`` accepts ``--merged`` / ``--no-merged`` to filter
+   colocated branches by whether their tip has been merged into the
+   active branch. (#1043748, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

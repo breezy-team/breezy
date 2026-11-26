@@ -1755,14 +1755,23 @@ class cmd_branches(Command):
             short_name="R",
             help="Recursively scan for branches rather than "
             "just looking in the specified location.",
-        )
+        ),
+        Option(
+            "merged",
+            help="Only list branches whose tip has been merged into the "
+            "active branch. Use ``--no-merged`` to invert.",
+        ),
     ]
 
-    def run(self, location=".", recursive=False):
+    def run(self, location=".", recursive=False, merged=None):
         if recursive:
             t = transport.get_transport(location, purpose="read")
             if not t.listable():
                 raise errors.CommandError("Can't scan this type of location.")
+            if merged is not None:
+                raise errors.CommandError(
+                    gettext("--merged is not supported with --recursive")
+                )
             for b in controldir.ControlDir.find_branches(t):
                 self.outf.write(
                     "{}\n".format(
@@ -1777,21 +1786,49 @@ class cmd_branches(Command):
                 active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
-            names = {}
-            for name, branch in iter_sibling_branches(dir):
-                if name == "":
-                    continue
-                active = (
-                    active_branch is not None
-                    and active_branch.user_url == branch.user_url
+            if merged is not None and active_branch is None:
+                raise errors.CommandError(
+                    gettext("No active branch to compare against")
                 )
-                names[name] = active
+            names = {}
+            filtered = {}
+            if merged is not None:
+                with active_branch.lock_read():
+                    active_last = active_branch.last_revision()
+                    for name, branch in iter_sibling_branches(dir):
+                        if name == "":
+                            continue
+                        active = active_branch.user_url == branch.user_url
+                        names[name] = active
+                        if active:
+                            is_merged = True
+                        else:
+                            with branch.lock_read():
+                                tip = branch.last_revision()
+                                graph = active_branch.repository.get_graph(
+                                    branch.repository
+                                )
+                                is_merged = graph.is_ancestor(tip, active_last)
+                        filtered[name] = is_merged
+            else:
+                for name, branch in iter_sibling_branches(dir):
+                    if name == "":
+                        continue
+                    active = (
+                        active_branch is not None
+                        and active_branch.user_url == branch.user_url
+                    )
+                    names[name] = active
             # Only mention the current branch explicitly if it's not
             # one of the colocated branches
-            if not any(names.values()) and active_branch is not None:
+            if not any(names.values()) and active_branch is not None and merged is None:
                 self.outf.write("* {}\n".format(gettext("(default)")))
             for name in sorted(names):
                 active = names[name]
+                if merged is True and not filtered.get(name, False):
+                    continue
+                if merged is False and filtered.get(name, False):
+                    continue
                 if active:
                     prefix = "*"
                 else:
