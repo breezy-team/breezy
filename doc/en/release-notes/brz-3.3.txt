@@ -45,6 +45,11 @@ brz 3.3.26
    login was never found and the API request went to the wrong host.
    (Zainab Mehmut)
 
+ * ``brz help configuration`` now points at the current config
+   locations (``$HOME/.config/breezy`` and ``%APPDATA%\breezy``) instead
+   of the historical ``.bazaar`` path and the Windows XP-era
+   ``Documents and Settings`` path. (#508680, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
