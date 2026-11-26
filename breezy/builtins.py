@@ -6888,6 +6888,22 @@ class cmd_tag(Command):
                     note(gettext("Updated tag %s.") % tag_name)
 
 
+class cmd_untag(Command):
+    __doc__ = """Remove an existing tag.
+
+    Equivalent to ``brz tag --delete TAG_NAME``.
+    """
+
+    _see_also = ["tag", "tags"]
+    takes_args = ["tag_name"]
+    takes_options = [
+        custom_help("directory", help="Branch from which to remove the tag."),
+    ]
+
+    def run(self, tag_name, directory="."):
+        return cmd_tag().run(tag_name=tag_name, delete=True, directory=directory)
+
+
 class cmd_tags(Command):
     __doc__ = """List tags.
 
