@@ -253,6 +253,11 @@ shell.example.com, then::
 
 would refer to ``/home/remote/myproject/trunk``.
 
+For bzr+ssh:// URLs the remote end must have ``brz`` (or ``bzr`` 2.1 or
+later) installed and runnable over SSH. Set the ``BZR_REMOTE_PATH``
+environment variable or the ``bzr_remote_path`` configuration option if
+the remote executable is not on ``$PATH``.
+
 Many commands that accept URLs also accept location aliases too.
 See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 """
