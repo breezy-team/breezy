@@ -10,6 +10,10 @@ brz 3.3.26
 
 :3.3.26: UNRELEASED
 
+ * Explain what a shared repository is in the mini-tutorial, instead of
+   using ``init-shared-repo`` without introducing the concept.
+   (#838469, Jelmer Vernooĳ)
+
  * launchpad: Reject ``lp://project`` and empty ``lp:`` URLs with a
    clear ``InvalidURL`` instead of a bare traceback from deeper code.
    (#1031774, Jelmer Vernooĳ)
