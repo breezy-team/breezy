@@ -63,3 +63,33 @@ class TestLibraryState(tests.TestCaseWithTransport):
         finally:
             state.__exit__(None, None, None)
             self.assertEqual(orig_ui, _mod_ui.ui_factory)
+
+    def test_initialize_load_plugins(self):
+        """breezy.initialize(load_plugins=True) triggers plugin loading."""
+        from breezy import plugin as _mod_plugin
+
+        self.overrideAttr(breezy, "_global_state", None)
+        calls = []
+        self.overrideAttr(
+            _mod_plugin, "load_plugins", lambda *a, **kw: calls.append(True)
+        )
+        state = breezy.initialize(setup_ui=False, load_plugins=True)
+        try:
+            self.assertEqual([True], calls)
+        finally:
+            state.__exit__(None, None, None)
+
+    def test_initialize_does_not_load_plugins_by_default(self):
+        """By default, breezy.initialize() does not load plugins."""
+        from breezy import plugin as _mod_plugin
+
+        self.overrideAttr(breezy, "_global_state", None)
+        calls = []
+        self.overrideAttr(
+            _mod_plugin, "load_plugins", lambda *a, **kw: calls.append(True)
+        )
+        state = breezy.initialize(setup_ui=False)
+        try:
+            self.assertEqual([], calls)
+        finally:
+            state.__exit__(None, None, None)
