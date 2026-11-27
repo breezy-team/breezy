@@ -195,6 +195,41 @@ class TestRevert(TestCaseWithTransport):
         self.assertEqual("", out)
         self.assertEqual("-D  file\n", err)
 
+    def test_revert_ignore_unversioned(self):
+        # --ignore-unversioned silently drops unversioned paths rather
+        # than raising ``Path(s) are not versioned``.
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("versioned", b"a\n")])
+        tree.add(["versioned"])
+        tree.commit("init")
+        self.build_tree_contents(
+            [("versioned", b"a\nchange\n"), ("unversioned", b"x\n")]
+        )
+        out, err = self.run_bzr(
+            ["revert", "--ignore-unversioned", "versioned", "unversioned"]
+        )
+        self.assertFileEqual(b"a\n", "versioned")
+        self.assertContainsRe(err, " M  versioned")
+        self.assertNotContainsRe(err, "not versioned")
+
+    def test_revert_without_ignore_unversioned_still_errors(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("versioned", b"a\n")])
+        tree.add(["versioned"])
+        tree.commit("init")
+        self.build_tree_contents([("unversioned", b"x\n")])
+        out, err = self.run_bzr(["revert", "versioned", "unversioned"], retcode=3)
+        self.assertContainsRe(err, "Path.*not versioned.*unversioned")
+
+    def test_revert_ignore_unversioned_all_unversioned(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("initial", b"a\n")])
+        tree.add(["initial"])
+        tree.commit("init")
+        self.build_tree_contents([("unversioned", b"x\n")])
+        out, err = self.run_bzr(["revert", "--ignore-unversioned", "unversioned"])
+        self.assertEqual("", out)
+
     def test_revert_forget_merges(self):
         # revert --forget-merges removes any pending merges into the tree, but
         # leaves the files unchanged

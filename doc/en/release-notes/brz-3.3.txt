@@ -74,6 +74,13 @@ brz 3.3.26
    produce conflicts without touching the working tree, and exits
    with status 1 if any would occur. (#409643, Jelmer Vernooĳ)
 
+ * ``brz revert`` accepts ``--ignore-unversioned`` to silently skip
+   unversioned paths rather than failing with
+   ``Path(s) are not versioned``. This makes shell globs such as
+   ``brz revert --ignore-unversioned *.txt`` usable when the glob
+   matches both tracked and untracked files.
+   (#541676, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
