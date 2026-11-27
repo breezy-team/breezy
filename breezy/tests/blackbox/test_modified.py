@@ -26,8 +26,12 @@ class TestModified(TestCaseWithTransport):
         self._test_modified("a", "a")
 
     def test_modified_with_spaces(self):
-        """Test that 'modified' command reports modified files with spaces in their names quoted."""
-        self._test_modified("a filename with spaces", '"a filename with spaces"')
+        """'modified' reports filenames with spaces unquoted (bug #544297)."""
+        self._test_modified("a filename with spaces", "a filename with spaces")
+
+    def test_modified_with_plus_sign(self):
+        """'modified' does not quote filenames containing '+' (bug #544297)."""
+        self._test_modified("filename-with-plus+sign", "filename-with-plus+sign")
 
     def _test_modified(self, name, output):
         def check_modified(expected, null=False):

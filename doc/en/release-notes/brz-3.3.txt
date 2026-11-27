@@ -83,6 +83,11 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * ``brz modified`` and ``brz added`` no longer quote filenames
+   containing spaces or special characters, so the output can be
+   piped through ``xargs`` without further handling.
+   (#544297, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
