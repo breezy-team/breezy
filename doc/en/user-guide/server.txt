@@ -85,6 +85,29 @@ If you use several keys, configure which key goes with which host in
 
 Breezy's SSH access respects everything in ``~/.ssh/config``.
 
+Restricting a user to Breezy-only SSH access
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you want to share a repository over ``bzr+ssh://`` without giving the
+remote user interactive shell access, restrict their key in
+``~/.ssh/authorized_keys`` with a ``command=`` option that forces
+``brz serve`` and the ``no-pty`` / ``no-port-forwarding`` restrictions.
+
+A minimal entry for a dedicated ``brzuser`` account looks like this::
+
+    command="brz serve --inet --allow-writes --directory=/srv/brz/repo",no-pty,no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-ed25519 AAAA... user@example
+
+With that key installed, ``ssh brzuser@host`` will only ever launch a
+smart server rooted at ``/srv/brz/repo``, no matter what command the
+client requests.  Drop ``--allow-writes`` if the account should be
+read-only.
+
+For more than one user sharing the same account, give each user their
+own key entry, varying the ``--directory`` if they should see different
+subtrees.  If you need stricter sandboxing (chrooting, logging, path
+whitelisting), wrap ``brz serve`` in a small script and point
+``command=`` at that script instead.
+
 inetd
 ~~~~~
 
