@@ -55,6 +55,9 @@ brz 3.3.26
    paramiko on Windows, and PuTTY/plink.
    (#662448, Jelmer Vernooĳ)
 
+ * ``brz resolve -v`` now lists each conflict it marked as resolved
+   before the count summary. (#100041, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

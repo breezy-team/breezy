@@ -69,6 +69,19 @@ $ brz resolve -d branch --all
 $ brz conflicts -d branch
 """)
 
+    def test_resolve_verbose_lists_conflicts(self):
+        # bug #100041: with -v, 'brz resolve' names each conflict it resolved.
+        self.run_script("""\
+$ cd branch
+$ brz resolve -v myfile
+2>Resolved Text conflict in myfile
+2>1 conflict resolved, 2 remaining
+$ brz resolve -v --all
+2>Resolved Text conflict in my_other_file
+2>Resolved Path conflict: mydir3 / mydir2
+2>2 conflicts resolved, 0 remaining
+""")
+
     def test_bug_842575_manual_rm(self):
         self.run_script("""\
 $ brz init -q trunk

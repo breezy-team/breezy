@@ -137,7 +137,7 @@ class cmd_resolve(commands.Command):
                     action = "auto"
                 else:
                     action = "done"
-        before, after = resolve(tree, file_list, action=action)
+        before, after, resolved = resolve(tree, file_list, action=action)
         # GZ 2012-07-27: Should unify UI below now that auto is less magical.
         if action == "auto" and file_list is None:
             if after > 0:
@@ -157,6 +157,9 @@ class cmd_resolve(commands.Command):
                 trace.note(gettext("All conflicts resolved."))
                 return 0
         else:
+            if trace.is_verbose():
+                for conflict in resolved:
+                    trace.note(gettext("Resolved %s"), str(conflict))
             trace.note(
                 ngettext(
                     "{0} conflict resolved, {1} remaining",
@@ -179,8 +182,12 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False, action="done
     :param ignore_misses: If False, warnings will be printed if the supplied
         paths do not have conflicts.
     :param action: How the conflict should be resolved,
+    :return: tuple ``(nb_conflicts_before, nb_conflicts_after, resolved)``
+        where ``resolved`` is the list of conflicts that were actually
+        resolved by this call.
     """
     nb_conflicts_after = None
+    resolved = []
     with tree.lock_tree_write():
         tree_conflicts = tree.conflicts()
         nb_conflicts_before = len(tree_conflicts)
@@ -195,6 +202,7 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False, action="done
             try:
                 conflict.do(action, tree)
                 conflict.cleanup(tree)
+                resolved.append(conflict)
             except NotImplementedError:
                 new_conflicts.append(conflict)
         try:
@@ -204,7 +212,7 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False, action="done
             pass
     if nb_conflicts_after is None:
         nb_conflicts_after = nb_conflicts_before
-    return nb_conflicts_before, nb_conflicts_after
+    return nb_conflicts_before, nb_conflicts_after, resolved
 
 
 def restore(filename):
