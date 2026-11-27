@@ -83,6 +83,10 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * Add ``brz untag TAG_NAME``, equivalent to ``brz tag --delete
+   TAG_NAME``, matching the ``brz commit`` / ``brz uncommit`` naming
+   pair. (#1083172, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
