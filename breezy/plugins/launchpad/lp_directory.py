@@ -78,9 +78,16 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
 def _resolve(url, _lp_login=None):
     """Resolve the base URL for this transport."""
     scheme, netloc, path, query, fragment = urlsplit(url)
+    if scheme == "lp" and netloc:
+        raise InvalidURL(
+            path=url,
+            extra=('use "lp:project" (one colon, no slashes), not "lp://project"'),
+        )
     if _lp_login is None:
         _lp_login = get_lp_login()
     path = path.strip("/")
+    if not path:
+        raise InvalidURL(path=url, extra="no Launchpad path given")
     path = _expand_user(path, url, _lp_login)
     result = _resolve_via_api(path, url)
 
