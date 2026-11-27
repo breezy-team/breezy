@@ -83,6 +83,10 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * ``brz branches`` run from inside a treeless shared repository now
+   lists the branches in the repository rather than returning an
+   empty list. (#1174344, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

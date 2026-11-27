@@ -82,6 +82,14 @@ class TestBranches(TestCaseWithTransport):
         out, _err = self.run_bzr("branches b")
         self.assertEqual(out, "  branch1\n* branch2\n")
 
+    def test_inside_shared_repo_no_trees(self):
+        """bug #1174344: branches lists children of a treeless shared repo."""
+        self.make_repository("a", shared=True)
+        ControlDir.create_branch_convenience("a/branch1", force_new_tree=False)
+        ControlDir.create_branch_convenience("a/branch2", force_new_tree=False)
+        out, _err = self.run_bzr("branches", working_dir="a")
+        self.assertEqual(out, "  branch1\n  branch2\n")
+
     def test_standalone_branch(self):
         self.make_branch("a")
         out, _err = self.run_bzr("branches a")
