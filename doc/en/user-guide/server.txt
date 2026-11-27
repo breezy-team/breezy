@@ -55,6 +55,36 @@ Like SFTP, paths starting with ``~`` are relative to your home directory, e.g.
 ``bzr+ssh://example.com/~/code/proj``.  Additionally, paths starting with
 ``~user`` will be relative to that user's home directory.
 
+Setting up SSH keys
+^^^^^^^^^^^^^^^^^^^
+
+Breezy uses the SSH client installed on your system; it does not do its
+own SSH key management.  To avoid being prompted for a password on every
+operation, generate an SSH key and copy the public half to the server.
+
+On Linux and macOS, with OpenSSH::
+
+    ssh-keygen -t ed25519
+    ssh-copy-id user@example.com
+
+Now ``bzr+ssh://example.com/path/to/branch`` will authenticate using the
+key.
+
+On Windows, Breezy uses `paramiko` as a fallback if no ``ssh`` command is
+available on the ``PATH``.  Paramiko reads OpenSSH-format keys from
+``%USERPROFILE%\.ssh\id_rsa`` or ``id_ed25519`` by default.  If you use
+PuTTY's ``.ppk`` key format, convert it to OpenSSH format with
+``puttygen`` first, or set ``BRZ_SSH=plink`` to have Breezy shell out
+to PuTTY's ``plink.exe`` (which uses Pageant for key agent support).
+
+If you use several keys, configure which key goes with which host in
+``~/.ssh/config``, for example::
+
+    Host code.example.com
+        IdentityFile ~/.ssh/example-key
+
+Breezy's SSH access respects everything in ``~/.ssh/config``.
+
 inetd
 ~~~~~
 

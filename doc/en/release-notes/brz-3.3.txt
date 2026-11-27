@@ -50,6 +50,11 @@ brz 3.3.26
    of the historical ``.bazaar`` path and the Windows XP-era
    ``Documents and Settings`` path. (#508680, Jelmer Vernooĳ)
 
+ * The user guide gained a "Setting up SSH keys" section under
+   "Running a smart server > SSH", covering OpenSSH on Linux/macOS,
+   paramiko on Windows, and PuTTY/plink.
+   (#662448, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
