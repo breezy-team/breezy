@@ -51,13 +51,20 @@ Starting a new project
 ======================
 
 Let's suppose we want to store a new project under Breezy.  First, we'll
-make a *repository directory* to hold all our work related to this
-project, where developers can create branches to test development of
-specific features or, more generally, modifications to the working file
-set.
+make a *shared repository* to hold all our work on this project.
 
-After creating the repository, change to that directory, and create the
-project's main trunk branch.
+A Breezy *branch* is a line of history (the commits), plus a working
+tree if you want to edit files in it.  A *shared repository* is a
+directory that holds the commit storage for one or more branches below
+it, so that multiple branches of the same project don't each keep their
+own copy of every revision.  This saves disk space and makes branching
+locally very fast.  You can skip the shared repository and just run
+``brz init``, which creates a standalone branch whose storage lives
+alongside the branch itself; using a shared repository becomes worth it
+once you expect more than one branch of the same project.
+
+After creating the shared repository, change into it and create the
+project's main trunk branch inside it.
 
 ::
 
