@@ -231,6 +231,8 @@ class BisectTestCase(TestCaseWithTransport):
 
     def testRunScript(self):
         """Make a test script and run it."""
+        if sys.platform == "win32":
+            raise TestSkipped("Unable to run shell script on windows")
         with open("test_script", "w") as test_script:
             test_script.write("#!/bin/sh\ngrep -q '^four' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)

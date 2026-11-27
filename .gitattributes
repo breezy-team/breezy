@@ -1,0 +1,4 @@
+# Keep test fixtures byte-exact across platforms. Without this, Windows
+# checkouts with `core.autocrlf=true` would rewrite LF to CRLF in the
+# fixtures and break tests that parse them as bytes.
+breezy/tests/test_patches_data/** -text

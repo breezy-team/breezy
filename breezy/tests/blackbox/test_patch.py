@@ -27,7 +27,10 @@ class TestPatch(TestCaseWithTransport):
         self.run_bzr("commit -m hello")
         with open("myfile", "w") as f:
             f.write("goodbye")
-        with open("mypatch", "w") as f:
+        # newline="" preserves the LF-only output of `brz diff`; otherwise
+        # text-mode translation on Windows would produce CRLF and confuse
+        # the patch tool when it tries to match against the LF-only file.
+        with open("mypatch", "w", newline="") as f:
             f.write(self.run_bzr("diff --color=never -p1", retcode=1)[0])
         self.run_bzr("revert")
         self.assertFileEqual("hello", "myfile")

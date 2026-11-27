@@ -290,21 +290,20 @@ class ScriptRunner:
 
     def _read_input(self, input, in_name):
         if in_name is not None:
-            infile = open(in_name)
-            try:
+            # newline="" suppresses universal-newline translation so script
+            # tests see file contents byte-for-byte (Windows would otherwise
+            # collapse CRLF to LF on read).
+            with open(in_name, newline="") as infile:
                 # Command redirection takes precedence over provided input
                 input = infile.read()
-            finally:
-                infile.close()
         return input
 
     def _write_output(self, output, out_name, out_mode):
         if out_name is not None:
-            outfile = open(out_name, out_mode)
-            try:
+            # newline="" disables LF→CRLF translation on Windows, so the
+            # bytes written match the script's expected output exactly.
+            with open(out_name, out_mode, newline="") as outfile:
                 outfile.write(output)
-            finally:
-                outfile.close()
             output = None
         return output
 
@@ -346,7 +345,7 @@ class ScriptRunner:
         for in_name in input_names:
             try:
                 inputs.append(self._read_input(None, in_name))
-            except (FileNotFoundError, ValueError):
+            except (FileNotFoundError, ValueError, OSError):
                 # Some filenames are illegal on Windows and generate EINVAL
                 # rather than just saying the filename doesn't exist
                 return (1, None, f"{in_name}: No such file or directory\n")
@@ -355,7 +354,7 @@ class ScriptRunner:
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except (FileNotFoundError, ValueError):
+        except (FileNotFoundError, ValueError, OSError):
             # If out_name cannot be created, we may get FileNotFoundError, however if
             # out_name is something like '', we can get EINVAL
             return 1, None, f"{out_name}: No such file or directory\n"
@@ -374,7 +373,7 @@ class ScriptRunner:
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except (FileNotFoundError, ValueError):
+        except (FileNotFoundError, ValueError, OSError):
             return 1, None, f"{out_name}: No such file or directory\n"
         return 0, output, None
 
