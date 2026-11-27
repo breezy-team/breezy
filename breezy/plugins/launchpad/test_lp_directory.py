@@ -20,9 +20,12 @@ from ... import transport
 from ...branch import Branch
 from ...directory_service import directories
 from ...tests import (
+    TestCase,
     TestCaseWithMemoryTransport,
 )
+from ...urlutils import InvalidURL
 from . import _register_directory
+from .lp_directory import _resolve
 
 
 class FakeResolveFactory:
@@ -56,3 +59,14 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         t = transport.get_transport("lp:///apt")
         branch = Branch.open_from_transport(t)
         self.assertEqual(target_branch.base, branch.base)
+
+
+class ResolveMalformedUrlTests(TestCase):
+    def test_lp_double_slash_rejected(self):
+        self.assertRaises(InvalidURL, _resolve, "lp://my-project")
+
+    def test_lp_empty_path_rejected(self):
+        self.assertRaises(InvalidURL, _resolve, "lp:")
+
+    def test_lp_slash_only_rejected(self):
+        self.assertRaises(InvalidURL, _resolve, "lp:///")
