@@ -48,7 +48,8 @@ class ShelfReporter:
         "binary": gettext("Shelve binary changes?"),
         "change kind": gettext('Shelve changing "%s" from %(other)s to %(this)s?'),
         "delete file": gettext('Shelve removing file "%(path)s"?'),
-        "final": gettext("Shelve %d change(s)?"),
+        "final": gettext("Shelve the %d selected change(s)?"),
+        "final_destroy": gettext("Destroy the %d selected change(s)?"),
         "hunk": gettext("Shelve?"),
         "modify target": gettext(
             'Shelve changing target of "%(path)s" from "%(other)s" to "%(this)s"?'
@@ -99,7 +100,8 @@ class ApplyReporter(ShelfReporter):
         "binary": gettext("Apply binary changes?"),
         "change kind": gettext('Change "%(path)s" from %(this)s to %(other)s?'),
         "delete file": gettext('Add file "%(path)s"?'),
-        "final": gettext("Apply %d change(s)?"),
+        "final": gettext("Apply the %d selected change(s)?"),
+        "final_destroy": gettext("Apply the %d selected change(s)?"),
         "hunk": gettext("Apply change?"),
         "modify target": gettext(
             'Change target of "%(path)s" from "%(this)s" to "%(other)s"?'
@@ -223,9 +225,13 @@ class Shelver:
                         changes_shelved += 1
             if changes_shelved > 0:
                 self.reporter.selected_changes(creator.work_transform)
-                if self.auto_apply or self.prompt_bool(
-                    self.reporter.vocab["final"] % changes_shelved
-                ):
+                if self.destroy:
+                    final_prompt = self.reporter.vocab.get(
+                        "final_destroy", self.reporter.vocab["final"]
+                    )
+                else:
+                    final_prompt = self.reporter.vocab["final"]
+                if self.auto_apply or self.prompt_bool(final_prompt % changes_shelved):
                     if self.destroy:
                         creator.transform()
                         self.reporter.changes_destroyed()

@@ -128,7 +128,7 @@ class TestShelver(ShelfTestCase):
         self.addCleanup(shelver.finalize)
         shelver.expect("Shelve?", 0)
         shelver.expect("Shelve?", 0)
-        shelver.expect("Shelve 2 change(s)?", 1)
+        shelver.expect("Shelve the 2 selected change(s)?", 1)
         shelver.run()
         self.assertFileEqual(LINES_ZY, "tree/foo")
 
@@ -140,7 +140,20 @@ class TestShelver(ShelfTestCase):
         self.addCleanup(shelver.finalize)
         shelver.expect("Shelve?", 0)
         shelver.expect("Shelve?", 0)
-        shelver.expect("Shelve 2 change(s)?", 0)
+        shelver.expect("Shelve the 2 selected change(s)?", 0)
+        shelver.run()
+        self.assertFileEqual(LINES_AJ, "tree/foo")
+
+    def test_shelve_destroy_final_prompt(self):
+        """bug #519919: --destroy changes the final prompt wording."""
+        tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
+        shelver = ExpectShelver(tree, tree.basis_tree(), destroy=True)
+        self.addCleanup(shelver.finalize)
+        shelver.expect("Shelve?", 0)
+        shelver.expect("Shelve?", 0)
+        shelver.expect("Destroy the 2 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AJ, "tree/foo")
 
@@ -152,7 +165,7 @@ class TestShelver(ShelfTestCase):
         self.addCleanup(shelver.finalize)
         shelver.expect("Shelve?", 0)
         shelver.expect("Shelve?", 1)
-        shelver.expect("Shelve 1 change(s)?", 0)
+        shelver.expect("Shelve the 1 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AY, "tree/foo")
 
@@ -164,7 +177,7 @@ class TestShelver(ShelfTestCase):
         shelver = ExpectShelver(tree, tree.basis_tree())
         self.addCleanup(shelver.finalize)
         shelver.expect("Shelve binary changes?", 0)
-        shelver.expect("Shelve 1 change(s)?", 0)
+        shelver.expect("Shelve the 1 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AJ, "tree/foo")
 
@@ -178,7 +191,7 @@ class TestShelver(ShelfTestCase):
         shelver.expect('Shelve renaming "foo" => "bar"?', 0)
         shelver.expect("Shelve?", 0)
         shelver.expect("Shelve?", 0)
-        shelver.expect("Shelve 3 change(s)?", 0)
+        shelver.expect("Shelve the 3 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AJ, "tree/foo")
 
@@ -190,7 +203,7 @@ class TestShelver(ShelfTestCase):
         shelver = ExpectShelver(tree, tree.basis_tree())
         self.addCleanup(shelver.finalize)
         shelver.expect('Shelve removing file "foo"?', 0)
-        shelver.expect("Shelve 1 change(s)?", 0)
+        shelver.expect("Shelve the 1 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AJ, "tree/foo")
 
@@ -204,7 +217,7 @@ class TestShelver(ShelfTestCase):
         shelver = ExpectShelver(tree, tree.basis_tree())
         self.addCleanup(shelver.finalize)
         shelver.expect('Shelve adding file "foo"?', 0)
-        shelver.expect("Shelve 1 change(s)?", 0)
+        shelver.expect("Shelve the 1 selected change(s)?", 0)
         shelver.run()
         self.assertPathDoesNotExist("tree/foo")
 
@@ -217,7 +230,7 @@ class TestShelver(ShelfTestCase):
         shelver = ExpectShelver(tree, tree.basis_tree())
         self.addCleanup(shelver.finalize)
         shelver.expect('Shelve changing "foo" from file to directory?', 0)
-        shelver.expect("Shelve 1 change(s)?", 0)
+        shelver.expect("Shelve the 1 selected change(s)?", 0)
 
     def test_shelve_modify_target(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
@@ -232,7 +245,7 @@ class TestShelver(ShelfTestCase):
         shelver = ExpectShelver(tree, tree.basis_tree())
         self.addCleanup(shelver.finalize)
         shelver.expect('Shelve changing target of "baz" from "bar" to "vax"?', 0)
-        shelver.expect("Shelve 1 change(s)?", 0)
+        shelver.expect("Shelve the 1 selected change(s)?", 0)
         shelver.run()
         self.assertEqual("bar", os.readlink("tree/baz"))
 
@@ -243,7 +256,7 @@ class TestShelver(ShelfTestCase):
         shelver = ExpectShelver(tree, tree.basis_tree())
         self.addCleanup(shelver.finalize)
         shelver.expect("Shelve?", 2)
-        shelver.expect("Shelve 2 change(s)?", 0)
+        shelver.expect("Shelve the 2 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AJ, "tree/foo")
 
@@ -275,7 +288,7 @@ class TestShelver(ShelfTestCase):
         shelver = ExpectShelver(tree, tree.basis_tree(), file_list=["bar"])
         self.addCleanup(shelver.finalize)
         shelver.expect('Shelve adding file "bar"?', 0)
-        shelver.expect("Shelve 1 change(s)?", 0)
+        shelver.expect("Shelve the 1 selected change(s)?", 0)
         shelver.run()
 
     def test_shelve_destroy(self):
@@ -372,7 +385,7 @@ class TestApplyReporter(ShelfTestCase):
         self.addCleanup(shelver.finalize)
         shelver.expect("Apply change?", 0)
         shelver.expect("Apply change?", 0)
-        shelver.expect("Apply 2 change(s)?", 1)
+        shelver.expect("Apply the 2 selected change(s)?", 1)
         shelver.run()
         self.assertFileEqual(LINES_ZY, "tree/foo")
 
@@ -386,7 +399,7 @@ class TestApplyReporter(ShelfTestCase):
         self.addCleanup(shelver.finalize)
         shelver.expect("Apply change?", 0)
         shelver.expect("Apply change?", 0)
-        shelver.expect("Apply 2 change(s)?", 0)
+        shelver.expect("Apply the 2 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AJ, "tree/foo")
 
@@ -400,7 +413,7 @@ class TestApplyReporter(ShelfTestCase):
         )
         self.addCleanup(shelver.finalize)
         shelver.expect("Apply binary changes?", 0)
-        shelver.expect("Apply 1 change(s)?", 0)
+        shelver.expect("Apply the 1 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AJ, "tree/foo")
 
@@ -416,7 +429,7 @@ class TestApplyReporter(ShelfTestCase):
         shelver.expect('Rename "bar" => "foo"?', 0)
         shelver.expect("Apply change?", 0)
         shelver.expect("Apply change?", 0)
-        shelver.expect("Apply 3 change(s)?", 0)
+        shelver.expect("Apply the 3 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AJ, "tree/foo")
 
@@ -430,7 +443,7 @@ class TestApplyReporter(ShelfTestCase):
         )
         self.addCleanup(shelver.finalize)
         shelver.expect('Add file "foo"?', 0)
-        shelver.expect("Apply 1 change(s)?", 0)
+        shelver.expect("Apply the 1 selected change(s)?", 0)
         shelver.run()
         self.assertFileEqual(LINES_AJ, "tree/foo")
 
@@ -446,7 +459,7 @@ class TestApplyReporter(ShelfTestCase):
         )
         self.addCleanup(shelver.finalize)
         shelver.expect('Delete file "foo"?', 0)
-        shelver.expect("Apply 1 change(s)?", 0)
+        shelver.expect("Apply the 1 selected change(s)?", 0)
         shelver.run()
         self.assertPathDoesNotExist("tree/foo")
 
@@ -461,7 +474,7 @@ class TestApplyReporter(ShelfTestCase):
         )
         self.addCleanup(shelver.finalize)
         shelver.expect('Change "foo" from directory to a file?', 0)
-        shelver.expect("Apply 1 change(s)?", 0)
+        shelver.expect("Apply the 1 selected change(s)?", 0)
 
     def test_shelve_modify_target(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
@@ -478,7 +491,7 @@ class TestApplyReporter(ShelfTestCase):
         )
         self.addCleanup(shelver.finalize)
         shelver.expect('Change target of "baz" from "vax" to "bar"?', 0)
-        shelver.expect("Apply 1 change(s)?", 0)
+        shelver.expect("Apply the 1 selected change(s)?", 0)
         shelver.run()
         self.assertEqual("bar", os.readlink("tree/baz"))
 

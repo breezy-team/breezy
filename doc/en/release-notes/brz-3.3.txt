@@ -74,6 +74,12 @@ brz 3.3.26
    produce conflicts without touching the working tree, and exits
    with status 1 if any would occur. (#409643, Jelmer Vernooĳ)
 
+ * ``brz shelve``'s final confirmation prompt now says "Shelve the N
+   selected change(s)?" (matching ``brz unshelve --preview``), and
+   ``brz shelve --destroy`` asks "Destroy the N selected change(s)?"
+   to make the destructive action more obvious.
+   (#519919, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
