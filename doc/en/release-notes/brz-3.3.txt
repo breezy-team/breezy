@@ -74,6 +74,10 @@ brz 3.3.26
    produce conflicts without touching the working tree, and exits
    with status 1 if any would occur. (#409643, Jelmer Vernooĳ)
 
+ * ``brz help resolve`` now explains what ``--action=ARG`` accepts
+   and notes that ``--done``, ``--take-this`` and ``--take-other``
+   are shorthands. (#652336, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
