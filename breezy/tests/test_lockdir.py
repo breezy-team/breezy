@@ -318,10 +318,26 @@ class TestLockDir(TestCaseWithTransport):
         # do this without IO redirection to ensure it doesn't prompt.
         self.assertRaises(AssertionError, ld1.break_lock)
         orig_factory = breezy.ui.ui_factory
-        breezy.ui.ui_factory = breezy.ui.CannedInputUIFactory([True])
+        # Two confirmations: the live-holder warning then the actual
+        # break prompt.
+        breezy.ui.ui_factory = breezy.ui.CannedInputUIFactory([True, True])
         try:
             ld2.break_lock()
             self.assertRaises(LockBroken, ld1.unlock)
+        finally:
+            breezy.ui.ui_factory = orig_factory
+
+    def test_break_lock_aborts_when_live(self):
+        """Declining the live-holder warning leaves the lock in place."""
+        ld1 = self.get_lock()
+        ld2 = self.get_lock()
+        ld1.create()
+        ld1.lock_write()
+        orig_factory = breezy.ui.ui_factory
+        breezy.ui.ui_factory = breezy.ui.CannedInputUIFactory([False])
+        try:
+            ld2.break_lock()
+            ld1.unlock()
         finally:
             breezy.ui.ui_factory = orig_factory
 
@@ -708,6 +724,25 @@ class TestLockHeldInfo(TestCaseInTempDir):
         info = LockHeldInfo.for_this_process(None)
         info.info_dict["pid"] = "123123123"
         self.assertFalse(info.is_lock_holder_known_dead())
+
+    def test_lock_holder_known_alive_this_process(self):
+        """This process is clearly alive, so detect it."""
+        self.overrideAttr(lockdir, "get_host_name", lambda: "aproperhostname")
+        info = LockHeldInfo.for_this_process(None)
+        self.assertTrue(info.is_lock_holder_known_alive())
+
+    def test_lock_holder_known_alive_dead_pid(self):
+        """A dead pid is not reported as alive."""
+        self.overrideAttr(lockdir, "get_host_name", lambda: "aproperhostname")
+        info = LockHeldInfo.for_this_process(None)
+        info.info_dict["pid"] = "123123123"
+        self.assertFalse(info.is_lock_holder_known_alive())
+
+    def test_lock_holder_known_alive_other_host(self):
+        """A lock held on another host is not treated as alive."""
+        info = LockHeldInfo.for_this_process(None)
+        info.info_dict["hostname"] = "egg.example.com"
+        self.assertFalse(info.is_lock_holder_known_alive())
 
 
 class TestStaleLockDir(TestCaseWithTransport):

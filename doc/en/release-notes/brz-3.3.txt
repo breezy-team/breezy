@@ -18,6 +18,10 @@ brz 3.3.26
    clear ``InvalidURL`` instead of a bare traceback from deeper code.
    (#1031774, Jelmer Vernooĳ)
 
+ * ``brz break-lock`` now warns and asks for an extra confirmation when
+   the lock holder process on the local machine still appears to be
+   running. (#397298, Jelmer Vernooĳ)
+
  * Add ``urlutils.join_segment_parameters_encoded`` and
    ``urlutils.split_segment_parameters_decoded``, which encode and decode
    segment parameter values, so a value may hold ``/`` or ``,``. Only the

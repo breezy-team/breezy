@@ -395,6 +395,18 @@ class LockDir(lock.Lock):
                 self.force_break_corrupt(e.file_data)
             return
         if holder_info is not None:
+            if holder_info.is_lock_holder_known_alive():
+                if not ui.ui_factory.confirm_action(
+                    "Process %(pid)s on this machine still appears to be"
+                    " running and holding %(lock_info)s."
+                    " Break the lock anyway?",
+                    "breezy.lockdir.break_live",
+                    {
+                        "pid": holder_info.get("pid"),
+                        "lock_info": str(holder_info),
+                    },
+                ):
+                    return
             if ui.ui_factory.confirm_action(
                 "Break %(lock_info)s",
                 "breezy.lockdir.break",
@@ -842,6 +854,25 @@ class LockHeldInfo:
             mutter("can't parse pid {!r} from {!r}".format(pid_str, self))
             return False
         return osutils.is_local_pid_dead(pid)
+
+    def is_lock_holder_known_alive(self):
+        """True if the lock holder process is known to still be alive.
+
+        False if it's known to be dead, or if we can't tell (e.g. the lock
+        holder is on a different machine, or the recorded pid is missing).
+        """
+        if self.get("hostname") != get_host_name():
+            return False
+        if self.get("hostname") == "localhost":
+            return False
+        pid_str = self.info_dict.get("pid", None)
+        if not pid_str:
+            return False
+        try:
+            pid = int(pid_str)
+        except ValueError:
+            return False
+        return not osutils.is_local_pid_dead(pid)
 
 
 def get_username_for_lock_info():
