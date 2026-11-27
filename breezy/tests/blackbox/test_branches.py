@@ -86,3 +86,22 @@ class TestBranches(TestCaseWithTransport):
         self.make_branch("a")
         out, _err = self.run_bzr("branches a")
         self.assertEqual(out, "* (default)\n")
+
+    def test_merged_filters(self):
+        tree = self.make_branch_and_tree("a", format="development-colo")
+        rev1 = tree.commit("initial")
+        tree.controldir.create_branch(name="in-sync")
+        other = tree.controldir.create_branch(name="ahead")
+        # Advance the 'ahead' branch past the active one.
+        other_tree = tree.controldir.sprout(
+            "ahead-wt", source_branch=other
+        ).open_workingtree()
+        other_tree.commit("extra")
+        other.pull(other_tree.branch)
+        # 'ahead' has a tip that is NOT an ancestor of the active branch,
+        # so it should appear under --no-merged and not under --merged.
+        out, _err = self.run_bzr("branches --merged a")
+        self.assertEqual("  in-sync\n", out)
+        out, _err = self.run_bzr("branches --no-merged a")
+        self.assertEqual("  ahead\n", out)
+        self.assertEqual(rev1, tree.last_revision())
