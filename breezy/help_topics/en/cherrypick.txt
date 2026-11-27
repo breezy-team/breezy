@@ -1,0 +1,51 @@
+Cherrypicking
+=============
+
+A *cherrypick* is a merge that only picks a specific revision (or
+range of revisions) and applies the change it introduced, rather than
+merging an entire branch's history up to a tip. Breezy's output calls
+this "Performing cherrypick".
+
+Cherrypicking is useful when you want a fix from another branch but
+don't want to inherit the rest of that branch's history, for example
+to apply a bug fix from a development branch onto a stable release
+branch.
+
+How to cherrypick
+-----------------
+
+Use ``brz merge`` with a ``-c`` (single revision) or a ``-rX..Y``
+range::
+
+    brz merge -c 42 ../other-branch
+    brz merge -r 42..45 ../other-branch
+
+In both cases Breezy computes the diff that those revision(s)
+introduced on the other branch and applies it to the working tree, as
+if you had made that change yourself. The resulting commit will have
+only one parent (the current branch tip), not the cherrypicked
+revision, so the two branches are still considered to have diverged.
+
+How cherrypicks differ from regular merges
+------------------------------------------
+
+A regular ``brz merge`` records the merged-in revisions as additional
+parents of the next commit. Breezy's merge tracking then knows those
+revisions are already present and won't pull them in again.
+
+A cherrypick deliberately does NOT record the picked revisions as
+parents, so:
+
+* Future merges from the source branch will see the picked content as
+  divergent and may raise merge conflicts.
+* ``brz missing`` will continue to list the picked revisions as
+  missing from the current branch.
+
+If the same change later lands through a full merge, you may want to
+use ``brz merge --weave`` or resolve the conflicts manually.
+
+See also
+--------
+
+* ``brz help merge``
+* ``brz help revisionspec`` for how ``-r X..Y`` ranges work.

@@ -828,6 +828,12 @@ topic_registry.register(
     "checkouts", _checkouts, "Information on what a checkout is", SECT_CONCEPT
 )
 topic_registry.register(
+    "cherrypick",
+    _load_from_file,
+    "What cherrypicking is and how it differs from a regular merge",
+    SECT_CONCEPT,
+)
+topic_registry.register(
     "content-filters",
     _load_from_file,
     "Conversion of content into/from working trees",
