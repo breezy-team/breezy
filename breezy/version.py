@@ -80,6 +80,14 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         to_file.write("  Breezy configuration: {}\n".format(config_dir))
         to_file.write("  Breezy log file: ")
         to_file.write(trace._brz_log_filename + "\n")
+        # Plugin search paths (bug #1024298).
+        from breezy.plugins import __path__ as plugin_path
+
+        plugin_paths = [osutils.normpath(p) for p in plugin_path]
+        if plugin_paths:
+            to_file.write("  Plugin paths:\n")
+            for p in plugin_paths:
+                to_file.write("    {}\n".format(p))
     if show_copyright:
         to_file.write("\n")
         to_file.write(breezy.__copyright__ + "\n")

@@ -50,6 +50,16 @@ class TestBzrlibVersioning(tests.TestCase):
         self.assertIsNot(m, None)
         self.assertPathExists(m.group(1))
 
+    def test_shows_plugin_paths(self):
+        """'brz version' lists the plugin search paths (bug #1024298)."""
+        self.permit_source_tree_branch_repo()
+        sio = StringIO()
+        version.show_version(show_copyright=False, to_file=sio)
+        out = sio.getvalue()
+        self.assertContainsRe(out, r"Plugin paths:")
+        # Each plugin directory should be listed on its own line.
+        self.assertContainsRe(out, r"\n    .+plugins")
+
 
 class TestPlatformUse(tests.TestCase):
     scenarios = [

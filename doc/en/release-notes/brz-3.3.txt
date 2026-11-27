@@ -62,6 +62,9 @@ brz 3.3.26
  * ``brz dir`` is now an alias for ``brz ls``, for Windows users used
    to that spelling. (#403766, Jelmer Vernooĳ)
 
+ * ``brz version`` lists the plugin search paths under a new
+   "Plugin paths:" section. (#1024298, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
