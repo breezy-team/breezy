@@ -5028,6 +5028,12 @@ class cmd_merge(Command):
             "rather than the one containing the working directory.",
         ),
         Option("preview", help="Instead of merging, show a diff of the merge."),
+        Option(
+            "check-conflicts",
+            help="Only report whether the merge would conflict, without "
+            "touching the working tree. Exits non-zero (1) if conflicts "
+            "would be produced.",
+        ),
         Option("interactive", help="Select changes interactively.", short_name="i"),
     ]
 
@@ -5045,6 +5051,7 @@ class cmd_merge(Command):
         directory=None,
         preview=False,
         interactive=False,
+        check_conflicts=False,
     ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
@@ -5142,10 +5149,32 @@ class cmd_merge(Command):
             )
         if preview:
             return self._do_preview(merger)
+        elif check_conflicts:
+            return self._do_check_conflicts(merger)
         elif interactive:
             return self._do_interactive(merger)
         else:
             return self._do_merge(merger, change_reporter, allow_pending, verified)
+
+    def _do_check_conflicts(self, merger):
+        """Report whether the merge would conflict, without touching the tree."""
+        tree_merger = merger.make_merger()
+        with tree_merger.make_preview_transform():
+            conflicts = tree_merger.cooked_conflicts
+        if not conflicts:
+            note(gettext("Merge would succeed with no conflicts."))
+            return 0
+        note(
+            ngettext(
+                "Merge would produce %d conflict.",
+                "Merge would produce %d conflicts.",
+                len(conflicts),
+            )
+            % len(conflicts)
+        )
+        for conflict in conflicts:
+            note("  %s", conflict)
+        return 1
 
     def _get_preview(self, merger):
         tree_merger = merger.make_merger()

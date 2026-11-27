@@ -70,6 +70,10 @@ brz 3.3.26
    colocated branches by whether their tip has been merged into the
    active branch. (#1043748, Jelmer Vernooĳ)
 
+ * ``brz merge --check-conflicts`` reports whether the merge would
+   produce conflicts without touching the working tree, and exits
+   with status 1 if any would occur. (#409643, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
