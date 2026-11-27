@@ -83,6 +83,11 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * ``brz push`` now warns when it pushes a branch into the root of a
+   shared repository, which turns that root into a branch and hides
+   every other branch under the shared repository.
+   (#641109, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
