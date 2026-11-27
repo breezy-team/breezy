@@ -74,6 +74,11 @@ brz 3.3.26
    produce conflicts without touching the working tree, and exits
    with status 1 if any would occur. (#409643, Jelmer Vernooĳ)
 
+ * The user guide gained a "Pending merges" section in
+   ``merging_changes`` explaining what a pending merge is, how
+   ``brz status`` reports it and how ``brz revert`` / ``--forget-merges``
+   interact with it. (#735169, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
