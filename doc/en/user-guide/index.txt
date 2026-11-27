@@ -100,6 +100,7 @@ Miscellaneous topics
    switch_store
    shelving_changes
    filtered_views
+   content_filters
    stacked
    server
    hooks

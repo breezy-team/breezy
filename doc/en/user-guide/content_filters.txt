@@ -1,0 +1,52 @@
+Content filters
+===============
+
+Content filters let Breezy store the canonical form of a file in the
+repository while presenting a different form in your working tree.
+The most common use is line-ending conversion between Unix (``\n``)
+and Windows (``\r\n``), so a mixed team can share the same branch
+without constant trailing-``^M`` noise.
+
+Enabling line-ending conversion
+-------------------------------
+
+Add an ``eol`` entry to your rules file.  By default this file is
+``~/.config/breezy/rules`` on Unix and ``%APPDATA%\breezy\rules`` on
+Windows::
+
+    [name *.py]
+    eol = native
+
+    [name *.sh]
+    eol = lf
+
+    [name *.bat]
+    eol = crlf
+
+The right-hand side selects the conversion:
+
+* ``native`` -- store ``\n`` in the repository, check out in the
+  platform's native line ending (``\n`` on Unix, ``\r\n`` on Windows).
+* ``lf`` / ``crlf`` -- always check the file out with the chosen
+  line ending regardless of platform.
+* ``exact`` -- disable any conversion for files that match (useful
+  for binary-but-text-looking files).
+
+See ``brz help eol`` for a full list of values and ``brz help rules``
+for the pattern syntax.
+
+Requirements
+------------
+
+Content filtering requires a repository and branch using format 1.14
+or later (``brz info -v`` will say "Working tree format 5" or higher).
+If filtering does not appear to be working, upgrade the branch using
+``brz upgrade --2a``.
+
+Binary files
+------------
+
+Line-ending conversion is skipped automatically for files Breezy
+detects as binary (those containing a NUL byte in the first few
+kilobytes).  To be explicit, add ``eol = exact`` for the patterns
+that cover those files.
