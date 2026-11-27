@@ -787,6 +787,12 @@ topic_registry.register_lazy(
     "AliasDirectory.help_text",
     "Aliases for remembered locations",
 )
+topic_registry.register_lazy(
+    "directory-services",
+    "breezy.directory_service",
+    "directories.help_text",
+    "URL prefixes handled by directory services (lp:, co:, etc.)",
+)
 
 # Load some of the help topics from files. Note that topics which reproduce API
 # details will tend to skew (quickly usually!) so please seek other solutions

@@ -89,6 +89,10 @@ brz 3.3.26
    of just pointing at the diverged-branches help topic.
    (#316592, Jelmer Vernooĳ)
 
+ * ``brz help directory-services`` is a new help topic that lists
+   every registered URL-prefix directory service (``lp:``, ``co:``,
+   ``github:``, ...). (#262969, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
