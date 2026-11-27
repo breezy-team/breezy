@@ -28,3 +28,12 @@ class TestLookupRevision(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["lookup-revision", "-d", "a", "1"])
         self.assertEqual("abcd\n", out)
         self.assertEqual("", err)
+
+    def test_lookup_revision_out_of_bounds(self):
+        """A revno out of range gives a user error, not a traceback (bug #703270)."""
+        tree = self.make_branch_and_tree("a")
+        tree.commit("rev1")
+        _out, err = self.run_bzr(["lookup-revision", "-d", "a", "770"], retcode=3)
+        self.assertContainsRe(err, "revision number 770 is outside")
+        self.assertNotIn("Traceback", err)
+        self.assertNotIn("internal error", err)
