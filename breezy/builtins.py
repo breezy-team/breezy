@@ -194,7 +194,22 @@ def iter_sibling_branches(control_dir, possible_transports=None):
     if ref_branch is None or ref_branch.name:
         if ref_branch is not None:
             control_dir = ref_branch.controldir
+        yielded_any = False
         for name, branch in control_dir.get_branches().items():
+            yielded_any = True
+            yield name, branch
+        if yielded_any:
+            return
+        # No branches at this control directory. If this location hosts a
+        # shared repository, expose the branches inside it (bug #1174344).
+        try:
+            repo = control_dir.find_repository()
+        except errors.NoRepositoryPresent:
+            return
+        if not repo.is_shared():
+            return
+        for branch in repo.find_branches(using=True):
+            name = urlutils.relative_url(repo.user_url, branch.user_url).rstrip("/")
             yield name, branch
     else:
         repo = ref_branch.controldir.find_repository()
