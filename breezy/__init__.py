@@ -175,7 +175,7 @@ else:
 _global_state = None
 
 
-def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
+def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None, load_plugins=False):
     """Set up everything needed for normal use of breezy.
 
     Most applications that embed breezy, including brz itself, should call
@@ -194,6 +194,10 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         the caller.
     :param stdin, stdout, stderr: If provided, use these for terminal IO;
         otherwise use the files in `sys`.
+    :param load_plugins: If True, discover and load installed Breezy
+        plugins so library users get the same command/format/transport
+        registrations that ``brz`` has. Defaults to False to preserve
+        the historical embedding behaviour.
     :return: A context manager for the use of breezy. The __exit__
         should be called by the caller before exiting their process or
         otherwise stopping use of breezy. Advanced callers can use
@@ -214,6 +218,10 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
     state = library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
     # Start automatically in case people don't realize this returns a context.
     state._start()
+    if load_plugins:
+        from .plugin import load_plugins as _load_plugins
+
+        _load_plugins()
     return state
 
 

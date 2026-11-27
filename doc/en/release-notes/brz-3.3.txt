@@ -74,6 +74,11 @@ brz 3.3.26
    produce conflicts without touching the working tree, and exits
    with status 1 if any would occur. (#409643, Jelmer Vernooĳ)
 
+ * ``breezy.initialize(load_plugins=True)`` loads installed Breezy
+   plugins, so library users can opt into the same registrations
+   that ``brz`` has without going through ``run_bzr``.
+   (#881666, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
