@@ -117,6 +117,17 @@ class TestRemove(TestCaseWithTransport):
         # missing files unversioned
         self.assertNotInWorkingTree("bar", tree=tree)
 
+    def test_remove_verbose_missing_file(self):
+        # ``brz rm --verbose`` must not error on files that have already
+        # been deleted from the working tree.
+        tree = self._make_tree_and_add(["foo", "bar"])
+        tree.commit("initial")
+        os.unlink("bar")
+        out, err = self.run_bzr(["rm", "--verbose"])
+        self.assertEqual("?       bar\n", out)
+        self.assertEqual("removed bar\n", err)
+        self.assertNotInWorkingTree("bar", tree=tree)
+
     def test_remove_no_files_specified_missing_link(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self._make_tree_and_add(["foo"])

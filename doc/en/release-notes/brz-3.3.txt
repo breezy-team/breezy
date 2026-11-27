@@ -74,6 +74,11 @@ brz 3.3.26
    produce conflicts without touching the working tree, and exits
    with status 1 if any would occur. (#409643, Jelmer Vernooĳ)
 
+ * ``brz rm --verbose`` no longer errors with ``No such file`` when a
+   tracked file has already been deleted from the working tree; the
+   kind recorded in the tree is used instead.
+   (#729751, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
