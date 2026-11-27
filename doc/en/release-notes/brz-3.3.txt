@@ -70,6 +70,10 @@ brz 3.3.26
    colocated branches by whether their tip has been merged into the
    active branch. (#1043748, Jelmer Vernooĳ)
 
+ * ``brz modified`` accepts ``--revision=REV`` to list files that
+   differ from a specific revision instead of the working tree's
+   basis. (#754169, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

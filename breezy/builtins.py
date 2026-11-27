@@ -2795,17 +2795,31 @@ class cmd_deleted(Command):
 
 class cmd_modified(Command):
     __doc__ = """List files modified in working tree.
+
+    With --revision=X, list files that have changed in the working tree
+    compared to revision X instead of the working tree basis.
     """
 
     hidden = True
     _see_also = ["status", "ls"]
-    takes_options = ["directory", "null"]
+    takes_options = ["directory", "null", "revision"]
 
     @display_command
-    def run(self, null=False, directory="."):
+    def run(self, null=False, directory=".", revision=None):
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
-        td = tree.changes_from(tree.basis_tree())
+        if revision is None:
+            old_tree = tree.basis_tree()
+        else:
+            if len(revision) != 1:
+                raise errors.CommandError(
+                    gettext(
+                        "brz modified --revision takes exactly one revision specifier"
+                    )
+                )
+            old_tree = revision[0].as_tree(tree.branch)
+        self.enter_context(old_tree.lock_read())
+        td = tree.changes_from(old_tree)
         self.cleanup_now()
         for change in td.modified:
             if null:
