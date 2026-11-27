@@ -144,6 +144,44 @@ class TestMerge(tests.TestCaseWithTransport):
         self.run_bzr("merge ../b -r last:1", working_dir="a")
         self.assertEqual([a_tip], a.get_parent_ids())
 
+    def test_merge_check_conflicts_reports(self):
+        """bug #409643: --check-conflicts reports conflicts and exits 1."""
+        tree, _other = self.create_conflicting_branches()
+        out, err = self.run_bzr(
+            "merge --check-conflicts ../other",
+            working_dir="tree",
+            retcode=1,
+        )
+        self.assertContainsRe(err, "Merge would produce 1 conflict")
+
+    def test_merge_check_conflicts_clean(self):
+        """--check-conflicts reports a clean merge and exits 0."""
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree_contents([("tree/f", b"a\n")])
+        tree.add("f")
+        tree.commit("c1")
+        other = tree.controldir.sprout("other").open_workingtree()
+        self.build_tree_contents([("other/g", b"g\n")])
+        other.add("g")
+        other.commit("add g")
+        _out, err = self.run_bzr("merge --check-conflicts ../other", working_dir="tree")
+        self.assertContainsRe(err, "no conflicts")
+
+    def test_merge_check_conflicts_does_not_touch_tree(self):
+        """--check-conflicts leaves the working tree untouched."""
+        tree, _other = self.create_conflicting_branches()
+        before = tree.get_file_text("fname")
+        self.run_bzr(
+            "merge --check-conflicts ../other",
+            working_dir="tree",
+            retcode=1,
+        )
+        from breezy.workingtree import WorkingTree
+
+        reopened = WorkingTree.open("tree")
+        self.assertEqual(before, reopened.get_file_text("fname"))
+        self.assertEqual([], reopened.conflicts())
+
     def test_merge_defaults_to_reprocess(self):
         tree, _other = self.create_conflicting_branches()
         # The default merge algorithm should enable 'reprocess' because
