@@ -32,7 +32,23 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """,
 )
-from . import commands, errors, option, osutils, registry, trace
+from . import commands, errors, hooks as _mod_hooks, option, osutils, registry, trace
+
+
+class ConflictHooks(_mod_hooks.Hooks):
+    """Hooks for conflict resolution."""
+
+    def __init__(self):
+        _mod_hooks.Hooks.__init__(self, "breezy.conflicts", "hooks")
+        self.add_hook(
+            "post_resolved",
+            "Called after 'brz resolve' leaves the working tree with no "
+            "remaining conflicts. Hook is called with the WorkingTree.",
+            (3, 4),
+        )
+
+
+hooks = ConflictHooks()
 
 
 class cmd_conflicts(commands.Command):
@@ -204,6 +220,9 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False, action="done
             pass
     if nb_conflicts_after is None:
         nb_conflicts_after = nb_conflicts_before
+    if nb_conflicts_before > 0 and nb_conflicts_after == 0:
+        for hook in hooks["post_resolved"]:
+            hook(tree)
     return nb_conflicts_before, nb_conflicts_after
 
 

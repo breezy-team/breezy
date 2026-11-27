@@ -82,6 +82,7 @@ class KnownHooksRegistry(registry.Registry[str, "Hooks", None]):
 
 _builtin_known_hooks = (
     ("breezy.branch", "Branch.hooks", "BranchHooks"),
+    ("breezy.conflicts", "hooks", "ConflictHooks"),
     ("breezy.controldir", "ControlDir.hooks", "ControlDirHooks"),
     ("breezy.commands", "Command.hooks", "CommandHooks"),
     ("breezy.config", "ConfigHooks", "_ConfigHooks"),
