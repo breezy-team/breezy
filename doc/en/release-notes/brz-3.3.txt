@@ -83,6 +83,10 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * ``brz help diff`` now points to ``brz status -r X..Y`` for users
+   looking for a per-file summary like ``svn diff --summarize``.
+   (#532600, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

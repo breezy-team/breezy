@@ -95,6 +95,11 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertNotContainsRe(out, r"Documents and Settings")
         self.assertNotContainsRe(out, r"\.bazaar")
 
+    def test_help_diff_mentions_status_for_summary(self):
+        """``brz help diff`` points users to ``brz status -r`` for summaries."""
+        out, _err = self.run_bzr("help diff")
+        self.assertContainsRe(out, r"status -r1\.\.3")
+
     def test_help_commands(self):
         dash_help = self.run_bzr("--help commands")[0]
         commands = self.run_bzr("help commands")[0]

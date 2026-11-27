@@ -2621,6 +2621,11 @@ class cmd_diff(Command):
         Show the differences using a custom diff program with options::
 
             brz diff --using /usr/bin/diff --diff-options -wu
+
+        To get a per-file summary of what changed (like ``svn diff
+        --summarize``), use ``brz status`` with a revision range instead::
+
+            brz status -r1..3
     """
     _see_also = ["status"]
     takes_args = ["file*"]
