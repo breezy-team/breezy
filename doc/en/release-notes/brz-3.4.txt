@@ -178,6 +178,11 @@ API Changes
    can be set to False to merge without running the merge hooks.
    (Zainab Mehmut)
 
+ * Add ``urlutils.join_segment_parameters_encoded`` and
+   ``urlutils.split_segment_parameters_decoded`` from ``dromedary``. They
+   encode and decode segment parameter values, as in 3.3.26.
+   (Zainab Mehmut)
+
 Internals
 *********
 
