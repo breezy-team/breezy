@@ -56,6 +56,39 @@ Note that some merges can only be completed with the assistance
 of a human. Details on how to resolve these are given in
 `Resolving conflicts <resolving_conflicts.html>`_.
 
+Pending merges
+--------------
+
+After ``brz merge`` succeeds, the working tree has two parents: the
+current branch tip and the revision just merged in. The additional
+parent is called a *pending merge*. Breezy remembers pending merges in
+the working tree until you record them with the next ``brz commit``, so
+that commit becomes a true merge revision with two (or more) parents.
+
+Common things to know about pending merges:
+
+* ``brz status`` shows a "pending merges:" section listing the
+  revisions that will be included in the next commit. ``brz status -v``
+  also lists the file-level changes those merges introduce.
+
+* While pending merges exist, ``brz merge`` refuses to run again (to
+  avoid stacking merges on top of each other). Commit the pending
+  merge first, or use ``brz revert`` to discard it.
+
+* ``brz revert --forget-merges`` clears the pending-merge list
+  without touching the working-tree contents. The next commit will
+  then be an ordinary single-parent commit containing the merged
+  changes as if they had been typed by hand.
+
+* If you don't want the pending merge at all, ``brz revert`` without
+  any arguments restores the working tree to the current branch tip
+  and drops the pending merges.
+
+Pending merges are only present in a working tree; a plain branch (no
+working tree) can never have them. Pushing or branching a tree with
+pending merges always uses the mainline state, not the pending-merge
+state.
+
 Recording a merge
 -----------------
 
