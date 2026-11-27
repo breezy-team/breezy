@@ -74,3 +74,26 @@ class TestModified(TestCaseWithTransport):
         self.build_tree_contents([("a/README", b"changed\n")])
         out, _err = self.run_bzr(["modified", "--directory=a"])
         self.assertEqual("README\n", out)
+
+    def test_modified_with_revision(self):
+        """'brz modified -r N' compares against revision N rather than basis."""
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("a", b"one\n")])
+        tree.add("a")
+        tree.commit("r1")
+        self.build_tree_contents([("a", b"two\n")])
+        tree.commit("r2")
+        # No change against basis.
+        out, _err = self.run_bzr("modified")
+        self.assertEqual("", out)
+        # Against revision 1 there's a difference.
+        out, _err = self.run_bzr("modified -r 1")
+        self.assertEqual("a\n", out)
+
+    def test_modified_rejects_range_revision(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("a", b"one\n")])
+        tree.add("a")
+        tree.commit("r1")
+        _out, err = self.run_bzr("modified -r 1..2", retcode=3)
+        self.assertContainsRe(err, "exactly one revision")
