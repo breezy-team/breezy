@@ -146,6 +146,52 @@ class TestConflictList(tests.TestCase):
             self.assertEqual(text, str(o))
 
 
+class TestPostResolvedHook(tests.TestCaseWithTransport):
+    def test_fires_when_all_resolved(self):
+        """'post_resolved' fires when resolve clears the last conflict."""
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("f", b"content\n")])
+        tree.add("f")
+        tree.commit("init")
+        tree.set_conflicts([bzr_conflicts.ContentsConflict("f")])
+        called: list[Any] = []
+        conflicts.hooks.install_named_hook(
+            "post_resolved", lambda wt: called.append(wt), "test"
+        )
+        conflicts.resolve(tree, action="done")
+        self.assertEqual([tree], called)
+
+    def test_does_not_fire_when_conflicts_remain(self):
+        """Hook is skipped if any conflicts remain afterwards."""
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("f", b"content\n"), ("g", b"g\n")])
+        tree.add(["f", "g"])
+        tree.commit("init")
+        tree.set_conflicts(
+            [
+                bzr_conflicts.ContentsConflict("f"),
+                bzr_conflicts.ContentsConflict("g"),
+            ]
+        )
+        called: list[Any] = []
+        conflicts.hooks.install_named_hook(
+            "post_resolved", lambda wt: called.append(wt), "test"
+        )
+        conflicts.resolve(tree, ["f"], action="done")
+        self.assertEqual([], called)
+
+    def test_does_not_fire_when_nothing_to_resolve(self):
+        """Hook is skipped if there weren't any conflicts to begin with."""
+        tree = self.make_branch_and_tree(".")
+        tree.commit("empty")
+        called: list[Any] = []
+        conflicts.hooks.install_named_hook(
+            "post_resolved", lambda wt: called.append(wt), "test"
+        )
+        conflicts.resolve(tree, action="done")
+        self.assertEqual([], called)
+
+
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
 # moved to a blackbox module -- vila 20100205
 

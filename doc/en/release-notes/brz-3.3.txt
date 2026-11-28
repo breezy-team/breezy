@@ -83,6 +83,11 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * ``breezy.conflicts.hooks`` is a new hook registry. The
+   ``post_resolved`` hook fires with the working tree when
+   ``brz resolve`` clears the last conflict, useful for post-merge
+   reminders. (#646809, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
