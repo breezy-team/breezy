@@ -1594,6 +1594,10 @@ class cmd_branch(Command):
             type=str,
             help="Name of colocated branch to sprout.",
         ),
+        Option(
+            "uncommitted",
+            help="Also apply uncommitted changes from the source tree.",
+        ),
     ]
 
     def run(
@@ -1611,6 +1615,7 @@ class cmd_branch(Command):
         files_from=None,
         no_recurse_nested=False,
         colocated_branch=None,
+        uncommitted=False,
     ):
         from breezy import switch as _mod_switch
 
@@ -1731,6 +1736,25 @@ class cmd_branch(Command):
             parent_branch = Branch.open(from_location)
             branch.bind(parent_branch)
             note(gettext("New branch bound to %s") % from_location)
+        if uncommitted:
+            if no_tree:
+                raise errors.CommandError(
+                    gettext("--uncommitted requires a working tree")
+                )
+            try:
+                source_tree = WorkingTree.open(from_location)
+            except (errors.NoWorkingTree, errors.NotLocalUrl) as exc:
+                raise errors.CommandError(
+                    gettext(
+                        "--uncommitted needs a local source tree with a "
+                        "working tree, but %s has none."
+                    )
+                    % from_location
+                ) from exc
+            new_tree = branch.controldir.open_workingtree()
+            merger = _mod_merge.Merger.from_uncommitted(new_tree, source_tree)
+            merger.merge_type = _mod_merge.Merge3Merger
+            merger.do_merge()
         if switch:
             # Switch to the new branch
             wt, _ = WorkingTree.open_containing(".")
