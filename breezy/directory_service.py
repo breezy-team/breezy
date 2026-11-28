@@ -66,6 +66,29 @@ class DirectoryServiceRegistry(registry.Registry):
     name and URL, and return a URL.
     """
 
+    def help_text(self, topic=None):
+        """Help text listing all registered directory-service prefixes.
+
+        Suitable for use as a help-topic callable.
+        """
+        lines = [
+            "Directory Services",
+            "==================",
+            "",
+            "A directory service turns a short prefix (such as ``lp:`` or ",
+            "``co:``) into a full URL. Breezy applies directory services ",
+            "whenever a URL argument begins with a registered prefix. The ",
+            "following prefixes are currently registered:",
+            "",
+        ]
+        width = max((len(k) for k in self.keys()), default=0)
+        for key in sorted(self.keys()):
+            summary = self.get_help(key) or ""
+            lines.append("  %-*s  %s" % (width, key, summary))
+        lines.append("")
+        lines.append("See also ``brz help urlspec`` and ``brz help location-alias``.")
+        return "\n".join(lines) + "\n"
+
     def dereference(self, url, purpose=None):
         """Dereference a supplied URL if possible.
 

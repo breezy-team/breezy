@@ -38,6 +38,13 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "commands")
         self.assertContainsRe(out, "revisionspec")
 
+    def test_help_directory_services(self):
+        """'brz help directory-services' lists registered prefixes."""
+        out, _err = self.run_bzr("help directory-services")
+        self.assertContainsRe(out, r"lp:\s")
+        self.assertContainsRe(out, r"co:\s")
+        self.assertContainsRe(out, "Directory Services")
+
     def test_help_revisionspec(self):
         """Smoke test for 'brz help revisionspec'."""
         out, _err = self.run_bzr("help revisionspec")
