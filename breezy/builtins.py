@@ -3705,7 +3705,10 @@ class cmd_lookup_revision(Command):
             raise errors.CommandError(
                 gettext("not a valid revision-number: %r") % revno
             ) from exc
-        revid = WorkingTree.open_containing(directory)[0].branch.get_rev_id(revno)
+        try:
+            revid = WorkingTree.open_containing(directory)[0].branch.get_rev_id(revno)
+        except errors.RevnoOutOfBounds as exc:
+            raise errors.CommandError(str(exc)) from exc
         self.outf.write("{}\n".format(revid.decode("utf-8")))
 
 
