@@ -89,6 +89,11 @@ brz 3.3.26
    of just pointing at the diverged-branches help topic.
    (#316592, Jelmer Vernooĳ)
 
+ * ``brz pull -v`` now labels revisions that moved off the mainline
+   as "Revisions no longer on the mainline" rather than
+   "Removed Revisions", which read as if the revisions had been
+   discarded entirely. (#439640, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

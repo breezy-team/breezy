@@ -141,7 +141,7 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr("pull ../a", retcode=3)
         out = self.run_bzr("pull --overwrite --verbose ../a")[0]
 
-        remove_loc = out.find("Removed Revisions:")
+        remove_loc = out.find("no longer on the mainline")
         self.assertNotEqual(remove_loc, -1)
         added_loc = out.find("Added Revisions:")
         self.assertNotEqual(added_loc, -1)

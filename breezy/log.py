@@ -2141,7 +2141,10 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format="lon
     # removed revisions, it shouldn't be as important
     if base_idx < len(old_rh):
         to_file.write("*" * 60)
-        to_file.write("\nRemoved Revisions:\n")
+        to_file.write(
+            "\nRevisions no longer on the mainline (reordered by the "
+            "pulled-in history):\n"
+        )
         for i in range(base_idx, len(old_rh)):
             rev = branch.repository.get_revision(old_rh[i])
             lr = LogRevision(rev, i + 1, 0, None)
@@ -2230,7 +2233,10 @@ def show_branch_change(branch, output, old_revno, old_revision_id):
     lf = log_format(show_ids=False, to_file=output, show_timezone="original")
     if old_history != []:
         output.write("*" * 60)
-        output.write("\nRemoved Revisions:\n")
+        output.write(
+            "\nRevisions no longer on the mainline (reordered by the "
+            "pulled-in history):\n"
+        )
         show_flat_log(branch.repository, old_history, old_revno, lf)
         output.write("*" * 60)
         output.write("\n\n")
