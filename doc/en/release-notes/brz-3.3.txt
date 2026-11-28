@@ -89,6 +89,10 @@ brz 3.3.26
    of just pointing at the diverged-branches help topic.
    (#316592, Jelmer Vernooĳ)
 
+ * ``brz tag --prune-dangling`` deletes every tag that points at a
+   revision outside the current branch's ancestry.
+   (#814673, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 

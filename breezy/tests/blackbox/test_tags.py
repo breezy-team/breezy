@@ -87,6 +87,25 @@ class TestTagging(TestCaseWithTransport):
         _out, err = self.run_bzr("tag -d branch", retcode=3)
         self.assertContainsRe(err, "Please specify a tag name\\.")
 
+    def test_tag_prune_dangling(self):
+        """'brz tag --prune-dangling' removes tags not in tip ancestry."""
+        tree = self.make_branch_and_tree("tree")
+        rev1 = tree.commit("c1")
+        branch = tree.branch
+        branch.tags.set_tag("reachable", rev1)
+        branch.tags.set_tag("dangling", b"bogus-revid-that-does-not-exist")
+        _out, err = self.run_bzr("tag --prune-dangling", working_dir="tree")
+        self.assertContainsRe(err, "Deleted dangling tag dangling")
+        remaining = sorted(branch.tags.get_tag_dict())
+        self.assertEqual(["reachable"], remaining)
+
+    def test_tag_prune_dangling_rejects_combination(self):
+        self.make_branch_and_tree("tree")
+        _out, err = self.run_bzr(
+            "tag --prune-dangling some-name", working_dir="tree", retcode=3
+        )
+        self.assertContainsRe(err, "cannot be combined")
+
     def test_branch_push_pull_merge_copies_tags(self):
         t = self.make_branch_and_tree("branch1")
         t.commit(allow_pointless=True, message="initial commit", rev_id=b"first-revid")

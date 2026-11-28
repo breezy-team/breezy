@@ -6838,6 +6838,11 @@ class cmd_tag(Command):
             "force",
             help="Replace existing tags.",
         ),
+        Option(
+            "prune-dangling",
+            help="Delete every tag pointing at a revision that is not in "
+            "the current branch's ancestry.",
+        ),
         "revision",
     ]
 
@@ -6848,9 +6853,25 @@ class cmd_tag(Command):
         directory=".",
         force=None,
         revision=None,
+        prune_dangling=False,
     ):
         branch, _relpath = Branch.open_containing(directory)
         self.enter_context(branch.lock_write())
+        if prune_dangling:
+            if tag_name or delete or revision:
+                raise errors.CommandError(
+                    gettext(
+                        "--prune-dangling cannot be combined with a tag "
+                        "name, --delete, or --revision."
+                    )
+                )
+            tip_rev_id = branch.last_revision()
+            graph = branch.repository.get_graph()
+            for name, rev_id in sorted(branch.tags.get_tag_dict().items()):
+                if not graph.is_ancestor(rev_id, tip_rev_id):
+                    branch.tags.delete_tag(name)
+                    note(gettext("Deleted dangling tag %s.") % name)
+            return
         if delete:
             if tag_name is None:
                 raise errors.CommandError(gettext("No tag specified to delete."))
