@@ -2811,7 +2811,7 @@ class cmd_modified(Command):
             if null:
                 self.outf.write(change.path[1] + "\0")
             else:
-                self.outf.write(osutils.quotefn(change.path[1]) + "\n")
+                self.outf.write(change.path[1] + "\n")
 
 
 class cmd_added(Command):
@@ -2838,7 +2838,7 @@ class cmd_added(Command):
             if null:
                 self.outf.write(path + "\0")
             else:
-                self.outf.write(osutils.quotefn(path) + "\n")
+                self.outf.write(path + "\n")
 
 
 class cmd_root(Command):
