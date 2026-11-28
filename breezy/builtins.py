@@ -365,6 +365,11 @@ class cmd_status(Command):
         Option("versioned", help="Only show versioned files.", short_name="V"),
         Option("no-pending", help="Don't show pending merges."),
         Option("no-classify", help="Do not mark object type using indicator."),
+        Option(
+            "all",
+            help="Also show versioned files that have not changed.",
+            short_name="A",
+        ),
     ]
     aliases = ["st", "stat"]
 
@@ -382,6 +387,7 @@ class cmd_status(Command):
         no_pending=False,
         verbose=False,
         no_classify=False,
+        all=False,
     ):
         from .status import show_tree_status
 
@@ -413,6 +419,7 @@ class cmd_status(Command):
             show_pending=(not no_pending),
             verbose=verbose,
             classify=not no_classify,
+            want_unchanged=all,
         )
 
 

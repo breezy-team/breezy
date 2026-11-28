@@ -370,6 +370,20 @@ class BranchStatus(TestCaseWithTransport):
         open("UNVERSIONED_BUT_EXISTING", "w")
         return wt
 
+    def test_status_all_includes_unchanged(self):
+        # 'brz status --all' includes versioned files that have not changed.
+        wt = self.make_branch_and_tree(".")
+        self.build_tree_contents([("changed", b"old\n"), ("unchanged", b"same\n")])
+        wt.add(["changed", "unchanged"])
+        wt.commit("init")
+        self.build_tree_contents([("changed", b"new\n")])
+        out, _err = self.run_bzr("status --all")
+        self.assertContainsRe(out, r"modified:\s+changed")
+        self.assertContainsRe(out, r"unchanged:\s+unchanged")
+        # 'brz status' without --all does NOT show unchanged files.
+        out, _err = self.run_bzr("status")
+        self.assertNotIn("unchanged", out.split()[:2])
+
     def test_status_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
         # should give an error
