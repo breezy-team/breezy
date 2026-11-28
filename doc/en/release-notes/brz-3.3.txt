@@ -83,6 +83,11 @@ brz 3.3.26
    kind recorded in the tree is used instead.
    (#729751, Jelmer Vernooĳ)
 
+ * ``brz commit`` accepts ``--message-encoding`` to pick the encoding
+   used to decode the file passed with ``--file``. A clearer error is
+   also raised when the file does not decode in the chosen encoding.
+   (#520604, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
