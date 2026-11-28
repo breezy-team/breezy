@@ -38,6 +38,12 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "commands")
         self.assertContainsRe(out, "revisionspec")
 
+    def test_help_cherrypick(self):
+        """'brz help cherrypick' explains cherrypicking."""
+        out, _err = self.run_bzr("help cherrypick")
+        self.assertContainsRe(out, "cherrypick")
+        self.assertContainsRe(out, r"-c|-r X\.\.Y")
+
     def test_help_revisionspec(self):
         """Smoke test for 'brz help revisionspec'."""
         out, _err = self.run_bzr("help revisionspec")

@@ -89,6 +89,11 @@ brz 3.3.26
    of just pointing at the diverged-branches help topic.
    (#316592, Jelmer Vernooĳ)
 
+ * ``brz help cherrypick`` is a new help topic that explains what the
+   "Performing cherrypick" output from ``brz merge -c`` /
+   ``-r X..Y`` means and how a cherrypick differs from a regular
+   merge. (#211122, Jelmer Vernooĳ)
+
 brz 3.3.25
 ##########
 
